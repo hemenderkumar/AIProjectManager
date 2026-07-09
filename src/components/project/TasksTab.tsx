@@ -16,6 +16,8 @@ type PlanTask = {
   priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   suggestedRole?: string;
   suggestedHourlyRate?: number;
+  requiredSkills?: string[];
+  requiredExperienceYears?: number;
   phase?: string;
   dueInDays?: number;
   rate?: number;
@@ -31,6 +33,7 @@ type TeamCompositionRow = {
   rate: number;
   cost: number;
   matchedResourceName: string | null;
+  requiredSkills: string[];
 };
 
 type PhaseRow = { phase: string; hours: number; cost: number; taskCount: number };
@@ -339,6 +342,7 @@ export default function TasksTab({
                     <thead>
                       <tr className="text-left text-slate-400 border-b border-slate-200">
                         <th className="py-1.5 font-medium">Role</th>
+                        <th className="py-1.5 font-medium">Skills needed</th>
                         <th className="py-1.5 font-medium">Staffing</th>
                         <th className="py-1.5 font-medium text-right">Hours</th>
                         <th className="py-1.5 font-medium text-right">Rate</th>
@@ -349,6 +353,19 @@ export default function TasksTab({
                       {preview.teamComposition.map((r) => (
                         <tr key={r.role} className="border-b border-slate-100 last:border-0">
                           <td className="py-1.5 font-medium text-slate-700">{r.role}</td>
+                          <td className="py-1.5 text-slate-500">
+                            {r.requiredSkills.length ? (
+                              <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                {r.requiredSkills.map((s) => (
+                                  <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                    {s}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
                           <td className="py-1.5">
                             {r.matchedResourceName ? (
                               <span className="text-emerald-600">{r.matchedResourceName}</span>
@@ -386,6 +403,7 @@ export default function TasksTab({
                         <th className="py-1.5 font-medium">Phase</th>
                         <th className="py-1.5 font-medium">Task</th>
                         <th className="py-1.5 font-medium">Role</th>
+                        <th className="py-1.5 font-medium">Skills / Experience</th>
                         <th className="py-1.5 font-medium text-right">Hours</th>
                       </tr>
                     </thead>
@@ -396,6 +414,19 @@ export default function TasksTab({
                           <td className="py-1.5 text-slate-700">{t.title}</td>
                           <td className="py-1.5 text-slate-500">
                             {t.resolvedAssigneeName ?? t.suggestedRole ?? "—"}
+                          </td>
+                          <td className="py-1.5 text-slate-500">
+                            <div className="flex flex-wrap items-center gap-1 max-w-[220px]">
+                              {(t.requiredSkills ?? []).map((s) => (
+                                <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                  {s}
+                                </span>
+                              ))}
+                              {t.requiredExperienceYears != null && (
+                                <span className="text-[10px] text-slate-400">{t.requiredExperienceYears}+ yrs</span>
+                              )}
+                              {!(t.requiredSkills ?? []).length && t.requiredExperienceYears == null && "—"}
+                            </div>
                           </td>
                           <td className="py-1.5 text-right">
                             <input

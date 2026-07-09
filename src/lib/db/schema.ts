@@ -125,6 +125,8 @@ export const resources = pgTable("resources", {
   email: text("email"),
   capacityHoursPerWk: real("capacity_hours_per_wk").default(40),
   costPerHour: real("cost_per_hour").default(0),
+  skills: text("skills").array(),
+  experienceYears: real("experience_years"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -160,6 +162,8 @@ export const tasks = pgTable("tasks", {
   completedAt: timestamp("completed_at"),
   estimateHours: real("estimate_hours").default(0),
   actualHours: real("actual_hours").default(0),
+  requiredSkills: text("required_skills").array(),
+  requiredExperienceYears: real("required_experience_years"),
   isAgentTask: boolean("is_agent_task").notNull().default(false),
   createdByAi: boolean("created_by_ai").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -64,6 +64,8 @@ interface PlanTask {
   priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   suggestedRole?: string;
   suggestedHourlyRate?: number;
+  requiredSkills?: string[];
+  requiredExperienceYears?: number;
   phase?: string;
   dueInDays?: number;
 }
@@ -99,20 +101,57 @@ type Resource = {
   role: string | null;
   capacityHoursPerWk: number | null;
   costPerHour: number | null;
+  skills: string[] | null;
+  experienceYears: number | null;
 };
 
 const DEFAULT_WEEKLY_CAPACITY = 40; // fallback hrs/wk if we can't match any real resource
 const DEFAULT_HOURLY_RATE = 75; // fallback $/hr for roles with no matching resource and no AI suggestion
 
-function matchResource(allResources: Resource[], suggestedRole?: string): Resource | null {
-  if (!suggestedRole) return null;
-  const needle = suggestedRole.toLowerCase();
-  const match = allResources.find(
-    (r) =>
-      r.role !== "AI Project Manager" &&
-      (r.role?.toLowerCase().includes(needle) || needle.includes((r.role ?? "").toLowerCase()))
-  );
-  return match ?? null;
+// Counts how many of a task's required skills a resource actually has (fuzzy, case-insensitive
+// substring match in both directions so "React" matches "React.js" and vice versa).
+function skillOverlapCount(resourceSkills: string[] | null, requiredSkills?: string[]): number {
+  if (!requiredSkills?.length || !resourceSkills?.length) return 0;
+  const have = resourceSkills.map((s) => s.toLowerCase().trim());
+  const need = requiredSkills.map((s) => s.toLowerCase().trim());
+  return need.filter((n) => have.some((h) => h.includes(n) || n.includes(h))).length;
+}
+
+// Finds the best-fit team member for a task. Skill overlap is weighted far above everything
+// else — that's the whole point of tracking skills per resource — with experience level and
+// legacy role-name matching as secondary signals so this still works for resources that don't
+// have skills/experience filled in yet.
+function matchResource(
+  allResources: Resource[],
+  suggestedRole?: string,
+  requiredSkills?: string[],
+  requiredExperienceYears?: number
+): Resource | null {
+  const candidates = allResources.filter((r) => r.role !== "AI Project Manager");
+  const roleNeedle = suggestedRole?.toLowerCase().trim();
+
+  let best: { resource: Resource; score: number } | null = null;
+  for (const r of candidates) {
+    let score = 0;
+
+    const overlap = skillOverlapCount(r.skills, requiredSkills);
+    score += overlap * 10;
+
+    if (requiredExperienceYears != null && r.experienceYears != null) {
+      score += r.experienceYears >= requiredExperienceYears ? 3 : -2;
+    }
+
+    if (roleNeedle && r.role) {
+      const roleLower = r.role.toLowerCase();
+      if (roleLower.includes(roleNeedle) || roleNeedle.includes(roleLower)) score += 1;
+    }
+
+    if (score > 0 && (!best || score > best.score)) {
+      best = { resource: r, score };
+    }
+  }
+
+  return best?.resource ?? null;
 }
 
 // Given a set of tasks (with estimateHours + resolved assignee), work out a realistic
@@ -123,7 +162,7 @@ function estimateSchedule(planTasks: PlanTask[], allResources: Resource[]) {
 
   const involvedCapacities = new Set<number>();
   for (const t of planTasks) {
-    const match = matchResource(allResources, t.suggestedRole);
+    const match = matchResource(allResources, t.suggestedRole, t.requiredSkills, t.requiredExperienceYears);
     involvedCapacities.add(match?.capacityHoursPerWk ?? DEFAULT_WEEKLY_CAPACITY);
   }
   const combinedWeeklyCapacity =
@@ -140,31 +179,41 @@ function estimateSchedule(planTasks: PlanTask[], allResources: Resource[]) {
 }
 
 function rateForTask(t: PlanTask, allResources: Resource[]): number {
-  const match = matchResource(allResources, t.suggestedRole);
+  const match = matchResource(allResources, t.suggestedRole, t.requiredSkills, t.requiredExperienceYears);
   if (match?.costPerHour) return match.costPerHour;
   if (t.suggestedHourlyRate) return t.suggestedHourlyRate;
   return DEFAULT_HOURLY_RATE;
 }
 
-// Group tasks by suggested role -> total hours, blended cost, and whether an existing
-// team member covers it or it's a staffing gap that needs to be filled/hired.
+// Group tasks by suggested role -> total hours, blended cost, required skills, and whether
+// an existing team member covers it or it's a staffing gap that needs to be filled/hired.
 function buildTeamComposition(planTasks: PlanTask[], allResources: Resource[]) {
-  type RoleRow = { role: string; hours: number; rate: number; matchedResourceName: string | null };
+  type RoleRow = {
+    role: string;
+    hours: number;
+    rate: number;
+    matchedResourceName: string | null;
+    requiredSkills: string[];
+  };
   const byRole = new Map<string, RoleRow>();
 
   for (const t of planTasks) {
     const role = t.suggestedRole?.trim() || "Unspecified role";
-    const match = matchResource(allResources, t.suggestedRole);
+    const match = matchResource(allResources, t.suggestedRole, t.requiredSkills, t.requiredExperienceYears);
     const rate = rateForTask(t, allResources);
     const existing = byRole.get(role);
     if (existing) {
       existing.hours += t.estimateHours ?? 8;
+      for (const s of t.requiredSkills ?? []) {
+        if (!existing.requiredSkills.includes(s)) existing.requiredSkills.push(s);
+      }
     } else {
       byRole.set(role, {
         role,
         hours: t.estimateHours ?? 8,
         rate,
         matchedResourceName: match?.name ?? null,
+        requiredSkills: [...(t.requiredSkills ?? [])],
       });
     }
   }
@@ -241,7 +290,10 @@ export async function POST(req: NextRequest) {
               description: t.description ?? null,
               priority: t.priority ?? "MEDIUM",
               estimateHours: t.estimateHours ?? 8,
-              assigneeId: matchResource(allResources, t.suggestedRole)?.id ?? null,
+              requiredSkills: t.requiredSkills?.length ? t.requiredSkills : null,
+              requiredExperienceYears: t.requiredExperienceYears ?? null,
+              assigneeId:
+                matchResource(allResources, t.suggestedRole, t.requiredSkills, t.requiredExperienceYears)?.id ?? null,
               dueDate: addDays(t.dueInDays ?? 14),
               createdByAi: true,
             }))
@@ -301,12 +353,13 @@ export async function POST(req: NextRequest) {
 
   const resourceList = allResources
     .filter((r) => r.role !== "AI Project Manager")
-    .map(
-      (r) =>
-        `${r.name} (${r.role ?? "no role set"}, ${r.capacityHoursPerWk ?? 40} hrs/wk capacity, $${
-          r.costPerHour ?? "?"
-        }/hr)`
-    )
+    .map((r) => {
+      const skillsPart = r.skills?.length ? `, skills: ${r.skills.join(", ")}` : "";
+      const expPart = r.experienceYears != null ? `, ${r.experienceYears} yrs experience` : "";
+      return `${r.name} (${r.role ?? "no role set"}, ${r.capacityHoursPerWk ?? 40} hrs/wk capacity, $${
+        r.costPerHour ?? "?"
+      }/hr${skillsPart}${expPart})`;
+    })
     .join("\n");
 
   const system = `You are an experienced AI project manager and delivery estimator, currently planning a
@@ -336,6 +389,14 @@ on the roster, include a suggestedHourlyRate (a realistic USD market rate for th
 mid-senior/specialist roles, 90-160 for highly specialized/lead roles). Do not include suggestedHourlyRate
 for roles that clearly match an existing team member.
 
+For each task, ALSO include requiredSkills: 2-4 specific, concrete skills needed for that exact task (not
+vague — e.g. "React", "PostgreSQL", "AWS Lambda" for a technology task; "survey design", "SPSS" for a
+research task; "electrical wiring", "OSHA safety compliance" for a handyman task), consistent with the
+chosen approach. Also include requiredExperienceYears: a realistic minimum years of experience for that
+task (roughly 0-1 for entry-level/simple tasks, 2-4 for standard/independent work, 5-8 for senior/complex
+work, 9+ for expert/lead-level work). Use the team roster's listed skills and experience (where present) to
+judge realistic requirements and to prefer matching existing team members whose skills actually fit.
+
 Team roster:
 ${resourceList || "No team members yet — suggest generic roles and realistic market rates for each."}
 
@@ -346,7 +407,7 @@ Output strict JSON matching this shape exactly:
 {
   "approach": { "summary": string, "details": { "<label>": "<value>", ... }, "rationale": string },
   "milestones": [{ "name": string, "phase": string, "dueInDays": number }],
-  "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "phase": string, "dueInDays": number }],
+  "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "requiredSkills": string[], "requiredExperienceYears": number, "phase": string, "dueInDays": number }],
   "agentFollowUps": [{ "title": string, "description": string, "dueInDays": number }]
 }
 "phase" values must be exactly one of: ${phases.join(", ")}. The "details" object in "approach" should have
@@ -381,7 +442,8 @@ today, and should increase roughly in phase order (earlier phases due sooner, la
     ...t,
     phase: t.phase && (phases as readonly string[]).includes(t.phase) ? t.phase : fallbackPhase,
     rate: rateForTask(t, allResources),
-    resolvedAssigneeName: matchResource(allResources, t.suggestedRole)?.name ?? null,
+    resolvedAssigneeName:
+      matchResource(allResources, t.suggestedRole, t.requiredSkills, t.requiredExperienceYears)?.name ?? null,
   }));
 
   return NextResponse.json({

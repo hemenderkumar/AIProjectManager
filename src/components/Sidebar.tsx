@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, FolderKanban, Sparkles, PlusCircle, ShieldCheck, FileBarChart } from "lucide-react";
+import { LayoutDashboard, FolderKanban, Sparkles, PlusCircle, ShieldCheck, FileBarChart, Users } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
 
@@ -45,6 +45,13 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
         >
           <FileBarChart size={17} />
           Reports
+        </Link>
+        <Link
+          href="/resources"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        >
+          <Users size={17} />
+          Resources
         </Link>
         {user?.role === "ADMIN" && (
           <Link

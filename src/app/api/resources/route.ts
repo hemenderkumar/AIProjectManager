@@ -25,6 +25,8 @@ export async function POST(req: NextRequest) {
       email: body.email ?? null,
       capacityHoursPerWk: body.capacityHoursPerWk ?? 40,
       costPerHour: body.costPerHour ?? 0,
+      skills: Array.isArray(body.skills) ? body.skills : null,
+      experienceYears: body.experienceYears ?? null,
     })
     .returning();
   return NextResponse.json(created, { status: 201 });
