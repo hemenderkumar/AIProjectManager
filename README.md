@@ -171,3 +171,4 @@ src/
     email.ts                 Resend wrapper (no-op if RESEND_API_KEY isn't set)
     reportGenerator.ts        Shared logic for weekly/steering report generation + emailing
 ```
+
