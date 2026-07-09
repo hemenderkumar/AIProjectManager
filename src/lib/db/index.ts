@@ -19,6 +19,7 @@ const client =
   postgres(connectionString ?? "postgres://placeholder", {
     max: 1,
     ssl: connectionString?.includes("localhost") ? false : "require",
+    prepare: false,
   });
 
 if (process.env.NODE_ENV !== "production") {
