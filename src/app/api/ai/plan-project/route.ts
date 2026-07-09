@@ -362,10 +362,10 @@ today, and should increase roughly in phase order (earlier phases due sooner, la
 
   const user_prompt = `Project goal: ${goal}\nTarget completion: ${targetDays ? `${targetDays} days from now` : "not specified, use your judgment"}`;
 
-  const plan = await askClaudeJSON<ProjectPlan>(system, user_prompt);
+  const { data: plan, error: planError } = await askClaudeJSON<ProjectPlan>(system, user_prompt);
   if (!plan) {
     return NextResponse.json(
-      { error: "AI planning is not available. Add ANTHROPIC_API_KEY to enable it, or the model returned an unparseable response." },
+      { error: planError ?? "AI planning failed for an unknown reason." },
       { status: 503 }
     );
   }
