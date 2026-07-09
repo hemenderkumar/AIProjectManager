@@ -5,9 +5,53 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge } from "@/components/badges";
 import { formatDate } from "@/lib/format";
-import { Plus, Sparkles, Loader2, Bot, Mail } from "lucide-react";
+import { Plus, Sparkles, Loader2, Bot, Mail, Check, X } from "lucide-react";
 
 type Resource = { id: string; name: string };
+
+type PlanTask = {
+  title: string;
+  description?: string;
+  estimateHours?: number;
+  priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  suggestedRole?: string;
+  suggestedHourlyRate?: number;
+  phase?: string;
+  dueInDays?: number;
+  rate?: number;
+  resolvedAssigneeName?: string | null;
+};
+
+type PlanMilestone = { name: string; phase?: string; dueInDays?: number };
+type PlanFollowUp = { title: string; description?: string; dueInDays?: number };
+
+type TeamCompositionRow = {
+  role: string;
+  hours: number;
+  rate: number;
+  cost: number;
+  matchedResourceName: string | null;
+};
+
+type PhaseRow = { phase: string; hours: number; cost: number; taskCount: number };
+
+type PlanPreview = {
+  plan: { milestones: PlanMilestone[]; tasks: PlanTask[]; agentFollowUps: PlanFollowUp[] };
+  totalEffortHours: number;
+  suggestedStartDate: string;
+  suggestedEndDate: string;
+  teamComposition: TeamCompositionRow[];
+  phaseBreakdown: PhaseRow[];
+  totalEstimatedCost: number;
+};
+
+const PHASE_LABELS: Record<string, string> = {
+  PLANNING: "Planning",
+  DESIGN: "Design",
+  DEVELOPMENT: "Development",
+  TESTING: "Testing",
+  DEPLOYMENT: "Deployment",
+};
 
 export default function TasksTab({ detail, allResources }: { detail: ProjectDetail; allResources: Resource[] }) {
   const router = useRouter();
@@ -21,6 +65,12 @@ export default function TasksTab({ detail, allResources }: { detail: ProjectDeta
   );
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+
+  const [preview, setPreview] = useState<PlanPreview | null>(null);
+  const [editedTasks, setEditedTasks] = useState<PlanTask[]>([]);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [confirming, setConfirming] = useState(false);
 
   const [requestingFor, setRequestingFor] = useState<string | null>(null);
 
@@ -53,19 +103,60 @@ export default function TasksTab({ detail, allResources }: { detail: ProjectDeta
     if (!goal.trim()) return;
     setPlanning(true);
     setPlanError(null);
+    setPreview(null);
     const res = await fetch("/api/ai/plan-project", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId: detail.project.id, goal }),
     });
     setPlanning(false);
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       setPlanError(data.error ?? "Planning failed");
       return;
     }
+    setPreview(data);
+    setEditedTasks(data.plan.tasks);
+    setStartDate(data.suggestedStartDate);
+    setEndDate(data.suggestedEndDate);
+  }
+
+  function updateTaskHours(index: number, hours: number) {
+    setEditedTasks((prev) => prev.map((t, i) => (i === index ? { ...t, estimateHours: hours } : t)));
+  }
+
+  const editedTotalHours = editedTasks.reduce((sum, t) => sum + (t.estimateHours ?? 0), 0);
+  const editedTotalCost = editedTasks.reduce((sum, t) => sum + (t.estimateHours ?? 0) * (t.rate ?? 75), 0);
+
+  async function confirmPlan() {
+    if (!preview) return;
+    setConfirming(true);
+    const res = await fetch("/api/ai/plan-project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId: detail.project.id,
+        confirm: true,
+        plan: { ...preview.plan, tasks: editedTasks },
+        startDate,
+        targetEndDate: endDate,
+        budgetPlanned: Math.round(editedTotalCost),
+      }),
+    });
+    setConfirming(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setPlanError(data.error ?? "Could not create the plan");
+      return;
+    }
     setShowPlanner(false);
+    setPreview(null);
     router.refresh();
+  }
+
+  function discardPreview() {
+    setPreview(null);
+    setEditedTasks([]);
   }
 
   async function requestStatus(taskId: string, resourceId: string | null) {
@@ -111,9 +202,9 @@ export default function TasksTab({ detail, allResources }: { detail: ProjectDeta
         }
       >
         <p className="text-xs text-slate-400 mb-3">
-          Describe the goal — the AI PM drafts milestones, breaks down tasks with effort estimates,
-          suggests who should own each one based on your team roster, and adds its own follow-up
-          items to chase.
+          Describe the goal — the AI PM drafts milestones across planning, design, development, testing
+          and deployment, estimates effort and cost per role, and suggests a start/end date. Nothing is
+          created until you review and approve it below.
         </p>
         {showPlanner && (
           <div className="p-4 bg-slate-50 rounded-lg space-y-3">
@@ -121,10 +212,131 @@ export default function TasksTab({ detail, allResources }: { detail: ProjectDeta
               <textarea value={goal} onChange={(e) => setGoal(e.target.value)} className={inputCls} rows={3} />
             </Field>
             {planError && <p className="text-xs text-rose-600">{planError}</p>}
-            <PrimaryButton onClick={generatePlan} disabled={planning} className="flex items-center gap-1.5">
-              {planning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              {planning ? "Planning..." : "Generate plan"}
-            </PrimaryButton>
+            {!preview && (
+              <PrimaryButton onClick={generatePlan} disabled={planning} className="flex items-center gap-1.5">
+                {planning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {planning ? "Estimating..." : "Generate plan"}
+              </PrimaryButton>
+            )}
+
+            {preview && (
+              <div className="space-y-4 mt-2">
+                <div className="grid grid-cols-3 gap-3">
+                  <SummaryStat label="Total effort" value={`${editedTotalHours.toFixed(0)} hrs`} />
+                  <SummaryStat label="Estimated cost" value={`$${editedTotalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+                  <SummaryStat label="Duration" value={`${Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))} days`} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Start date">
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+                  </Field>
+                  <Field label="Target end date">
+                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+                  </Field>
+                </div>
+                <p className="text-[11px] text-slate-400 -mt-2">
+                  Dates are auto-calculated from total effort vs. team capacity — adjust if needed.
+                </p>
+
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 mb-1.5">Who you&apos;ll need</p>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-slate-400 border-b border-slate-200">
+                        <th className="py-1.5 font-medium">Role</th>
+                        <th className="py-1.5 font-medium">Staffing</th>
+                        <th className="py-1.5 font-medium text-right">Hours</th>
+                        <th className="py-1.5 font-medium text-right">Rate</th>
+                        <th className="py-1.5 font-medium text-right">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.teamComposition.map((r) => (
+                        <tr key={r.role} className="border-b border-slate-100 last:border-0">
+                          <td className="py-1.5 font-medium text-slate-700">{r.role}</td>
+                          <td className="py-1.5">
+                            {r.matchedResourceName ? (
+                              <span className="text-emerald-600">{r.matchedResourceName}</span>
+                            ) : (
+                              <span className="text-amber-600">Needs staffing</span>
+                            )}
+                          </td>
+                          <td className="py-1.5 text-right">{r.hours}h</td>
+                          <td className="py-1.5 text-right">${r.rate}/hr</td>
+                          <td className="py-1.5 text-right">${r.cost.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 mb-1.5">Plan by phase</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {preview.phaseBreakdown.map((p) => (
+                      <div key={p.phase} className="border border-slate-200 rounded-lg p-2 text-center">
+                        <p className="text-[10px] text-slate-400">{PHASE_LABELS[p.phase] ?? p.phase}</p>
+                        <p className="text-sm font-semibold text-slate-800">{p.taskCount} tasks</p>
+                        <p className="text-[10px] text-slate-500">{p.hours}h · ${p.cost.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 mb-1.5">Tasks — adjust hours if needed</p>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-slate-400 border-b border-slate-200">
+                        <th className="py-1.5 font-medium">Phase</th>
+                        <th className="py-1.5 font-medium">Task</th>
+                        <th className="py-1.5 font-medium">Role</th>
+                        <th className="py-1.5 font-medium text-right">Hours</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editedTasks.map((t, i) => (
+                        <tr key={i} className="border-b border-slate-100 last:border-0">
+                          <td className="py-1.5 text-slate-400">{PHASE_LABELS[t.phase ?? ""] ?? t.phase}</td>
+                          <td className="py-1.5 text-slate-700">{t.title}</td>
+                          <td className="py-1.5 text-slate-500">
+                            {t.resolvedAssigneeName ?? t.suggestedRole ?? "—"}
+                          </td>
+                          <td className="py-1.5 text-right">
+                            <input
+                              type="number"
+                              min={0}
+                              value={t.estimateHours ?? 0}
+                              onChange={(e) => updateTaskHours(i, Number(e.target.value))}
+                              className="w-16 text-right text-xs border border-slate-200 rounded px-1 py-0.5"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <PrimaryButton onClick={confirmPlan} disabled={confirming} className="flex items-center gap-1.5">
+                    {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    {confirming ? "Creating..." : "Approve & create plan"}
+                  </PrimaryButton>
+                  <button
+                    onClick={discardPreview}
+                    className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100"
+                  >
+                    <X size={14} /> Discard
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Cost estimates use your team&apos;s actual hourly rates where a role is matched, and a
+                  market-rate guess for roles you haven&apos;t staffed yet — treat this as a planning estimate,
+                  not a quote.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </Card>
@@ -246,6 +458,15 @@ export default function TasksTab({ detail, allResources }: { detail: ProjectDeta
           </tbody>
         </table>
       </Card>
+    </div>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-slate-200 rounded-lg p-2.5 text-center bg-white">
+      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-sm font-semibold text-slate-800">{value}</p>
     </div>
   );
 }
