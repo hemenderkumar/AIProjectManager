@@ -5,8 +5,57 @@ import { tasks, milestones, resources, projects } from "@/lib/db/schema";
 import { askClaudeJSON } from "@/lib/ai";
 import { requireRole } from "@/lib/auth";
 
-const PHASES = ["PLANNING", "DESIGN", "DEVELOPMENT", "TESTING", "DEPLOYMENT"] as const;
-type Phase = (typeof PHASES)[number];
+// Different kinds of projects go through very different lifecycles. Each project
+// type defines its own phase list and its own guidance for what "the approach" even
+// means (a tech stack for software, a methodology for research, materials/permits
+// for physical work).
+const PROJECT_TYPES = {
+  TECHNOLOGY: {
+    label: "Technology / Software",
+    phases: ["PLANNING", "DESIGN", "DEVELOPMENT", "TESTING", "DEPLOYMENT"] as const,
+    approachNoun: "technology stack",
+    approachLabel: "Preferred technology stack (optional)",
+    approachPlaceholder: "e.g. React + Node.js + PostgreSQL — leave blank and the AI PM will recommend one",
+    guidance: `Always include real Testing tasks (QA, user acceptance testing, bug fixing) and real
+Deployment tasks (release/cutover, monitoring setup, handover/documentation) — do not skip these phases
+even if the goal description only talks about building something. For each task, suggest a specific,
+technology-appropriate role (e.g. "React Frontend Developer", "Node.js Backend Engineer", "QA Engineer",
+"DevOps Engineer"), not a vague placeholder.`,
+  },
+  RESEARCH: {
+    label: "Research",
+    phases: ["PLANNING", "RESEARCH", "ANALYSIS", "REPORTING", "REVIEW"] as const,
+    approachNoun: "research approach/methodology",
+    approachLabel: "Preferred research approach or methodology (optional)",
+    approachPlaceholder: "e.g. mixed-methods survey + literature review — leave blank and the AI PM will recommend one",
+    guidance: `Always include real tasks for literature/background review, methodology or study design,
+data or source collection, analysis, drafting findings, and stakeholder/peer review — do not skip any of
+these even if the goal description is brief. Suggest specific roles (e.g. "Research Analyst", "Data
+Analyst", "Subject Matter Expert", "Editor/Reviewer"), not vague placeholders.`,
+  },
+  HANDYMAN: {
+    label: "Handyman / Physical / Construction",
+    phases: ["PLANNING", "PROCUREMENT", "EXECUTION", "INSPECTION", "COMPLETION"] as const,
+    approachNoun: "materials and approach",
+    approachLabel: "Preferred materials or approach (optional)",
+    approachPlaceholder: "e.g. hardwood flooring, standard building permits — leave blank and the AI PM will recommend one",
+    guidance: `Always include real tasks for site assessment/measurements, permits or approvals if relevant,
+sourcing materials and tools, the on-site labor itself, safety checks, final inspection/sign-off, and
+cleanup/handover — do not skip these even if the goal description is brief. Suggest specific roles (e.g.
+"Site Lead", "Electrician", "Carpenter", "Inspector"), not vague placeholders.`,
+  },
+  GENERAL: {
+    label: "General / Other",
+    phases: ["PLANNING", "EXECUTION", "REVIEW", "COMPLETION"] as const,
+    approachNoun: "overall approach",
+    approachLabel: "Preferred approach or constraints (optional)",
+    approachPlaceholder: "Describe any specific approach, tools, or constraints, or leave blank",
+    guidance: `Break the work into sensible, concrete stages appropriate for this kind of project, and
+suggest specific roles appropriate to the work involved, not vague placeholders.`,
+  },
+} as const;
+
+type ProjectTypeKey = keyof typeof PROJECT_TYPES;
 
 interface PlanTask {
   title: string;
@@ -15,13 +64,13 @@ interface PlanTask {
   priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   suggestedRole?: string;
   suggestedHourlyRate?: number;
-  phase?: Phase;
+  phase?: string;
   dueInDays?: number;
 }
 
 interface PlanMilestone {
   name: string;
-  phase?: Phase;
+  phase?: string;
   dueInDays?: number;
 }
 
@@ -31,10 +80,17 @@ interface PlanFollowUp {
   dueInDays?: number;
 }
 
+interface ApproachRecommendation {
+  summary: string;
+  details?: Record<string, string>;
+  rationale?: string;
+}
+
 interface ProjectPlan {
   milestones: PlanMilestone[];
   tasks: PlanTask[];
   agentFollowUps: PlanFollowUp[];
+  approach?: ApproachRecommendation;
 }
 
 type Resource = {
@@ -93,10 +149,8 @@ function rateForTask(t: PlanTask, allResources: Resource[]): number {
 // Group tasks by suggested role -> total hours, blended cost, and whether an existing
 // team member covers it or it's a staffing gap that needs to be filled/hired.
 function buildTeamComposition(planTasks: PlanTask[], allResources: Resource[]) {
-  const byRole = new Map<
-    string,
-    { role: string; hours: number; rate: number; matchedResourceName: string | null }
-  >();
+  type RoleRow = { role: string; hours: number; rate: number; matchedResourceName: string | null };
+  const byRole = new Map<string, RoleRow>();
 
   for (const t of planTasks) {
     const role = t.suggestedRole?.trim() || "Unspecified role";
@@ -120,12 +174,14 @@ function buildTeamComposition(planTasks: PlanTask[], allResources: Resource[]) {
     .sort((a, b) => b.hours - a.hours);
 }
 
-function buildPhaseBreakdown(planTasks: PlanTask[], allResources: Resource[]) {
-  const byPhase = new Map<Phase, { phase: Phase; hours: number; cost: number; taskCount: number }>();
-  for (const p of PHASES) byPhase.set(p, { phase: p, hours: 0, cost: 0, taskCount: 0 });
+function buildPhaseBreakdown(planTasks: PlanTask[], allResources: Resource[], phases: readonly string[]) {
+  const byPhase = new Map<string, { phase: string; hours: number; cost: number; taskCount: number }>();
+  for (const p of phases) byPhase.set(p, { phase: p, hours: 0, cost: 0, taskCount: 0 });
+
+  const fallbackPhase = phases[Math.min(2, phases.length - 1)] ?? phases[0];
 
   for (const t of planTasks) {
-    const phase: Phase = t.phase && PHASES.includes(t.phase) ? t.phase : "DEVELOPMENT";
+    const phase: string = t.phase && byPhase.has(t.phase) ? t.phase : fallbackPhase;
     const bucket = byPhase.get(phase)!;
     const hours = t.estimateHours ?? 8;
     bucket.hours += hours;
@@ -233,10 +289,15 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- PREVIEW STEP: ask AI for a plan, estimate schedule + cost, but write nothing yet ----
-  const { goal, targetDays } = body;
+  const { goal, targetDays, approach: preferredApproach } = body;
+  const projectType: ProjectTypeKey =
+    body.projectType && body.projectType in PROJECT_TYPES ? body.projectType : "TECHNOLOGY";
   if (!goal) {
     return NextResponse.json({ error: "goal is required" }, { status: 400 });
   }
+
+  const typeConfig = PROJECT_TYPES[projectType];
+  const phases = typeConfig.phases;
 
   const resourceList = allResources
     .filter((r) => r.role !== "AI Project Manager")
@@ -248,18 +309,32 @@ export async function POST(req: NextRequest) {
     )
     .join("\n");
 
-  const system = `You are an experienced AI project manager and delivery estimator. Given a project goal,
-produce a realistic, end-to-end work breakdown structure covering the FULL delivery lifecycle — not just
-build work. Every task must be tagged with a phase from this fixed list: ${PHASES.join(", ")}.
-Always include real Testing tasks (QA, user acceptance testing, bug fixing) and real Deployment tasks
-(release/cutover, monitoring setup, handover/documentation) — do not skip these phases even if the goal
-description only talks about building something.
+  const system = `You are an experienced AI project manager and delivery estimator, currently planning a
+${typeConfig.label} project. First decide the ${typeConfig.approachNoun}, then produce a realistic,
+end-to-end work breakdown structure covering the FULL lifecycle for this kind of project — not just the
+core work itself.
 
-For each task, also suggest a role (pick from the team roster below if a good fit, otherwise a generic
-role like "Backend Engineer", "QA Engineer", "DevOps Engineer") and, ONLY if that role doesn't reasonably
-match anyone on the roster, include a suggestedHourlyRate (a realistic USD market rate for that role/skill
-level — e.g. 40-60 for junior/QA, 70-110 for mid/senior engineering, 90-160 for specialized/lead roles).
-Do not include suggestedHourlyRate for roles that clearly match an existing team member.
+${typeConfig.approachNoun.toUpperCase()}:
+${
+  preferredApproach && String(preferredApproach).trim()
+    ? `The user has specified a preference: "${preferredApproach}". Use this as the basis for your plan
+(you may fill in reasonable gaps if the user's description doesn't cover everything). Reflect this choice
+consistently in task titles, roles, and effort estimates — use specific terms from it, not generic
+placeholders.`
+    : `The user has not specified a preference — you must choose one yourself, based on the goal, that a
+sensible team would actually pick for this kind of project. State your choice in the "approach" field and
+use it consistently for task titles, roles, and effort estimates.`
+}
+
+Every task must be tagged with a phase from this fixed list: ${phases.join(", ")}.
+${typeConfig.guidance}
+
+For each task, also suggest a role (pick from the team roster below if a good fit, otherwise a specific
+role appropriate to this project type and approach) and, ONLY if that role doesn't reasonably match anyone
+on the roster, include a suggestedHourlyRate (a realistic USD market rate for that role/skill level — e.g.
+25-45 for entry-level/manual labor, 40-60 for junior/QA/research assistant roles, 70-110 for
+mid-senior/specialist roles, 90-160 for highly specialized/lead roles). Do not include suggestedHourlyRate
+for roles that clearly match an existing team member.
 
 Team roster:
 ${resourceList || "No team members yet — suggest generic roles and realistic market rates for each."}
@@ -269,22 +344,28 @@ steering committee update" — not delivery work; these don't need a phase or ro
 
 Output strict JSON matching this shape exactly:
 {
-  "milestones": [{ "name": string, "phase": "PLANNING"|"DESIGN"|"DEVELOPMENT"|"TESTING"|"DEPLOYMENT", "dueInDays": number }],
-  "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "phase": "PLANNING"|"DESIGN"|"DEVELOPMENT"|"TESTING"|"DEPLOYMENT", "dueInDays": number }],
+  "approach": { "summary": string, "details": { "<label>": "<value>", ... }, "rationale": string },
+  "milestones": [{ "name": string, "phase": string, "dueInDays": number }],
+  "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "phase": string, "dueInDays": number }],
   "agentFollowUps": [{ "title": string, "description": string, "dueInDays": number }]
 }
-Keep it to 5-8 milestones (spread across all phases) and 10-20 tasks (spread across all phases, with
-real coverage of testing and deployment work, not just 1 token task). Be realistic and conservative
-with estimateHours and rates — these numbers drive the actual schedule and budget the user will approve.
-dueInDays is relative to today, and should increase roughly in phase order (planning/design due sooner,
-deployment due latest).`;
+"phase" values must be exactly one of: ${phases.join(", ")}. The "details" object in "approach" should have
+2-4 short entries relevant to this project type (e.g. for a technology project: frontend/backend/database/
+hosting; for research: methodology/data sources/tools; for physical work: materials/permits/equipment) —
+use whatever labels make sense, they don't have to match these examples exactly.
+
+Keep it to 5-8 milestones (spread across all phases) and 10-20 tasks (spread across all phases — every
+phase should have real, substantive tasks, not a single token entry). Be realistic and conservative with
+estimateHours and rates — these numbers drive the actual schedule and budget the user will approve, and
+should be consistent with how much effort the chosen approach genuinely takes. dueInDays is relative to
+today, and should increase roughly in phase order (earlier phases due sooner, later phases due latest).`;
 
   const user_prompt = `Project goal: ${goal}\nTarget completion: ${targetDays ? `${targetDays} days from now` : "not specified, use your judgment"}`;
 
-  const plan = await askClaudeJSON<ProjectPlan>(system, user_prompt);
+  const { data: plan, error: planError } = await askClaudeJSON<ProjectPlan>(system, user_prompt);
   if (!plan) {
     return NextResponse.json(
-      { error: "AI planning is not available. Add ANTHROPIC_API_KEY to enable it, or the model returned an unparseable response." },
+      { error: planError ?? "AI planning failed for an unknown reason." },
       { status: 503 }
     );
   }
@@ -292,19 +373,23 @@ deployment due latest).`;
   const planTasks = plan.tasks ?? [];
   const schedule = estimateSchedule(planTasks, allResources);
   const teamComposition = buildTeamComposition(planTasks, allResources);
-  const phaseBreakdown = buildPhaseBreakdown(planTasks, allResources);
+  const phaseBreakdown = buildPhaseBreakdown(planTasks, allResources, phases);
   const totalEstimatedCost = teamComposition.reduce((sum, r) => sum + r.cost, 0);
 
+  const fallbackPhase = phases[Math.min(2, phases.length - 1)] ?? phases[0];
   const tasksWithAssignee = planTasks.map((t) => ({
     ...t,
-    phase: t.phase && PHASES.includes(t.phase) ? t.phase : "DEVELOPMENT",
+    phase: t.phase && (phases as readonly string[]).includes(t.phase) ? t.phase : fallbackPhase,
     rate: rateForTask(t, allResources),
     resolvedAssigneeName: matchResource(allResources, t.suggestedRole)?.name ?? null,
   }));
 
   return NextResponse.json({
     preview: true,
+    projectType,
+    phases,
     plan: { ...plan, tasks: tasksWithAssignee },
+    approach: plan.approach ?? null,
     totalEffortHours: schedule.totalEffortHours,
     combinedWeeklyCapacity: schedule.combinedWeeklyCapacity,
     suggestedStartDate: schedule.suggestedStartDate.toISOString().slice(0, 10),

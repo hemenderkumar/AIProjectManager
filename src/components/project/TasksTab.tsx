@@ -35,8 +35,15 @@ type TeamCompositionRow = {
 
 type PhaseRow = { phase: string; hours: number; cost: number; taskCount: number };
 
+type ApproachRecommendation = {
+  summary: string;
+  details?: Record<string, string>;
+  rationale?: string;
+};
+
 type PlanPreview = {
   plan: { milestones: PlanMilestone[]; tasks: PlanTask[]; agentFollowUps: PlanFollowUp[] };
+  approach: ApproachRecommendation | null;
   totalEffortHours: number;
   suggestedStartDate: string;
   suggestedEndDate: string;
@@ -45,13 +52,38 @@ type PlanPreview = {
   totalEstimatedCost: number;
 };
 
-const PHASE_LABELS: Record<string, string> = {
-  PLANNING: "Planning",
-  DESIGN: "Design",
-  DEVELOPMENT: "Development",
-  TESTING: "Testing",
-  DEPLOYMENT: "Deployment",
+// Mirrors PROJECT_TYPES on the server (src/app/api/ai/plan-project/route.ts). Keep the
+// keys in sync — only labels/placeholders are needed client-side, the server owns phases.
+const PROJECT_TYPES: Record<string, { label: string; approachLabel: string; approachPlaceholder: string }> = {
+  TECHNOLOGY: {
+    label: "Technology / Software",
+    approachLabel: "Preferred technology stack (optional)",
+    approachPlaceholder: "e.g. React + Node.js + PostgreSQL — leave blank and the AI PM will recommend one",
+  },
+  RESEARCH: {
+    label: "Research",
+    approachLabel: "Preferred research approach or methodology (optional)",
+    approachPlaceholder: "e.g. mixed-methods survey + literature review — leave blank and the AI PM will recommend one",
+  },
+  HANDYMAN: {
+    label: "Handyman / Physical / Construction",
+    approachLabel: "Preferred materials or approach (optional)",
+    approachPlaceholder: "e.g. hardwood flooring, standard building permits — leave blank and the AI PM will recommend one",
+  },
+  GENERAL: {
+    label: "General / Other",
+    approachLabel: "Preferred approach or constraints (optional)",
+    approachPlaceholder: "Describe any specific approach, tools, or constraints, or leave blank",
+  },
 };
+
+function phaseLabel(phase: string) {
+  return phase
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
 
 export default function TasksTab({
   detail,
@@ -73,6 +105,8 @@ export default function TasksTab({
       .filter(Boolean)
       .join(" ")
   );
+  const [projectType, setProjectType] = useState<string>("TECHNOLOGY");
+  const [approach, setApproach] = useState("");
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const autoTriggered = useRef(false);
@@ -86,6 +120,7 @@ export default function TasksTab({
   const [requestingFor, setRequestingFor] = useState<string | null>(null);
 
   const resourceName = (id: string | null) => allResources.find((r) => r.id === id)?.name ?? "Unassigned";
+  const typeConfig = PROJECT_TYPES[projectType] ?? PROJECT_TYPES.TECHNOLOGY;
 
   async function addTask() {
     if (!form.title.trim()) return;
@@ -118,7 +153,7 @@ export default function TasksTab({
     const res = await fetch("/api/ai/plan-project", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: detail.project.id, goal }),
+      body: JSON.stringify({ projectId: detail.project.id, goal, projectType, approach }),
     });
     setPlanning(false);
     const data = await res.json().catch(() => ({}));
@@ -224,14 +259,29 @@ export default function TasksTab({
         }
       >
         <p className="text-xs text-slate-400 mb-3">
-          Describe the goal — the AI PM drafts milestones across planning, design, development, testing
-          and deployment, estimates effort and cost per role, and suggests a start/end date. Nothing is
-          created until you review and approve it below.
+          Pick the kind of project, describe the goal, and the AI PM drafts milestones across the full
+          lifecycle for that kind of work, estimates effort and cost per role, and suggests a start/end
+          date. Nothing is created until you review and approve it below.
         </p>
         {showPlanner && (
           <div className="p-4 bg-slate-50 rounded-lg space-y-3">
+            <Field label="Project type">
+              <select value={projectType} onChange={(e) => setProjectType(e.target.value)} className={inputCls}>
+                {Object.entries(PROJECT_TYPES).map(([key, cfg]) => (
+                  <option key={key} value={key}>{cfg.label}</option>
+                ))}
+              </select>
+            </Field>
             <Field label="Goal">
               <textarea value={goal} onChange={(e) => setGoal(e.target.value)} className={inputCls} rows={3} />
+            </Field>
+            <Field label={typeConfig.approachLabel}>
+              <input
+                value={approach}
+                onChange={(e) => setApproach(e.target.value)}
+                className={inputCls}
+                placeholder={typeConfig.approachPlaceholder}
+              />
             </Field>
             {planError && <p className="text-xs text-rose-600">{planError}</p>}
             {!preview && (
@@ -243,6 +293,28 @@ export default function TasksTab({
 
             {preview && (
               <div className="space-y-4 mt-2">
+                {preview.approach && (
+                  <div className="border border-indigo-200 bg-indigo-50/60 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-indigo-900 mb-1">
+                      {approach.trim() ? "Approach" : "AI-recommended approach"}: {preview.approach.summary}
+                    </p>
+                    {preview.approach.details && (
+                      <p className="text-[11px] text-indigo-700">
+                        {Object.entries(preview.approach.details)
+                          .map(([label, value]) => `${label}: ${value}`)
+                          .join(" · ")}
+                      </p>
+                    )}
+                    {preview.approach.rationale && (
+                      <p className="text-[11px] text-indigo-600 mt-1">{preview.approach.rationale}</p>
+                    )}
+                    {!approach.trim() && (
+                      <p className="text-[10px] text-indigo-500 mt-1.5">
+                        Don&apos;t agree? Set a preferred approach above and click Generate plan again.
+                      </p>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-3">
                   <SummaryStat label="Total effort" value={`${editedTotalHours.toFixed(0)} hrs`} />
                   <SummaryStat label="Estimated cost" value={`$${editedTotalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
@@ -298,7 +370,7 @@ export default function TasksTab({
                   <div className="grid grid-cols-5 gap-2">
                     {preview.phaseBreakdown.map((p) => (
                       <div key={p.phase} className="border border-slate-200 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-slate-400">{PHASE_LABELS[p.phase] ?? p.phase}</p>
+                        <p className="text-[10px] text-slate-400">{phaseLabel(p.phase)}</p>
                         <p className="text-sm font-semibold text-slate-800">{p.taskCount} tasks</p>
                         <p className="text-[10px] text-slate-500">{p.hours}h · ${p.cost.toLocaleString()}</p>
                       </div>
@@ -320,7 +392,7 @@ export default function TasksTab({
                     <tbody>
                       {editedTasks.map((t, i) => (
                         <tr key={i} className="border-b border-slate-100 last:border-0">
-                          <td className="py-1.5 text-slate-400">{PHASE_LABELS[t.phase ?? ""] ?? t.phase}</td>
+                          <td className="py-1.5 text-slate-400">{phaseLabel(t.phase ?? "")}</td>
                           <td className="py-1.5 text-slate-700">{t.title}</td>
                           <td className="py-1.5 text-slate-500">
                             {t.resolvedAssigneeName ?? t.suggestedRole ?? "—"}
