@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Download } from "lucide-react";
 
 export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
   const p = detail.project;
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [form, setForm] = useState({
     businessCase: p.businessCase ?? "",
@@ -30,12 +31,18 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/projects/${p.id}`, {
+    setSaveError(null);
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError(data?.error ?? "Could not save the charter. Please try again.");
+      return;
+    }
     router.refresh();
   }
 
@@ -72,14 +79,23 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
       <Card
         title="Project Charter"
         action={
-          <button
-            onClick={generateDraft}
-            disabled={generating}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
-          >
-            {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            Draft with AI
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/projects/${p.id}/charter-pdf`}
+              download
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+            >
+              <Download size={14} /> Download PDF
+            </a>
+            <button
+              onClick={generateDraft}
+              disabled={generating}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+            >
+              {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              Draft with AI
+            </button>
+          </div>
         }
       >
         <div className="space-y-4">
@@ -120,9 +136,12 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         </div>
       </Card>
 
-      <PrimaryButton onClick={save} disabled={saving}>
-        {saving ? "Saving..." : "Save Charter"}
-      </PrimaryButton>
+      <div className="space-y-2">
+        <PrimaryButton onClick={save} disabled={saving}>
+          {saving ? "Saving..." : "Save Charter"}
+        </PrimaryButton>
+        {saveError && <p className="text-xs text-rose-600">{saveError}</p>}
+      </div>
     </div>
   );
 }

@@ -36,15 +36,16 @@ export async function PATCH(
     "stakeholders", "assumptionsRisks", "charterApprovedBy", "charterApprovedAt",
   ];
 
+  const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt"];
+
   const update: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {
     if (key in body) {
       const v = body[key];
-      if (
-        ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt"].includes(key) &&
-        v
-      ) {
-        update[key] = new Date(v);
+      if (dateFields.includes(key)) {
+        // An empty string (date input cleared, or never set) must become null, not "" —
+        // Postgres rejects "" for a timestamp column and would fail the whole update.
+        update[key] = v ? new Date(v) : null;
       } else {
         update[key] = v;
       }
