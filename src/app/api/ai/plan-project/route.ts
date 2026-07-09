@@ -93,7 +93,7 @@ function rateForTask(t: PlanTask, allResources: Resource[]): number {
 // Group tasks by suggested role -> total hours, blended cost, and whether an existing
 // team member covers it or it's a staffing gap that needs to be filled/hired.
 function buildTeamComposition(planTasks: PlanTask[], allResources: Resource[]) {
-  const byRole = new Map
+  const byRole = new Map<
     string,
     { role: string; hours: number; rate: number; matchedResourceName: string | null }
   >();
