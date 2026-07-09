@@ -58,7 +58,17 @@ function generateCharterPdf(project: typeof projects.$inferSelect): Promise<Buff
     section("Deliverables", project.deliverables);
     section("Success Criteria", project.successCriteria);
     section("Stakeholders", project.stakeholders);
-    section("Assumptions & Risks", project.assumptionsRisks);
+    section("Assumptions", project.assumptionsRisks);
+    section("Key Risks", project.risks);
+    section("Integrated Systems", project.integratedSystems);
+    section("High-Level Architecture", project.highLevelArchitecture);
+    section("ROI to Be Achieved", project.roiExpected);
+    section(
+      "Total Funding Required",
+      project.totalFundingRequired != null
+        ? `$${project.totalFundingRequired.toLocaleString()}`
+        : null
+    );
 
     doc.moveDown(0.5);
     doc

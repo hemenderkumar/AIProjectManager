@@ -114,6 +114,11 @@ export const projects = pgTable("projects", {
   successCriteria: text("success_criteria"),
   stakeholders: text("stakeholders"),
   assumptionsRisks: text("assumptions_risks"),
+  risks: text("risks"),
+  totalFundingRequired: real("total_funding_required"),
+  integratedSystems: text("integrated_systems"),
+  highLevelArchitecture: text("high_level_architecture"),
+  roiExpected: text("roi_expected"),
   charterApprovedBy: text("charter_approved_by"),
   charterApprovedAt: timestamp("charter_approved_at"),
 });

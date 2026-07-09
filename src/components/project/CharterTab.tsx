@@ -21,11 +21,16 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
     successCriteria: p.successCriteria ?? "",
     stakeholders: p.stakeholders ?? "",
     assumptionsRisks: p.assumptionsRisks ?? "",
+    risks: p.risks ?? "",
+    integratedSystems: p.integratedSystems ?? "",
+    highLevelArchitecture: p.highLevelArchitecture ?? "",
+    roiExpected: p.roiExpected ?? "",
+    totalFundingRequired: p.totalFundingRequired ?? 0,
     charterApprovedBy: p.charterApprovedBy ?? "",
     charterApprovedAt: formatDateInput(p.charterApprovedAt),
   });
 
-  function update<K extends keyof typeof form>(key: K, value: string) {
+  function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -67,6 +72,11 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           successCriteria: sections["Success Criteria"] ?? f.successCriteria,
           stakeholders: sections["Stakeholders"] ?? f.stakeholders,
           assumptionsRisks: sections["Assumptions & Risks"] ?? f.assumptionsRisks,
+          risks: sections["Risks"] ?? f.risks,
+          integratedSystems: sections["Integrated Systems"] ?? f.integratedSystems,
+          highLevelArchitecture: sections["High-Level Architecture"] ?? f.highLevelArchitecture,
+          roiExpected: sections["ROI to Be Achieved"] ?? f.roiExpected,
+          totalFundingRequired: parseFundingNumber(sections["Total Funding Required"]) ?? f.totalFundingRequired,
         }));
       }
     } finally {
@@ -122,8 +132,53 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           <Field label="Stakeholders">
             <textarea value={form.stakeholders} onChange={(e) => update("stakeholders", e.target.value)} className={inputCls} rows={2} />
           </Field>
-          <Field label="Assumptions & risks">
+          <Field label="Assumptions">
             <textarea value={form.assumptionsRisks} onChange={(e) => update("assumptionsRisks", e.target.value)} className={inputCls} rows={2} />
+          </Field>
+          <Field label="Key risks">
+            <textarea
+              value={form.risks}
+              onChange={(e) => update("risks", e.target.value)}
+              className={inputCls}
+              rows={2}
+              placeholder="High-level risks to the project's success — see the Risks tab for the detailed, tracked risk register."
+            />
+          </Field>
+          <Field label="Integrated systems">
+            <textarea
+              value={form.integratedSystems}
+              onChange={(e) => update("integratedSystems", e.target.value)}
+              className={inputCls}
+              rows={2}
+              placeholder="Systems this project connects to or depends on (e.g. Salesforce, SAP, internal auth service)"
+            />
+          </Field>
+          <Field label="High-level architecture">
+            <textarea
+              value={form.highLevelArchitecture}
+              onChange={(e) => update("highLevelArchitecture", e.target.value)}
+              className={inputCls}
+              rows={3}
+              placeholder="Describe the major components/layers and how they fit together"
+            />
+          </Field>
+          <Field label="ROI to be achieved">
+            <textarea
+              value={form.roiExpected}
+              onChange={(e) => update("roiExpected", e.target.value)}
+              className={inputCls}
+              rows={2}
+              placeholder="Expected return on investment — cost savings, revenue impact, efficiency gains, and timeframe"
+            />
+          </Field>
+          <Field label="Total funding required ($)">
+            <input
+              type="number"
+              min={0}
+              value={form.totalFundingRequired}
+              onChange={(e) => update("totalFundingRequired", Number(e.target.value))}
+              className={inputCls}
+            />
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Approved by">
@@ -168,4 +223,13 @@ function parseMarkdownSections(md: string): Record<string, string> {
   }
   flush();
   return sections;
+}
+
+// Best-effort extraction of a dollar figure from the AI's free-text funding section
+// (e.g. "$120,000" or "Approximately 85000 USD" -> 120000 / 85000). Returns null if
+// nothing number-like is found, so the existing value is left alone rather than zeroed out.
+function parseFundingNumber(text: string | undefined): number | null {
+  if (!text) return null;
+  const match = text.replace(/,/g, "").match(/\d+(\.\d+)?/);
+  return match ? Number(match[0]) : null;
 }

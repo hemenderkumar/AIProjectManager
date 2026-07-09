@@ -33,10 +33,13 @@ export async function PATCH(
     "budgetActual", "percentComplete", "problemStatement", "proposedSolution",
     "expectedBenefits", "ideationNotes", "businessCase", "objectives",
     "scopeInScope", "scopeOutOfScope", "deliverables", "successCriteria",
-    "stakeholders", "assumptionsRisks", "charterApprovedBy", "charterApprovedAt",
+    "stakeholders", "assumptionsRisks", "risks", "totalFundingRequired",
+    "integratedSystems", "highLevelArchitecture", "roiExpected",
+    "charterApprovedBy", "charterApprovedAt",
   ];
 
   const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt"];
+  const numericFields = ["budgetPlanned", "budgetActual", "percentComplete", "totalFundingRequired"];
 
   const update: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {
@@ -46,6 +49,10 @@ export async function PATCH(
         // An empty string (date input cleared, or never set) must become null, not "" —
         // Postgres rejects "" for a timestamp column and would fail the whole update.
         update[key] = v ? new Date(v) : null;
+      } else if (numericFields.includes(key)) {
+        // Same class of bug as dates: an empty/blank number input must become null,
+        // not "" or NaN, or the whole update fails against a numeric column.
+        update[key] = v === "" || v === null || Number.isNaN(Number(v)) ? null : Number(v);
       } else {
         update[key] = v;
       }
