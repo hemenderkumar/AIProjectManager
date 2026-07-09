@@ -6,11 +6,31 @@ declare global {
   var __dbClient: ReturnType<typeof postgres> | undefined;
 }
 
-const connectionString = process.env.DATABASE_URL;
+function buildConnectionString(): string | undefined {
+  // Preferred: a single DATABASE_URL.
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+
+  // Fallback: build it from separate parts so the raw password never has to
+  // be hand-encoded into a URL. Just paste the plain password into DB_PASSWORD.
+  const host = process.env.DB_HOST;
+  const password = process.env.DB_PASSWORD;
+  if (host && password) {
+    const user = process.env.DB_USER ?? "postgres";
+    const port = process.env.DB_PORT ?? "5432";
+    const database = process.env.DB_NAME ?? "postgres";
+    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(
+      password
+    )}@${host}:${port}/${database}`;
+  }
+
+  return undefined;
+}
+
+const connectionString = buildConnectionString();
 
 if (!connectionString) {
   console.warn(
-    "[db] DATABASE_URL is not set. Set it in your environment (.env.local or Vercel project settings)."
+    "[db] No database connection configured. Set DATABASE_URL, or set DB_HOST + DB_PASSWORD (+ optional DB_USER, DB_PORT, DB_NAME), in your environment."
   );
 }
 
