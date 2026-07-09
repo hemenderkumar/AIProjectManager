@@ -6,6 +6,10 @@ import Topbar from "@/components/Topbar";
 export default function NewProjectPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiFilled, setAiFilled] = useState(false);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -39,10 +43,77 @@ export default function NewProjectPage() {
     if (created?.id) router.push(`/projects/${created.id}`);
   }
 
+  async function generateWithAi() {
+    if (!aiMessage.trim() || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiFilled(false);
+    try {
+      const res = await fetch("/api/ai/draft-project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: aiMessage }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.fields) {
+        setAiError(data?.error || "Couldn't generate a draft. Try adding more detail.");
+        return;
+      }
+      const f = data.fields;
+      setForm((prev) => ({
+        ...prev,
+        name: f.name || prev.name,
+        description: f.description || prev.description,
+        sponsor: f.sponsor || prev.sponsor,
+        projectManager: f.projectManager || prev.projectManager,
+        priority: f.priority || prev.priority,
+        stage: f.stage || prev.stage,
+        country: f.country || prev.country,
+        program: f.program || prev.program,
+        problemStatement: f.problemStatement || prev.problemStatement,
+        proposedSolution: f.proposedSolution || prev.proposedSolution,
+        expectedBenefits: f.expectedBenefits || prev.expectedBenefits,
+        ideationNotes: f.ideationNotes || prev.ideationNotes,
+      }));
+      setAiFilled(true);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
     <div>
       <Topbar title="New Project" subtitle="Kick off inception & ideation for a new project" />
-      <form onSubmit={submit} className="p-8 max-w-3xl space-y-6">
+      <div className="p-8 max-w-3xl">
+        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-6 space-y-3">
+          <p className="text-sm font-semibold text-indigo-900">✨ Describe it, and AI fills the form</p>
+          <p className="text-xs text-indigo-700">
+            Type a sentence or two about the project — what it is, why it matters, who&apos;s involved —
+            and the fields below will be filled in automatically. You can review and edit everything
+            before creating the project.
+          </p>
+          <textarea
+            value={aiMessage}
+            onChange={(e) => setAiMessage(e.target.value)}
+            rows={3}
+            placeholder="e.g. We need to replace our aging invoicing system before Q3. It's costing us support tickets and slowing down finance. Sarah in Finance is sponsoring, budget is tight, this is high priority."
+            className="w-full text-sm border border-indigo-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={generateWithAi}
+              disabled={aiLoading || !aiMessage.trim()}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {aiLoading ? "Filling in..." : "Fill form with AI"}
+            </button>
+            {aiFilled && <span className="text-xs text-emerald-700 font-medium">Form updated below — review before creating.</span>}
+            {aiError && <span className="text-xs text-red-600">{aiError}</span>}
+          </div>
+        </div>
+      </div>
+      <form onSubmit={submit} className="px-8 pb-8 max-w-3xl space-y-6">
         <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
           <p className="text-sm font-semibold text-slate-900">Inception</p>
           <div className="grid grid-cols-2 gap-4">
