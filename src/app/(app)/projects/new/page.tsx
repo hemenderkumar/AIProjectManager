@@ -40,7 +40,7 @@ export default function NewProjectPage() {
     });
     const created = await res.json();
     setSaving(false);
-    if (created?.id) router.push(`/projects/${created.id}`);
+    if (created?.id) router.push(`/projects/${created.id}?autoplan=1`);
   }
 
   async function generateWithAi() {

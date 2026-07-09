@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
@@ -53,18 +53,29 @@ const PHASE_LABELS: Record<string, string> = {
   DEPLOYMENT: "Deployment",
 };
 
-export default function TasksTab({ detail, allResources }: { detail: ProjectDetail; allResources: Resource[] }) {
+export default function TasksTab({
+  detail,
+  allResources,
+  autoPlan,
+}: {
+  detail: ProjectDetail;
+  allResources: Resource[];
+  autoPlan?: boolean;
+}) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: "", assigneeId: "", priority: "MEDIUM", dueDate: "", estimateHours: 0 });
 
-  const [showPlanner, setShowPlanner] = useState(false);
+  const [showPlanner, setShowPlanner] = useState(autoPlan ?? false);
   const [goal, setGoal] = useState(
-    [detail.project.problemStatement, detail.project.proposedSolution].filter(Boolean).join(" ")
+    [detail.project.description, detail.project.problemStatement, detail.project.proposedSolution]
+      .filter(Boolean)
+      .join(" ")
   );
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const autoTriggered = useRef(false);
 
   const [preview, setPreview] = useState<PlanPreview | null>(null);
   const [editedTasks, setEditedTasks] = useState<PlanTask[]>([]);
@@ -120,6 +131,17 @@ export default function TasksTab({ detail, allResources }: { detail: ProjectDeta
     setStartDate(data.suggestedStartDate);
     setEndDate(data.suggestedEndDate);
   }
+
+  // When a project is freshly created, land here with the plan already generated —
+  // no manual "Plan with AI" click needed. Only fires once, and only for a project
+  // that has no tasks yet (so it doesn't re-trigger on an already-planned project).
+  useEffect(() => {
+    if (autoPlan && !autoTriggered.current && detail.tasks.length === 0 && goal.trim()) {
+      autoTriggered.current = true;
+      generatePlan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlan]);
 
   function updateTaskHours(index: number, hours: number) {
     setEditedTasks((prev) => prev.map((t, i) => (i === index ? { ...t, estimateHours: hours } : t)));

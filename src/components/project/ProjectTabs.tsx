@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { getProjectDetail } from "@/lib/portfolio";
 import OverviewTab from "./OverviewTab";
 import CharterTab from "./CharterTab";
@@ -41,7 +42,9 @@ export default function ProjectTabs({
   detail: ProjectDetail;
   allResources: Resource[];
 }) {
-  const [active, setActive] = useState<(typeof TABS)[number]>("Inception & Ideation");
+  const searchParams = useSearchParams();
+  const autoPlan = searchParams.get("autoplan") === "1";
+  const [active, setActive] = useState<(typeof TABS)[number]>(autoPlan ? "Tasks" : "Inception & Ideation");
 
   return (
     <div>
@@ -63,7 +66,7 @@ export default function ProjectTabs({
 
       {active === "Inception & Ideation" && <OverviewTab detail={detail} />}
       {active === "Charter" && <CharterTab detail={detail} />}
-      {active === "Tasks" && <TasksTab detail={detail} allResources={allResources} />}
+      {active === "Tasks" && <TasksTab detail={detail} allResources={allResources} autoPlan={autoPlan} />}
       {active === "Resources" && <ResourcesTab detail={detail} allResources={allResources} />}
       {active === "Status Tracking" && <StatusTab detail={detail} />}
       {active === "Communications" && <CommsTab detail={detail} />}
