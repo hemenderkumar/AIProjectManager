@@ -11,7 +11,7 @@ export function getAnthropic(): Anthropic | null {
 
 export const AI_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 
-export async function askClaude(system: string, user: string): Promise<string> {
+export async function askClaude(system: string, user: string, maxTokens: number = 1500): Promise<string> {
   const anthropic = getAnthropic();
   if (!anthropic) {
     return (
@@ -22,7 +22,7 @@ export async function askClaude(system: string, user: string): Promise<string> {
   }
   const msg = await anthropic.messages.create({
     model: AI_MODEL,
-    max_tokens: 1500,
+    max_tokens: maxTokens,
     system,
     messages: [{ role: "user", content: user }],
   });
@@ -32,7 +32,14 @@ export async function askClaude(system: string, user: string): Promise<string> {
 
 export type AskClaudeJSONResult<T> = { data: T | null; error?: string };
 
-export async function askClaudeJSON<T = unknown>(system: string, user: string): Promise<AskClaudeJSONResult<T>> {
+// maxTokens defaults generously high (8192) because structured JSON plans (milestones,
+// 10-20 tasks with descriptions, team roster, cost breakdowns) can easily exceed the
+// smaller limit used for plain-text AI replies, causing the JSON to get cut off mid-output.
+export async function askClaudeJSON<T = unknown>(
+  system: string,
+  user: string,
+  maxTokens: number = 8192
+): Promise<AskClaudeJSONResult<T>> {
   if (!getAnthropic()) {
     return {
       data: null,
@@ -47,7 +54,8 @@ export async function askClaudeJSON<T = unknown>(system: string, user: string): 
   try {
     raw = await askClaude(
       system + "\n\nRespond with ONLY valid JSON. No markdown code fences, no commentary, no explanation before or after.",
-      user
+      user,
+      maxTokens
     );
   } catch (err) {
     return {
@@ -64,7 +72,10 @@ export async function askClaudeJSON<T = unknown>(system: string, user: string): 
   } catch {
     return {
       data: null,
-      error: `The AI responded but the output wasn't valid JSON. First 200 characters: ${cleaned.slice(0, 200)}`,
+      error:
+        `The AI's plan was too large or got cut off before finishing (${cleaned.length} characters received). ` +
+        `Try a shorter, more focused goal description, or click Generate plan again. ` +
+        `Start of response: ${cleaned.slice(0, 200)}`,
     };
   }
 }
