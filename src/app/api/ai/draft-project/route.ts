@@ -49,11 +49,11 @@ Respond with ONLY a JSON object with exactly these keys: name, description, spon
 priority, stage, country, program, problemStatement, proposedSolution, expectedBenefits, ideationNotes.
 All values must be strings.`;
 
-  const result = await askClaudeJSON<DraftProjectFields>(system, message);
+  const { data: result, error: draftError } = await askClaudeJSON<DraftProjectFields>(system, message);
 
   if (!result) {
     return NextResponse.json(
-      { error: "Could not generate a draft from that description. Try adding a bit more detail." },
+      { error: draftError ?? "Could not generate a draft from that description. Try adding a bit more detail." },
       { status: 422 }
     );
   }
