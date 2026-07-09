@@ -46,7 +46,17 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
   }
 }
 
+const BYPASS_USER: SessionUser = {
+  id: "bypass-admin",
+  name: "Admin (auth disabled)",
+  email: "bypass@local",
+  role: "ADMIN",
+};
+
 export async function getCurrentUser(): Promise<SessionUser | null> {
+  if (process.env.DISABLE_AUTH === "true") {
+    return BYPASS_USER;
+  }
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
