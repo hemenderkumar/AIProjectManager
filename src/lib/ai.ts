@@ -30,17 +30,41 @@ export async function askClaude(system: string, user: string): Promise<string> {
   return block && block.type === "text" ? block.text : "";
 }
 
-export async function askClaudeJSON<T = unknown>(system: string, user: string): Promise<T | null> {
-  const raw = await askClaude(
-    system + "\n\nRespond with ONLY valid JSON. No markdown code fences, no commentary, no explanation before or after.",
-    user
-  );
+export type AskClaudeJSONResult<T> = { data: T | null; error?: string };
+
+export async function askClaudeJSON<T = unknown>(system: string, user: string): Promise<AskClaudeJSONResult<T>> {
+  if (!getAnthropic()) {
+    return {
+      data: null,
+      error:
+        "ANTHROPIC_API_KEY is missing from this deployment's environment variables. In Vercel: " +
+        "Settings -> Environment Variables -> confirm ANTHROPIC_API_KEY exists AND the 'Production' " +
+        "box is checked, then redeploy (env var changes only apply to new deployments, not existing ones).",
+    };
+  }
+
+  let raw: string;
+  try {
+    raw = await askClaude(
+      system + "\n\nRespond with ONLY valid JSON. No markdown code fences, no commentary, no explanation before or after.",
+      user
+    );
+  } catch (err) {
+    return {
+      data: null,
+      error: `The request to the AI model failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
   const cleaned = raw.trim().replace(/^```(json)?/i, "").replace(/```$/, "").trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
   const jsonText = match ? match[0] : cleaned;
   try {
-    return JSON.parse(jsonText) as T;
+    return { data: JSON.parse(jsonText) as T };
   } catch {
-    return null;
+    return {
+      data: null,
+      error: `The AI responded but the output wasn't valid JSON. First 200 characters: ${cleaned.slice(0, 200)}`,
+    };
   }
 }
