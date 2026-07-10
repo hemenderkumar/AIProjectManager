@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Topbar from "@/components/Topbar";
 import { Plus, Trash2, Search } from "lucide-react";
+import { SOURCING_TYPES, SOURCING_LABELS, type SourcingType } from "@/lib/deliveryModel";
+import RateCardSection from "@/components/RateCardSection";
 
 type Resource = {
   id: string;
@@ -12,6 +14,7 @@ type Resource = {
   costPerHour: number | null;
   skills: string[] | null;
   experienceYears: number | null;
+  sourcingType: SourcingType | null;
 };
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
@@ -24,6 +27,7 @@ const emptyForm = {
   costPerHour: 0,
   skills: "",
   experienceYears: 0,
+  sourcingType: "ONSITE" as SourcingType,
 };
 
 function parseSkills(raw: string): string[] {
@@ -75,6 +79,7 @@ export default function ResourcesPage() {
       costPerHour: r.costPerHour ?? 0,
       skills: (r.skills ?? []).join(", "),
       experienceYears: r.experienceYears ?? 0,
+      sourcingType: r.sourcingType ?? "ONSITE",
     });
     setError(null);
     setShowForm(true);
@@ -92,6 +97,7 @@ export default function ResourcesPage() {
       costPerHour: form.costPerHour,
       skills: parseSkills(form.skills),
       experienceYears: form.experienceYears,
+      sourcingType: form.sourcingType,
     };
     const res = await fetch(editingId ? `/api/resources/${editingId}` : "/api/resources", {
       method: editingId ? "PATCH" : "POST",
@@ -238,6 +244,18 @@ export default function ResourcesPage() {
                   className={inputCls}
                 />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Sourcing</label>
+                <select
+                  value={form.sourcingType}
+                  onChange={(e) => setForm((f) => ({ ...f, sourcingType: e.target.value as SourcingType }))}
+                  className={inputCls}
+                >
+                  {SOURCING_TYPES.map((s) => (
+                    <option key={s} value={s}>{SOURCING_LABELS[s]}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">Skills (comma-separated)</label>
@@ -280,6 +298,7 @@ export default function ResourcesPage() {
                 <th className="px-4 py-2.5 font-medium">Experience</th>
                 <th className="px-4 py-2.5 font-medium">Capacity</th>
                 <th className="px-4 py-2.5 font-medium">Rate</th>
+                <th className="px-4 py-2.5 font-medium">Sourcing</th>
                 <th className="px-4 py-2.5 font-medium"></th>
               </tr>
             </thead>
@@ -311,6 +330,7 @@ export default function ResourcesPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{r.capacityHoursPerWk ?? "—"} hrs/wk</td>
                   <td className="px-4 py-3 text-slate-600">${r.costPerHour ?? 0}/hr</td>
+                  <td className="px-4 py-3 text-slate-600">{r.sourcingType ? SOURCING_LABELS[r.sourcingType] : "—"}</td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => remove(r.id)} className="text-slate-400 hover:text-rose-600">
                       <Trash2 size={15} />
@@ -320,7 +340,7 @@ export default function ResourcesPage() {
               ))}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-400">
+                  <td colSpan={8} className="py-6 text-center text-slate-400">
                     {resources.length === 0 ? "No resources yet." : "No resources match this search."}
                   </td>
                 </tr>
@@ -328,6 +348,8 @@ export default function ResourcesPage() {
             </tbody>
           </table>
         </div>
+
+        <RateCardSection />
       </div>
     </div>
   );

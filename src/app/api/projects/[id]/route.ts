@@ -38,10 +38,11 @@ export async function PATCH(
     "charterApprovedBy", "charterApprovedAt",
     "feasibilityScore", "feasibilityNotes", "stageApprovedBy", "stageApprovedAt",
     "ongoingSupportMonthlyCost", "ongoingSupportPlan", "contingencyPercent",
+    "pricingModel", "fixedBidPrice", "deliveryRationale", "deliveryRecommendedAt",
   ];
 
-  const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt", "stageApprovedAt"];
-  const numericFields = ["budgetPlanned", "budgetActual", "percentComplete", "totalFundingRequired", "feasibilityScore", "ongoingSupportMonthlyCost", "contingencyPercent"];
+  const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt", "stageApprovedAt", "deliveryRecommendedAt"];
+  const numericFields = ["budgetPlanned", "budgetActual", "percentComplete", "totalFundingRequired", "feasibilityScore", "ongoingSupportMonthlyCost", "contingencyPercent", "fixedBidPrice"];
 
   const update: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {

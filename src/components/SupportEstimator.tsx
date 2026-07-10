@@ -23,13 +23,24 @@ function nextId() {
   return `app-${idCounter}`;
 }
 
-export default function SupportEstimator({ projects }: { projects: ProjectOption[] }) {
+export default function SupportEstimator({
+  projects,
+  defaultBlendedHourlyRate,
+}: {
+  projects: ProjectOption[];
+  defaultBlendedHourlyRate?: number;
+}) {
   const [apps, setApps] = useState<SupportApp[]>([
     { id: nextId(), name: "Application 1", appType: "WEB_APP", tickets: defaultTicketsFor("WEB_APP") },
   ]);
   const [coverage, setCoverage] = useState<CoverageTier>("BUSINESS_HOURS");
   const [shared, setShared] = useState(true);
-  const [assumptions, setAssumptions] = useState<EstimatorAssumptions>(DEFAULT_ASSUMPTIONS);
+  // Default rate comes from the org's Rate Card (set on the Resources page) when available,
+  // falling back to the built-in default. Still fully editable below, per session.
+  const [assumptions, setAssumptions] = useState<EstimatorAssumptions>(() => ({
+    ...DEFAULT_ASSUMPTIONS,
+    blendedHourlyRate: defaultBlendedHourlyRate ?? DEFAULT_ASSUMPTIONS.blendedHourlyRate,
+  }));
   const [showAssumptions, setShowAssumptions] = useState(false);
 
   const [selectedProjectId, setSelectedProjectId] = useState("");

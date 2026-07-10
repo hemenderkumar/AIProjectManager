@@ -12,7 +12,9 @@ import RisksTab from "./RisksTab";
 import MilestonesTab from "./MilestonesTab";
 import ReportTab from "./ReportTab";
 import InvoicesTab from "./InvoicesTab";
+import DeliveryTab from "./DeliveryTab";
 import type { SessionUser } from "@/lib/auth";
+import type { RateCardEntry } from "@/lib/deliveryModel";
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
 
@@ -35,6 +37,7 @@ const TABS = [
   "Risks",
   "Milestones",
   "Invoices",
+  "Delivery & Pricing",
   "C-Level Report",
 ] as const;
 
@@ -48,10 +51,12 @@ export default function ProjectTabs({
   detail,
   allResources,
   user,
+  rateCards,
 }: {
   detail: ProjectDetail;
   allResources: Resource[];
   user?: SessionUser | null;
+  rateCards: RateCardEntry[];
 }) {
   const searchParams = useSearchParams();
   const autoPlan = searchParams.get("autoplan") === "1";
@@ -92,6 +97,7 @@ export default function ProjectTabs({
       {active === "Risks" && <RisksTab detail={detail} />}
       {active === "Milestones" && <MilestonesTab detail={detail} />}
       {active === "Invoices" && <InvoicesTab detail={detail} />}
+      {active === "Delivery & Pricing" && <DeliveryTab detail={detail} rateCards={rateCards} />}
       {active === "C-Level Report" && <ReportTab detail={detail} />}
     </div>
   );

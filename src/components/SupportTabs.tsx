@@ -6,7 +6,15 @@ import SupportEstimator from "./SupportEstimator";
 type Incident = Parameters<typeof IncidentsBoard>[0]["incidents"];
 type ProjectOption = { id: string; name: string };
 
-export default function SupportTabs({ incidents, projects }: { incidents: Incident; projects: ProjectOption[] }) {
+export default function SupportTabs({
+  incidents,
+  projects,
+  defaultBlendedHourlyRate,
+}: {
+  incidents: Incident;
+  projects: ProjectOption[];
+  defaultBlendedHourlyRate?: number;
+}) {
   const [tab, setTab] = useState<"incidents" | "estimator">("incidents");
 
   return (
@@ -30,7 +38,11 @@ export default function SupportTabs({ incidents, projects }: { incidents: Incide
         </button>
       </div>
 
-      {tab === "incidents" ? <IncidentsBoard incidents={incidents} projects={projects} /> : <SupportEstimator projects={projects} />}
+      {tab === "incidents" ? (
+        <IncidentsBoard incidents={incidents} projects={projects} />
+      ) : (
+        <SupportEstimator projects={projects} defaultBlendedHourlyRate={defaultBlendedHourlyRate} />
+      )}
     </div>
   );
 }

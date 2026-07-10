@@ -102,6 +102,21 @@ export const invoiceStatusEnum = pgEnum("invoice_status", [
   "DISPUTED",
 ]);
 
+// Delivery model: how work is sourced (who does it, from where) and how it's priced.
+// Rates are org-wide reference data (rate_cards), editable from the Resources page —
+// never hardcoded — so they can change as the business's cost structure changes.
+export const sourcingTypeEnum = pgEnum("sourcing_type", [
+  "ONSITE",
+  "OFFSHORE",
+  "CONTRACTOR",
+]);
+
+export const pricingModelEnum = pgEnum("pricing_model", [
+  "FIXED_BID",
+  "TIME_AND_MATERIALS",
+  "HYBRID",
+]);
+
 const cuid = () => text("id").primaryKey().$defaultFn(() => createId());
 
 export const projects = pgTable("projects", {
@@ -162,6 +177,12 @@ export const projects = pgTable("projects", {
   contingencyPercent: real("contingency_percent").default(10),
   ongoingSupportMonthlyCost: real("ongoing_support_monthly_cost"),
   ongoingSupportPlan: text("ongoing_support_plan"),
+
+  // Delivery model & pricing (Delivery & Pricing tab)
+  pricingModel: pricingModelEnum("pricing_model"),
+  fixedBidPrice: real("fixed_bid_price"),
+  deliveryRationale: text("delivery_rationale"),
+  deliveryRecommendedAt: timestamp("delivery_recommended_at"),
 });
 
 export const resources = pgTable("resources", {
@@ -173,8 +194,28 @@ export const resources = pgTable("resources", {
   costPerHour: real("cost_per_hour").default(0),
   skills: text("skills").array(),
   experienceYears: real("experience_years"),
+  sourcingType: sourcingTypeEnum("sourcing_type"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// Org-wide reference rates by role + sourcing type (Onsite / Offshore / Contractor).
+// This is what makes support and project-execution rates changeable in one place instead
+// of being hardcoded — the Delivery & Pricing tab and Support Cost Estimator both read
+// from here, and it's edited from the Resources page.
+export const rateCards = pgTable(
+  "rate_cards",
+  {
+    id: cuid(),
+    role: text("role").notNull(),
+    sourcingType: sourcingTypeEnum("sourcing_type").notNull().default("ONSITE"),
+    hourlyRate: real("hourly_rate").notNull().default(0),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("rate_card_role_sourcing_uq").on(t.role, t.sourcingType),
+  })
+);
 
 export const projectResources = pgTable(
   "project_resources",
@@ -427,6 +468,26 @@ export const solutionOptions = pgTable("solution_options", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Per-project sourcing breakdown for the Delivery & Pricing tab: one row per role,
+// with what % of that role's hours are onsite vs offshore vs contractor. Hours and
+// percentages are deterministic/editable; only the initial split + rationale come from
+// the AI recommendation (createdByAi), same "AI proposes, math computes" pattern used
+// by the Support Cost Estimator.
+export const deliveryRoleMix = pgTable("delivery_role_mix", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  hours: real("hours").notNull().default(0),
+  onsitePercent: real("onsite_percent").notNull().default(100),
+  offshorePercent: real("offshore_percent").notNull().default(0),
+  contractorPercent: real("contractor_percent").notNull().default(0),
+  rationale: text("rationale"),
+  createdByAi: boolean("created_by_ai").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const settings = pgTable("settings", {
   id: text("id").primaryKey().default("default"),
   weeklyReportCadence: reportCadenceEnum("weekly_report_cadence").notNull().default("WEEKLY"),
@@ -448,11 +509,19 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   incidents: many(incidents),
   brainstormEntries: many(brainstormEntries),
   solutionOptions: many(solutionOptions),
+  deliveryRoleMix: many(deliveryRoleMix),
 }));
 
 export const resourcesRelations = relations(resources, ({ many }) => ({
   projects: many(projectResources),
   tasks: many(tasks),
+}));
+
+export const deliveryRoleMixRelations = relations(deliveryRoleMix, ({ one }) => ({
+  project: one(projects, {
+    fields: [deliveryRoleMix.projectId],
+    references: [projects.id],
+  }),
 }));
 
 export const projectResourcesRelations = relations(projectResources, ({ one }) => ({
