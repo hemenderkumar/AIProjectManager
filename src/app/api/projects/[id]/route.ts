@@ -39,9 +39,13 @@ export async function PATCH(
     "feasibilityScore", "feasibilityNotes", "stageApprovedBy", "stageApprovedAt",
     "ongoingSupportMonthlyCost", "ongoingSupportPlan", "contingencyPercent",
     "pricingModel", "fixedBidPrice", "deliveryRationale", "deliveryRecommendedAt",
+    "executionMethodology",
+    "recommendedTechnology", "technicalRecommendationRationale", "technicalReviewStatus",
+    "technicalReviewedBy", "technicalReviewedAt", "technicalReviewNotes",
+    "highLevelRequirements", "architectureDiagram", "internalSupportNeeds",
   ];
 
-  const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt", "stageApprovedAt", "deliveryRecommendedAt"];
+  const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt", "stageApprovedAt", "deliveryRecommendedAt", "technicalReviewedAt"];
   const numericFields = ["budgetPlanned", "budgetActual", "percentComplete", "totalFundingRequired", "feasibilityScore", "ongoingSupportMonthlyCost", "contingencyPercent", "fixedBidPrice"];
 
   const update: Record<string, unknown> = { updatedAt: new Date() };

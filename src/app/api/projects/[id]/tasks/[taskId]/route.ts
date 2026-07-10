@@ -14,12 +14,18 @@ export async function PATCH(
   const { id, taskId } = await params;
   const body = await req.json();
 
-  const allowed = ["title", "description", "status", "priority", "assigneeId", "startDate", "dueDate", "completedAt", "estimateHours", "actualHours"];
+  const allowed = ["title", "description", "status", "priority", "assigneeId", "startDate", "dueDate", "completedAt", "estimateHours", "actualHours", "phase", "sprintId", "storyPoints"];
   const update: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {
     if (key in body) {
       const v = body[key];
-      update[key] = ["startDate", "dueDate", "completedAt"].includes(key) && v ? new Date(v) : v;
+      if (["startDate", "dueDate", "completedAt"].includes(key)) {
+        update[key] = v ? new Date(v) : null;
+      } else if (key === "sprintId") {
+        update[key] = v || null;
+      } else {
+        update[key] = v;
+      }
     }
   }
   if (body.status === "DONE" && !update.completedAt) {

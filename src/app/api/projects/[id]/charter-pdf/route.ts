@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import PDFDocument from "pdfkit";
-import { db } from "@/lib/db";
-import { projects } from "@/lib/db/schema";
+import { getProjectDetail } from "@/lib/portfolio";
 import { requireRole } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 
-function generateCharterPdf(project: typeof projects.$inferSelect): Promise<Buffer> {
+type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
+
+function generateCharterPdf(detail: ProjectDetail): Promise<Buffer> {
+  const project = detail.project;
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 56, size: "LETTER" });
     const chunks: Buffer[] = [];
@@ -51,18 +52,61 @@ function generateCharterPdf(project: typeof projects.$inferSelect): Promise<Buff
       .stroke();
     doc.moveDown(1);
 
+    const optionsConsideredText = detail.solutionOptions.length
+      ? detail.solutionOptions
+          .map((o) => `${o.name}${o.isSelected ? " (selected)" : ""}${o.description ? `: ${o.description}` : ""}`)
+          .join("\n")
+      : null;
+
+    const materialCost = detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
+
     section("Business Case", project.businessCase);
     section("Objectives", project.objectives);
     section("In Scope", project.scopeInScope);
     section("Out of Scope", project.scopeOutOfScope);
+    section("High-Level Requirements", project.highLevelRequirements);
     section("Deliverables", project.deliverables);
     section("Success Criteria", project.successCriteria);
     section("Stakeholders", project.stakeholders);
     section("Assumptions", project.assumptionsRisks);
     section("Key Risks", project.risks);
     section("Integrated Systems", project.integratedSystems);
-    section("High-Level Architecture", project.highLevelArchitecture);
+    section(
+      "Options Considered",
+      [
+        optionsConsideredText,
+        project.ideationAlignment ? `Why this direction was chosen: ${project.ideationAlignment}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n\n") || null
+    );
+    section(
+      "Technical Recommendation",
+      [
+        project.recommendedTechnology ? `Recommended: ${project.recommendedTechnology}` : null,
+        project.technicalRecommendationRationale,
+        project.technicalReviewStatus
+          ? `Enterprise architect review: ${project.technicalReviewStatus}${project.technicalReviewedBy ? ` by ${project.technicalReviewedBy}` : ""}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n") || null
+    );
+    section(
+      "High-Level Architecture",
+      [
+        project.highLevelArchitecture,
+        project.architectureDiagram ? "(A generated architecture diagram is available in the app's Charter tab.)" : null,
+      ]
+        .filter(Boolean)
+        .join("\n\n") || null
+    );
+    section("Internal Support Needs", project.internalSupportNeeds);
     section("ROI to Be Achieved", project.roiExpected);
+    section(
+      "Cost Summary",
+      `Material cost: $${materialCost.toLocaleString()}\nImplementation cost (est.): $${(project.budgetPlanned ?? 0).toLocaleString()}\nOngoing support (monthly est.): $${(project.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`
+    );
     section(
       "Total Funding Required",
       project.totalFundingRequired != null
@@ -108,11 +152,11 @@ export async function GET(
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
-  const [project] = await db.select().from(projects).where(eq(projects.id, id));
-  if (!project) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const detail = await getProjectDetail(id);
+  if (!detail) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const buffer = await generateCharterPdf(project);
-  const slug = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "project";
+  const buffer = await generateCharterPdf(detail);
+  const slug = detail.project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "project";
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

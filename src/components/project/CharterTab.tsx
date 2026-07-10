@@ -5,6 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import { Sparkles, Loader2, Download } from "lucide-react";
+import MermaidDiagram from "@/components/MermaidDiagram";
 
 export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -12,11 +13,13 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [regeneratingDiagram, setRegeneratingDiagram] = useState(false);
   const [form, setForm] = useState({
     businessCase: p.businessCase ?? "",
     objectives: p.objectives ?? "",
     scopeInScope: p.scopeInScope ?? "",
     scopeOutOfScope: p.scopeOutOfScope ?? "",
+    highLevelRequirements: p.highLevelRequirements ?? "",
     deliverables: p.deliverables ?? "",
     successCriteria: p.successCriteria ?? "",
     stakeholders: p.stakeholders ?? "",
@@ -24,11 +27,27 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
     risks: p.risks ?? "",
     integratedSystems: p.integratedSystems ?? "",
     highLevelArchitecture: p.highLevelArchitecture ?? "",
+    internalSupportNeeds: p.internalSupportNeeds ?? "",
     roiExpected: p.roiExpected ?? "",
     totalFundingRequired: p.totalFundingRequired ?? 0,
     charterApprovedBy: p.charterApprovedBy ?? "",
     charterApprovedAt: formatDateInput(p.charterApprovedAt),
   });
+
+  const materialCost = detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
+  const implementationCost = p.budgetPlanned ?? 0;
+  const ongoingSupportCost = p.ongoingSupportMonthlyCost ?? 0;
+
+  async function regenerateDiagram() {
+    setRegeneratingDiagram(true);
+    await fetch("/api/ai/technical-recommendation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: p.id }),
+    });
+    setRegeneratingDiagram(false);
+    router.refresh();
+  }
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -68,6 +87,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           businessCase: sections["Business Case"] ?? f.businessCase,
           objectives: sections["Objectives"] ?? f.objectives,
           scopeInScope: sections["Scope"] ? sections["Scope"] : f.scopeInScope,
+          highLevelRequirements: sections["High-Level Requirements"] ?? f.highLevelRequirements,
           deliverables: sections["Deliverables"] ?? f.deliverables,
           successCriteria: sections["Success Criteria"] ?? f.successCriteria,
           stakeholders: sections["Stakeholders"] ?? f.stakeholders,
@@ -75,6 +95,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           risks: sections["Risks"] ?? f.risks,
           integratedSystems: sections["Integrated Systems"] ?? f.integratedSystems,
           highLevelArchitecture: sections["High-Level Architecture"] ?? f.highLevelArchitecture,
+          internalSupportNeeds: sections["Internal Support Needs"] ?? f.internalSupportNeeds,
           roiExpected: sections["ROI to Be Achieved"] ?? f.roiExpected,
           totalFundingRequired: parseFundingNumber(sections["Total Funding Required"]) ?? f.totalFundingRequired,
         }));
@@ -86,6 +107,54 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      <Card title="Options Considered">
+        <p className="text-xs text-slate-500 mb-3">
+          A read-only rollup from Inception &amp; Ideation — what was explored before this direction was chosen.
+        </p>
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <SummaryStat label="Brainstorm entries" value={`${detail.brainstormEntries.length}`} />
+          <SummaryStat label="Solution options compared" value={`${detail.solutionOptions.length}`} />
+          <SummaryStat label="Technical review" value={p.technicalReviewStatus ?? "Not reviewed"} />
+        </div>
+        {detail.solutionOptions.length > 0 && (
+          <ul className="text-xs text-slate-600 space-y-1 mb-3 list-disc pl-4">
+            {detail.solutionOptions.map((o) => (
+              <li key={o.id}>
+                <span className={o.isSelected ? "font-semibold text-emerald-700" : ""}>{o.name}</span>
+                {o.isSelected ? " — selected" : ""}
+                {o.description ? `: ${o.description}` : ""}
+              </li>
+            ))}
+          </ul>
+        )}
+        {p.ideationAlignment && (
+          <div className="mb-2">
+            <p className="text-[11px] font-medium text-slate-500 mb-0.5">Why this direction was chosen</p>
+            <p className="text-xs text-slate-600 whitespace-pre-wrap">{p.ideationAlignment}</p>
+          </div>
+        )}
+        {p.recommendedTechnology && (
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 mb-0.5">Why this technical solution was chosen</p>
+            <p className="text-xs text-slate-600"><span className="font-semibold">{p.recommendedTechnology}</span></p>
+            {p.technicalRecommendationRationale && (
+              <p className="text-xs text-slate-600 whitespace-pre-wrap mt-0.5">{p.technicalRecommendationRationale}</p>
+            )}
+          </div>
+        )}
+      </Card>
+
+      <Card title="Cost Summary">
+        <p className="text-xs text-slate-500 mb-3">
+          Rolled up from the Tasks (implementation) and Ongoing Support estimates — edit those to change these numbers.
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          <SummaryStat label="Material cost" value={`$${materialCost.toLocaleString()}`} />
+          <SummaryStat label="Implementation cost" value={`$${implementationCost.toLocaleString()}`} />
+          <SummaryStat label="Ongoing support (monthly)" value={`$${ongoingSupportCost.toLocaleString()}`} />
+        </div>
+      </Card>
+
       <Card
         title="Project Charter"
         action={
@@ -123,6 +192,15 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
               <textarea value={form.scopeOutOfScope} onChange={(e) => update("scopeOutOfScope", e.target.value)} className={inputCls} rows={2} />
             </Field>
           </div>
+          <Field label="High-level user requirements">
+            <textarea
+              value={form.highLevelRequirements}
+              onChange={(e) => update("highLevelRequirements", e.target.value)}
+              className={inputCls}
+              rows={3}
+              placeholder="The major things the solution must do, from the user's/business's perspective — not implementation detail"
+            />
+          </Field>
           <Field label="Deliverables">
             <textarea value={form.deliverables} onChange={(e) => update("deliverables", e.target.value)} className={inputCls} rows={2} />
           </Field>
@@ -162,6 +240,39 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
               placeholder="Describe the major components/layers and how they fit together"
             />
           </Field>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="block text-xs font-medium text-slate-500">Architecture diagram (AI-generated)</span>
+              <button
+                type="button"
+                onClick={regenerateDiagram}
+                disabled={regeneratingDiagram}
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+              >
+                {regeneratingDiagram ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                {p.architectureDiagram ? "Regenerate" : "Generate"}
+              </button>
+            </div>
+            {p.architectureDiagram ? (
+              <MermaidDiagram chart={p.architectureDiagram} />
+            ) : (
+              <p className="text-xs text-slate-400">
+                No diagram yet — generate one, or draft the recommendation from the Inception &amp; Ideation tab.
+              </p>
+            )}
+          </div>
+
+          <Field label="Internal support needs">
+            <textarea
+              value={form.internalSupportNeeds}
+              onChange={(e) => update("internalSupportNeeds", e.target.value)}
+              className={inputCls}
+              rows={2}
+              placeholder="What's needed from internal teams (IT, security, compliance, data, etc.) to execute this project"
+            />
+          </Field>
+
           <Field label="ROI to be achieved">
             <textarea
               value={form.roiExpected}
@@ -197,6 +308,15 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         </PrimaryButton>
         {saveError && <p className="text-xs text-rose-600">{saveError}</p>}
       </div>
+    </div>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-slate-200 rounded-lg p-2.5 text-center bg-white">
+      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-sm font-semibold text-slate-800">{value}</p>
     </div>
   );
 }

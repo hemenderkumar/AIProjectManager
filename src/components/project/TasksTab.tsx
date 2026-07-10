@@ -5,7 +5,8 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge } from "@/components/badges";
 import { formatDate, formatDateInput } from "@/lib/format";
-import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2 } from "lucide-react";
+import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid, List } from "lucide-react";
+import SprintBoard from "./SprintBoard";
 
 type Resource = { id: string; name: string };
 
@@ -22,6 +23,14 @@ type PlanTask = {
   dueInDays?: number;
   rate?: number;
   resolvedAssigneeName?: string | null;
+  sprintName?: string;
+  storyPoints?: number;
+};
+
+const METHODOLOGY_LABELS: Record<string, string> = {
+  WATERFALL: "Waterfall (sequential stage-gate)",
+  SCRUM: "Scrum (iterative sprints)",
+  HYBRID: "Hybrid (stage-gated phases, sprint execution)",
 };
 
 type PlanMilestone = { name: string; phase?: string; dueInDays?: number };
@@ -136,6 +145,10 @@ export default function TasksTab({
   const [timeLogForm, setTimeLogForm] = useState({ hours: 0, entryDate: formatDateInput(new Date()), notes: "" });
   const [loggingTime, setLoggingTime] = useState(false);
 
+  const [methodology, setMethodology] = useState<string>(detail.project.executionMethodology ?? "WATERFALL");
+  const [savingMethodology, setSavingMethodology] = useState(false);
+  const [taskView, setTaskView] = useState<"list" | "phase">("list");
+
   const resourceName = (id: string | null) => allResources.find((r) => r.id === id)?.name ?? "Unassigned";
   const typeConfig = PROJECT_TYPES[projectType] ?? PROJECT_TYPES.TECHNOLOGY;
 
@@ -162,6 +175,18 @@ export default function TasksTab({
     router.refresh();
   }
 
+  async function updateMethodology(value: string) {
+    setMethodology(value);
+    setSavingMethodology(true);
+    await fetch(`/api/projects/${detail.project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ executionMethodology: value }),
+    });
+    setSavingMethodology(false);
+    router.refresh();
+  }
+
   async function generatePlan() {
     if (!goal.trim()) return;
     setPlanning(true);
@@ -170,7 +195,7 @@ export default function TasksTab({
     const res = await fetch("/api/ai/plan-project", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: detail.project.id, goal, projectType, approach }),
+      body: JSON.stringify({ projectId: detail.project.id, goal, projectType, approach, executionMethodology: methodology }),
     });
     setPlanning(false);
     const data = await res.json().catch(() => ({}));
@@ -247,6 +272,7 @@ export default function TasksTab({
         contingencyPercent,
         materialCosts,
         ongoingSupport,
+        executionMethodology: methodology,
       }),
     });
     setConfirming(false);
@@ -323,8 +349,44 @@ export default function TasksTab({
     return order[a.status] - order[b.status];
   });
 
+  const phaseGroups = (() => {
+    const byPhase = new Map<string, typeof regularTasks>();
+    for (const t of regularTasks) {
+      const key = t.phase ?? "Unphased";
+      if (!byPhase.has(key)) byPhase.set(key, []);
+      byPhase.get(key)!.push(t);
+    }
+    return [...byPhase.entries()].map(([phase, phaseTasks]) => ({
+      phase,
+      tasks: phaseTasks,
+      done: phaseTasks.filter((t) => t.status === "DONE").length,
+    }));
+  })();
+
   return (
     <div className="max-w-4xl space-y-4">
+      <Card title="Execution Methodology">
+        <p className="text-xs text-slate-400 mb-3">
+          How this project is executed day-to-day — affects how the AI planner structures the work below.
+          The Delivery &amp; Pricing tab may also recommend one of these based on the project&apos;s
+          characteristics.
+        </p>
+        <div className="max-w-sm">
+          <Field label="Methodology">
+            <select
+              value={methodology}
+              onChange={(e) => updateMethodology(e.target.value)}
+              disabled={savingMethodology}
+              className={inputCls}
+            >
+              {Object.entries(METHODOLOGY_LABELS).map(([k, label]) => (
+                <option key={k} value={k}>{label}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </Card>
+
       <Card
         title="AI project planner"
         action={
@@ -732,12 +794,28 @@ export default function TasksTab({
       <Card
         title={`Tasks (${regularTasks.length})`}
         action={
-          <button
-            onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-          >
-            <Plus size={14} /> Add Task
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center rounded-lg border border-slate-200 overflow-hidden">
+              <button
+                onClick={() => setTaskView("list")}
+                className={`flex items-center gap-1 text-xs px-2 py-1.5 ${taskView === "list" ? "bg-slate-100 text-slate-800" : "text-slate-400 hover:text-slate-600"}`}
+              >
+                <List size={13} /> List
+              </button>
+              <button
+                onClick={() => setTaskView("phase")}
+                className={`flex items-center gap-1 text-xs px-2 py-1.5 border-l border-slate-200 ${taskView === "phase" ? "bg-slate-100 text-slate-800" : "text-slate-400 hover:text-slate-600"}`}
+              >
+                <LayoutGrid size={13} /> By Phase
+              </button>
+            </div>
+            <button
+              onClick={() => setShowForm((s) => !s)}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            >
+              <Plus size={14} /> Add Task
+            </button>
+          </div>
         }
       >
         {showForm && (
@@ -767,6 +845,35 @@ export default function TasksTab({
           </div>
         )}
 
+        {taskView === "phase" && (
+          <div className="space-y-2 mb-2">
+            {phaseGroups.length === 0 && <p className="text-xs text-slate-400 py-4 text-center">No tasks yet.</p>}
+            {phaseGroups.map(({ phase, tasks: phaseTasks, done }) => (
+              <div key={phase} className="border border-slate-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs font-semibold text-slate-700">{phaseLabel(phase)}</p>
+                  <p className="text-[11px] text-slate-400">{done}/{phaseTasks.length} done</p>
+                </div>
+                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2">
+                  <div
+                    className="h-full bg-indigo-500"
+                    style={{ width: `${phaseTasks.length ? Math.round((done / phaseTasks.length) * 100) : 0}%` }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  {phaseTasks.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between text-xs">
+                      <span className={t.status === "DONE" ? "text-slate-400 line-through" : "text-slate-700"}>{t.title}</span>
+                      <span className="text-slate-400">{t.status.replace("_", " ")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {taskView === "list" && (
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
@@ -907,7 +1014,12 @@ export default function TasksTab({
             )}
           </tbody>
         </table>
+        )}
       </Card>
+
+      {methodology !== "WATERFALL" && (
+        <SprintBoard detail={detail} allResources={allResources} />
+      )}
     </div>
   );
 }

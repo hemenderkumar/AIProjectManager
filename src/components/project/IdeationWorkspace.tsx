@@ -3,13 +3,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Field, inputCls } from "./ui";
-import { formatDateTime } from "@/lib/format";
-import { Sparkles, Loader2, Plus, Trash2, CheckCircle2, Lightbulb, AlertTriangle } from "lucide-react";
+import { formatDateTime, formatDateInput } from "@/lib/format";
+import { Sparkles, Loader2, Plus, Trash2, CheckCircle2, Lightbulb, AlertTriangle, Cpu, ShieldCheck } from "lucide-react";
+import MermaidDiagram from "@/components/MermaidDiagram";
 
 const IDEATION_STATUS_LABELS: Record<string, string> = {
   EXPLORING: "Exploring",
   COMPARING_OPTIONS: "Comparing Options",
   READY_FOR_CHARTER: "Ready for Charter",
+};
+
+const TECH_REVIEW_LABELS: Record<string, string> = {
+  PENDING: "Pending Review",
+  APPROVED: "Approved",
+  CHANGES_REQUESTED: "Changes Requested",
+};
+
+const TECH_REVIEW_STYLES: Record<string, string> = {
+  PENDING: "bg-amber-50 text-amber-700",
+  APPROVED: "bg-emerald-50 text-emerald-700",
+  CHANGES_REQUESTED: "bg-rose-50 text-rose-700",
 };
 
 export default function IdeationWorkspace({ detail }: { detail: ProjectDetail }) {
@@ -26,6 +39,15 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [manualOption, setManualOption] = useState({ name: "", description: "", pros: "", cons: "" });
   const [showManualOption, setShowManualOption] = useState(false);
+
+  const [recommending, setRecommending] = useState(false);
+  const [recommendError, setRecommendError] = useState<string | null>(null);
+  const [reviewForm, setReviewForm] = useState({
+    technicalReviewStatus: detail.project.technicalReviewStatus ?? "",
+    technicalReviewedBy: detail.project.technicalReviewedBy ?? "",
+    technicalReviewNotes: detail.project.technicalReviewNotes ?? "",
+  });
+  const [savingReview, setSavingReview] = useState(false);
 
   async function updateMeta(key: "ideaType" | "ideationStatus", value: string) {
     setSavingMeta(true);
@@ -119,6 +141,39 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
 
   async function removeOption(optionId: string) {
     await fetch(`/api/projects/${p.id}/solution-options/${optionId}`, { method: "DELETE" });
+    router.refresh();
+  }
+
+  async function getTechnicalRecommendation() {
+    setRecommending(true);
+    setRecommendError(null);
+    const res = await fetch("/api/ai/technical-recommendation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: p.id }),
+    });
+    setRecommending(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setRecommendError(data?.error ?? "Couldn't generate a technical recommendation.");
+      return;
+    }
+    router.refresh();
+  }
+
+  async function saveReview() {
+    setSavingReview(true);
+    await fetch(`/api/projects/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        technicalReviewStatus: reviewForm.technicalReviewStatus || null,
+        technicalReviewedBy: reviewForm.technicalReviewedBy || null,
+        technicalReviewNotes: reviewForm.technicalReviewNotes || null,
+        technicalReviewedAt: formatDateInput(new Date()),
+      }),
+    });
+    setSavingReview(false);
     router.refresh();
   }
 
@@ -314,6 +369,99 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
           )}
         </div>
       )}
+
+      <div className="border-t border-slate-200 pt-4">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <Cpu size={13} className="text-indigo-500" /> Technical Recommendation &amp; Architecture
+          </p>
+          <button
+            onClick={getTechnicalRecommendation}
+            disabled={recommending}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+          >
+            {recommending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {p.recommendedTechnology ? "Re-run recommendation" : "Get recommendation"}
+          </button>
+        </div>
+        <p className="text-[11px] text-slate-400 mb-2">
+          AI proposes a specific technology direction and architecture diagram, grounded in the problem,
+          solution options, and feasibility notes above. An enterprise architect reviews it before this
+          moves to the charter.
+        </p>
+        {recommendError && <p className="text-xs text-rose-600 mb-2">{recommendError}</p>}
+
+        {p.recommendedTechnology ? (
+          <div className="space-y-3">
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
+              <p className="text-xs font-semibold text-indigo-900 mb-1">{p.recommendedTechnology}</p>
+              {p.technicalRecommendationRationale && (
+                <p className="text-[11px] text-indigo-800 whitespace-pre-wrap">{p.technicalRecommendationRationale}</p>
+              )}
+            </div>
+
+            {p.architectureDiagram && (
+              <div>
+                <p className="text-[11px] font-medium text-slate-500 mb-1">Architecture diagram</p>
+                <MermaidDiagram chart={p.architectureDiagram} />
+              </div>
+            )}
+
+            <div className="rounded-lg border border-slate-200 p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <ShieldCheck size={13} className="text-slate-500" />
+                <p className="text-xs font-semibold text-slate-700">Enterprise Architect Review</p>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TECH_REVIEW_STYLES[p.technicalReviewStatus ?? "PENDING"]}`}>
+                  {TECH_REVIEW_LABELS[p.technicalReviewStatus ?? "PENDING"]}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <Field label="Review status">
+                  <select
+                    value={reviewForm.technicalReviewStatus}
+                    onChange={(e) => setReviewForm((f) => ({ ...f, technicalReviewStatus: e.target.value }))}
+                    className={inputCls}
+                  >
+                    <option value="">Not yet reviewed</option>
+                    <option value="PENDING">Pending Review</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="CHANGES_REQUESTED">Changes Requested</option>
+                  </select>
+                </Field>
+                <Field label="Reviewed by">
+                  <input
+                    value={reviewForm.technicalReviewedBy}
+                    onChange={(e) => setReviewForm((f) => ({ ...f, technicalReviewedBy: e.target.value }))}
+                    className={inputCls}
+                    placeholder="Enterprise architect name"
+                  />
+                </Field>
+              </div>
+              <Field label="Review notes">
+                <textarea
+                  value={reviewForm.technicalReviewNotes}
+                  onChange={(e) => setReviewForm((f) => ({ ...f, technicalReviewNotes: e.target.value }))}
+                  className={inputCls}
+                  rows={2}
+                  placeholder="Concerns, conditions, or confirmation of the recommended direction"
+                />
+              </Field>
+              <button
+                onClick={saveReview}
+                disabled={savingReview}
+                className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium disabled:opacity-50"
+              >
+                {savingReview ? "Saving..." : "Save review"}
+              </button>
+              {p.technicalReviewedAt && (
+                <p className="text-[10px] text-slate-400 mt-1.5">Last reviewed {formatDateTime(p.technicalReviewedAt)}</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-slate-400">No technical recommendation yet.</p>
+        )}
+      </div>
     </div>
   );
 }

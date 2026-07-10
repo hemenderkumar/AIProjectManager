@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix } from "./db/schema";
+import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints } from "./db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { computeAutoRag, scheduleVarianceDays, budgetVariancePercent, isOverdueTask, riskScore, ProjectForHealth } from "./kpi";
 
@@ -72,7 +72,7 @@ export async function getProjectDetail(id: string) {
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) return null;
 
-  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices, projectBrainstormEntries, projectSolutionOptions, projectDeliveryRoleMix] =
+  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices, projectBrainstormEntries, projectSolutionOptions, projectDeliveryRoleMix, projectSprints] =
     await Promise.all([
       db.select().from(tasks).where(eq(tasks.projectId, id)),
       db.select().from(riskItems).where(eq(riskItems.projectId, id)),
@@ -98,6 +98,7 @@ export async function getProjectDetail(id: string) {
       db.select().from(brainstormEntries).where(eq(brainstormEntries.projectId, id)),
       db.select().from(solutionOptions).where(eq(solutionOptions.projectId, id)),
       db.select().from(deliveryRoleMix).where(eq(deliveryRoleMix.projectId, id)),
+      db.select().from(sprints).where(eq(sprints.projectId, id)),
     ]);
 
   const taskIds = projectTasks.map((t) => t.id);
@@ -134,6 +135,7 @@ export async function getProjectDetail(id: string) {
     brainstormEntries: projectBrainstormEntries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
     solutionOptions: projectSolutionOptions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
     deliveryRoleMix: projectDeliveryRoleMix,
+    sprints: projectSprints.sort((a, b) => (a.startDate?.getTime() ?? 0) - (b.startDate?.getTime() ?? 0)),
   };
 }
 

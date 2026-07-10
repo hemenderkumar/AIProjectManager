@@ -7,6 +7,7 @@ import {
   boolean,
   pgEnum,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -117,6 +118,29 @@ export const pricingModelEnum = pgEnum("pricing_model", [
   "HYBRID",
 ]);
 
+// How the project is executed day-to-day: a single sequential stage-gate pass (Waterfall),
+// iterative sprints (Scrum), or a mix (e.g. stage-gated phases with sprint execution inside
+// each phase).
+export const executionMethodologyEnum = pgEnum("execution_methodology", [
+  "WATERFALL",
+  "SCRUM",
+  "HYBRID",
+]);
+
+// Enterprise-architect sign-off on the AI's recommended technology/architecture direction,
+// before an idea is allowed to move into charter drafting.
+export const technicalReviewStatusEnum = pgEnum("technical_review_status", [
+  "PENDING",
+  "APPROVED",
+  "CHANGES_REQUESTED",
+]);
+
+export const sprintStatusEnum = pgEnum("sprint_status", [
+  "PLANNED",
+  "ACTIVE",
+  "COMPLETED",
+]);
+
 const cuid = () => text("id").primaryKey().$defaultFn(() => createId());
 
 export const projects = pgTable("projects", {
@@ -183,6 +207,20 @@ export const projects = pgTable("projects", {
   fixedBidPrice: real("fixed_bid_price"),
   deliveryRationale: text("delivery_rationale"),
   deliveryRecommendedAt: timestamp("delivery_recommended_at"),
+  executionMethodology: executionMethodologyEnum("execution_methodology").notNull().default("WATERFALL"),
+
+  // Technical recommendation & Enterprise Architect review (Ideation, before Charter)
+  recommendedTechnology: text("recommended_technology"),
+  technicalRecommendationRationale: text("technical_recommendation_rationale"),
+  technicalReviewStatus: technicalReviewStatusEnum("technical_review_status"),
+  technicalReviewedBy: text("technical_reviewed_by"),
+  technicalReviewedAt: timestamp("technical_reviewed_at"),
+  technicalReviewNotes: text("technical_review_notes"),
+
+  // Charter additions
+  highLevelRequirements: text("high_level_requirements"),
+  architectureDiagram: text("architecture_diagram"), // Mermaid diagram syntax
+  internalSupportNeeds: text("internal_support_needs"),
 });
 
 export const resources = pgTable("resources", {
@@ -255,6 +293,29 @@ export const tasks = pgTable("tasks", {
   createdByAi: boolean("created_by_ai").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+
+  // SDLC phase (free text so it can flex across project types: Scoping, Requirements,
+  // Design, Development, Testing, UAT, Deployment, Closure, or a research/physical-work
+  // equivalent) and, for Scrum/Hybrid execution, sprint assignment + story points.
+  phase: text("phase"),
+  sprintId: text("sprint_id").references((): AnyPgColumn => sprints.id, { onDelete: "set null" }),
+  storyPoints: real("story_points"),
+});
+
+// Iteration containers for Scrum/Hybrid execution. Kept separate from milestones (which
+// are date-based delivery markers) — a sprint is a fixed-length work container tasks get
+// assigned into, with its own goal and status.
+export const sprints = pgTable("sprints", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  goal: text("goal"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  status: sprintStatusEnum("status").notNull().default("PLANNED"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const statusUpdates = pgTable("status_updates", {
@@ -510,6 +571,7 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   brainstormEntries: many(brainstormEntries),
   solutionOptions: many(solutionOptions),
   deliveryRoleMix: many(deliveryRoleMix),
+  sprints: many(sprints),
 }));
 
 export const resourcesRelations = relations(resources, ({ many }) => ({
@@ -544,7 +606,19 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.assigneeId],
     references: [resources.id],
   }),
+  sprint: one(sprints, {
+    fields: [tasks.sprintId],
+    references: [sprints.id],
+  }),
   timeEntries: many(timeEntries),
+}));
+
+export const sprintsRelations = relations(sprints, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [sprints.projectId],
+    references: [projects.id],
+  }),
+  tasks: many(tasks),
 }));
 
 export const costItemsRelations = relations(costItems, ({ one }) => ({

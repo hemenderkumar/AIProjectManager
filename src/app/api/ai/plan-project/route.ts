@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { tasks, milestones, resources, projects, costItems } from "@/lib/db/schema";
+import { tasks, milestones, resources, projects, costItems, sprints } from "@/lib/db/schema";
 import { askClaudeJSON } from "@/lib/ai";
 import { requireRole } from "@/lib/auth";
 import { syncAllocationsFromEffort } from "@/lib/allocations";
@@ -13,15 +13,17 @@ import { syncAllocationsFromEffort } from "@/lib/allocations";
 const PROJECT_TYPES = {
   TECHNOLOGY: {
     label: "Technology / Software",
-    phases: ["PLANNING", "DESIGN", "DEVELOPMENT", "TESTING", "DEPLOYMENT"] as const,
+    phases: ["SCOPING", "REQUIREMENTS", "DESIGN", "DEVELOPMENT", "TESTING", "UAT", "DEPLOYMENT"] as const,
     approachNoun: "technology stack",
     approachLabel: "Preferred technology stack (optional)",
     approachPlaceholder: "e.g. React + Node.js + PostgreSQL — leave blank and the AI PM will recommend one",
-    guidance: `Always include real Testing tasks (QA, user acceptance testing, bug fixing) and real
-Deployment tasks (release/cutover, monitoring setup, handover/documentation) — do not skip these phases
-even if the goal description only talks about building something. For each task, suggest a specific,
-technology-appropriate role (e.g. "React Frontend Developer", "Node.js Backend Engineer", "QA Engineer",
-"DevOps Engineer"), not a vague placeholder.`,
+    guidance: `Always include real Scoping tasks (defining boundaries, high-level estimate), Requirements
+tasks (detailed functional/non-functional requirements gathering and sign-off), Testing tasks (QA, bug
+fixing), UAT tasks (user acceptance testing sessions and sign-off, distinct from internal QA), and
+Deployment tasks (release/cutover, monitoring setup, handover/documentation) — do not skip any of these
+phases even if the goal description only talks about building something. For each task, suggest a
+specific, technology-appropriate role (e.g. "React Frontend Developer", "Node.js Backend Engineer", "QA
+Engineer", "DevOps Engineer"), not a vague placeholder.`,
   },
   RESEARCH: {
     label: "Research",
@@ -69,6 +71,8 @@ interface PlanTask {
   requiredExperienceYears?: number;
   phase?: string;
   dueInDays?: number;
+  sprintName?: string;
+  storyPoints?: number;
 }
 
 interface PlanMilestone {
@@ -283,6 +287,7 @@ export async function POST(req: NextRequest) {
     const contingencyPercent: number | undefined = body.contingencyPercent;
     const materialCosts: MaterialCostItem[] = Array.isArray(body.materialCosts) ? body.materialCosts : [];
     const ongoingSupport: OngoingSupportPlan | undefined = body.ongoingSupport;
+    const executionMethodology: string = body.executionMethodology ?? "WATERFALL";
 
     if (!plan) {
       return NextResponse.json({ error: "plan is required when confirming" }, { status: 400 });
@@ -304,13 +309,45 @@ export async function POST(req: NextRequest) {
           .returning()
       : [];
 
+    // Scrum/Hybrid execution: group tasks into sprints (by the AI's sprintName grouping),
+    // laid out as sequential 2-week windows from the project start date. Waterfall skips
+    // this entirely — tasks are tracked by phase only.
+    const sprintNameToId = new Map<string, string>();
+    if (executionMethodology !== "WATERFALL" && plan.tasks?.length) {
+      const uniqueSprintNames: string[] = [];
+      for (const t of plan.tasks) {
+        if (t.sprintName && !uniqueSprintNames.includes(t.sprintName)) uniqueSprintNames.push(t.sprintName);
+      }
+      if (uniqueSprintNames.length) {
+        const sprintStart = startDate ? new Date(startDate) : today;
+        const SPRINT_LENGTH_DAYS = 14;
+        const createdSprints = await db
+          .insert(sprints)
+          .values(
+            uniqueSprintNames.map((name, i) => {
+              const sStart = new Date(sprintStart.getTime() + i * SPRINT_LENGTH_DAYS * 86400000);
+              const sEnd = new Date(sStart.getTime() + SPRINT_LENGTH_DAYS * 86400000);
+              return {
+                projectId,
+                name,
+                startDate: sStart,
+                endDate: sEnd,
+                status: i === 0 ? ("ACTIVE" as const) : ("PLANNED" as const),
+              };
+            })
+          )
+          .returning();
+        createdSprints.forEach((s) => sprintNameToId.set(s.name, s.id));
+      }
+    }
+
     const createdTasks = plan.tasks?.length
       ? await db
           .insert(tasks)
           .values(
             plan.tasks.map((t) => ({
               projectId,
-              title: t.phase ? `[${t.phase}] ${t.title}` : t.title,
+              title: t.title,
               description: t.description ?? null,
               priority: t.priority ?? "MEDIUM",
               estimateHours: t.estimateHours ?? 8,
@@ -320,6 +357,9 @@ export async function POST(req: NextRequest) {
                 matchResource(allResources, t.suggestedRole, t.requiredSkills, t.requiredExperienceYears)?.id ?? null,
               dueDate: addDays(t.dueInDays ?? 14),
               createdByAi: true,
+              phase: t.phase ?? null,
+              sprintId: t.sprintName ? sprintNameToId.get(t.sprintName) ?? null : null,
+              storyPoints: t.storyPoints ?? null,
             }))
           )
           .returning()
@@ -420,6 +460,7 @@ export async function POST(req: NextRequest) {
   const { goal, targetDays, approach: preferredApproach } = body;
   const projectType: ProjectTypeKey =
     body.projectType && body.projectType in PROJECT_TYPES ? body.projectType : "TECHNOLOGY";
+  const executionMethodology: string = body.executionMethodology ?? "WATERFALL";
   if (!goal) {
     return NextResponse.json({ error: "goal is required" }, { status: 400 });
   }
@@ -457,6 +498,22 @@ use it consistently for task titles, roles, and effort estimates.`
 
 Every task must be tagged with a phase from this fixed list: ${phases.join(", ")}.
 ${typeConfig.guidance}
+
+EXECUTION METHODOLOGY: ${executionMethodology}.
+${
+  executionMethodology === "WATERFALL"
+    ? `This project runs as a single sequential stage-gate pass through the phases above — do not assign
+sprints or story points.`
+    : executionMethodology === "SCRUM"
+      ? `This project runs on Scrum. In ADDITION to a phase, group every task into a sprint by assigning
+"sprintName" (e.g. "Sprint 1", "Sprint 2", ...) — group logically related, deliverable-sized work together,
+ordered so earlier sprints deliver foundational work. Also give each task "storyPoints" using a
+Fibonacci-like scale (1, 2, 3, 5, 8, 13) reflecting RELATIVE effort/complexity, not hours.`
+      : `This project runs Hybrid: phases are still the high-level stage-gate structure, but within each
+phase, group tasks into sprints by assigning "sprintName" (e.g. "Sprint 1", "Sprint 2", ...) for iterative
+execution. Also give each task "storyPoints" using a Fibonacci-like scale (1, 2, 3, 5, 8, 13) reflecting
+RELATIVE effort/complexity, not hours.`
+}
 
 For each task, also suggest a role (pick from the team roster below if a good fit, otherwise a specific
 role appropriate to this project type and approach) and, ONLY if that role doesn't reasonably match anyone
@@ -506,12 +563,13 @@ Output strict JSON matching this shape exactly:
 {
   "approach": { "summary": string, "details": { "<label>": "<value>", ... }, "rationale": string },
   "milestones": [{ "name": string, "phase": string, "dueInDays": number }],
-  "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "requiredSkills": string[], "requiredExperienceYears": number, "phase": string, "dueInDays": number }],
+  "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "requiredSkills": string[], "requiredExperienceYears": number, "phase": string, "dueInDays": number, "sprintName": string, "storyPoints": number }],
   "agentFollowUps": [{ "title": string, "description": string, "dueInDays": number }],
   "materialCosts": [{ "name": string, "amount": number, "cadence": "one-time"|"monthly"|"annual", "notes": string }],
   "ongoingSupport": { "summary": string, "monthlyCost": number, "roles": [{ "role": string, "hoursPerWeek": number }] }
 }
-"phase" values must be exactly one of: ${phases.join(", ")}. The "details" object in "approach" should have
+"phase" values must be exactly one of: ${phases.join(", ")}. Omit "sprintName" and "storyPoints" entirely
+(or leave them empty) if the execution methodology is WATERFALL. The "details" object in "approach" should have
 2-4 short entries relevant to this project type (e.g. for a technology project: frontend/backend/database/
 hosting; for research: methodology/data sources/tools; for physical work: materials/permits/equipment) —
 use whatever labels make sense, they don't have to match these examples exactly.
