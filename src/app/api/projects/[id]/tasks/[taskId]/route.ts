@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { tasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
+import { syncAllocationsFromEffort } from "@/lib/allocations";
 
 export async function PATCH(
   req: NextRequest,
@@ -10,7 +11,7 @@ export async function PATCH(
 ) {
   const _authUser = await requireRole("CONTRIBUTOR");
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { taskId } = await params;
+  const { id, taskId } = await params;
   const body = await req.json();
 
   const allowed = ["title", "description", "status", "priority", "assigneeId", "startDate", "dueDate", "completedAt", "estimateHours", "actualHours"];
@@ -27,6 +28,13 @@ export async function PATCH(
 
   const [updated] = await db.update(tasks).set(update).where(eq(tasks.id, taskId)).returning();
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  // Reassigning someone or changing effort hours changes what "fully allocated" looks
+  // like for the resources involved — keep allocation % tied to actual assigned effort.
+  if ("assigneeId" in body || "estimateHours" in body) {
+    await syncAllocationsFromEffort(id);
+  }
+
   return NextResponse.json(updated);
 }
 

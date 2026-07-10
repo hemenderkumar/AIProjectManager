@@ -11,6 +11,7 @@ import CommsTab from "./CommsTab";
 import RisksTab from "./RisksTab";
 import MilestonesTab from "./MilestonesTab";
 import ReportTab from "./ReportTab";
+import InvoicesTab from "./InvoicesTab";
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
 
@@ -32,6 +33,7 @@ const TABS = [
   "Communications",
   "Risks",
   "Milestones",
+  "Invoices",
   "C-Level Report",
 ] as const;
 
@@ -72,6 +74,7 @@ export default function ProjectTabs({
       {active === "Communications" && <CommsTab detail={detail} />}
       {active === "Risks" && <RisksTab detail={detail} />}
       {active === "Milestones" && <MilestonesTab detail={detail} />}
+      {active === "Invoices" && <InvoicesTab detail={detail} />}
       {active === "C-Level Report" && <ReportTab detail={detail} />}
     </div>
   );

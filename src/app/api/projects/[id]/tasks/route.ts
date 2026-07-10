@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { tasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
+import { syncAllocationsFromEffort } from "@/lib/allocations";
 
 export async function GET(
   _req: NextRequest,
@@ -40,5 +41,10 @@ export async function POST(
       estimateHours: body.estimateHours ?? 0,
     })
     .returning();
+
+  if (created.assigneeId) {
+    await syncAllocationsFromEffort(id);
+  }
+
   return NextResponse.json(created, { status: 201 });
 }

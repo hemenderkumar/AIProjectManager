@@ -77,6 +77,18 @@ export const reportCadenceEnum = pgEnum("report_cadence", [
   "MANUAL",
 ]);
 
+export const costItemCategoryEnum = pgEnum("cost_item_category", [
+  "MATERIAL",
+  "ONGOING_SUPPORT",
+]);
+
+export const invoiceStatusEnum = pgEnum("invoice_status", [
+  "PENDING",
+  "PAID",
+  "OVERDUE",
+  "DISPUTED",
+]);
+
 const cuid = () => text("id").primaryKey().$defaultFn(() => createId());
 
 export const projects = pgTable("projects", {
@@ -121,6 +133,11 @@ export const projects = pgTable("projects", {
   roiExpected: text("roi_expected"),
   charterApprovedBy: text("charter_approved_by"),
   charterApprovedAt: timestamp("charter_approved_at"),
+
+  // Cost estimation
+  contingencyPercent: real("contingency_percent").default(10),
+  ongoingSupportMonthlyCost: real("ongoing_support_monthly_cost"),
+  ongoingSupportPlan: text("ongoing_support_plan"),
 });
 
 export const resources = pgTable("resources", {
@@ -283,6 +300,48 @@ export const reports = pgTable("reports", {
   generatedAt: timestamp("generated_at").notNull().defaultNow(),
 });
 
+export const costItems = pgTable("cost_items", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  category: costItemCategoryEnum("category").notNull().default("MATERIAL"),
+  name: text("name").notNull(),
+  amount: real("amount").notNull().default(0),
+  isRecurring: boolean("is_recurring").notNull().default(false),
+  cadence: text("cadence"), // free text: "one-time", "monthly", "annual", etc.
+  notes: text("notes"),
+  createdByAi: boolean("created_by_ai").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const invoices = pgTable("invoices", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  vendor: text("vendor").notNull(),
+  invoiceNumber: text("invoice_number"),
+  amount: real("amount").notNull().default(0),
+  invoiceDate: timestamp("invoice_date"),
+  dueDate: timestamp("due_date"),
+  status: invoiceStatusEnum("status").notNull().default("PENDING"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const timeEntries = pgTable("time_entries", {
+  id: cuid(),
+  taskId: text("task_id")
+    .notNull()
+    .references(() => tasks.id, { onDelete: "cascade" }),
+  resourceId: text("resource_id").references(() => resources.id),
+  hours: real("hours").notNull().default(0),
+  entryDate: timestamp("entry_date").notNull().defaultNow(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const settings = pgTable("settings", {
   id: text("id").primaryKey().default("default"),
   weeklyReportCadence: reportCadenceEnum("weekly_report_cadence").notNull().default("WEEKLY"),
@@ -299,6 +358,8 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   communications: many(communicationLogs),
   risks: many(riskItems),
   milestones: many(milestones),
+  costItems: many(costItems),
+  invoices: many(invoices),
 }));
 
 export const resourcesRelations = relations(resources, ({ many }) => ({
@@ -317,13 +378,39 @@ export const projectResourcesRelations = relations(projectResources, ({ one }) =
   }),
 }));
 
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   project: one(projects, {
     fields: [tasks.projectId],
     references: [projects.id],
   }),
   assignee: one(resources, {
     fields: [tasks.assigneeId],
+    references: [resources.id],
+  }),
+  timeEntries: many(timeEntries),
+}));
+
+export const costItemsRelations = relations(costItems, ({ one }) => ({
+  project: one(projects, {
+    fields: [costItems.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const invoicesRelations = relations(invoices, ({ one }) => ({
+  project: one(projects, {
+    fields: [invoices.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  task: one(tasks, {
+    fields: [timeEntries.taskId],
+    references: [tasks.id],
+  }),
+  resource: one(resources, {
+    fields: [timeEntries.resourceId],
     references: [resources.id],
   }),
 }));

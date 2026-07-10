@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Loader2 } from "lucide-react";
 import TeamAccessCard from "./TeamAccessCard";
 
 type Resource = { id: string; name: string; role: string | null };
@@ -12,6 +12,7 @@ export default function ResourcesTab({ detail, allResources }: { detail: Project
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const [resourceId, setResourceId] = useState("");
   const [allocation, setAllocation] = useState(50);
 
@@ -37,19 +38,43 @@ export default function ResourcesTab({ detail, allResources }: { detail: Project
     router.refresh();
   }
 
+  async function recalculate() {
+    setRecalculating(true);
+    await fetch(`/api/projects/${detail.project.id}/resources/recalculate`, { method: "POST" });
+    setRecalculating(false);
+    router.refresh();
+  }
+
   return (
     <div className="max-w-3xl space-y-4">
       <Card
         title={`Allocated Resources (${detail.resources.length})`}
         action={
-          <button
-            onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-          >
-            <Plus size={14} /> Allocate Resource
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={recalculate}
+              disabled={recalculating}
+              title="Recompute allocation % from each resource's currently assigned task hours"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {recalculating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              Recalculate from tasks
+            </button>
+            <button
+              onClick={() => setShowForm((s) => !s)}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            >
+              <Plus size={14} /> Allocate Resource
+            </button>
+          </div>
         }
       >
+        <p className="text-xs text-slate-400 mb-3">
+          Allocation % is kept in sync with each person&apos;s actual assigned task effort versus their
+          weekly capacity and the project timeline — it updates automatically whenever the AI planner
+          creates tasks or a task&apos;s assignee/hours change. Use &quot;Recalculate from tasks&quot; if
+          numbers look stale, or set a manual figure below for someone not yet assigned tasks.
+        </p>
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
             <div className="grid grid-cols-2 gap-3">

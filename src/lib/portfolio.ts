@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries } from "./db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { computeAutoRag, scheduleVarianceDays, budgetVariancePercent, isOverdueTask, riskScore, ProjectForHealth } from "./kpi";
 
 export async function getAllProjectsWithMetrics() {
@@ -72,7 +72,7 @@ export async function getProjectDetail(id: string) {
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) return null;
 
-  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations] =
+  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices] =
     await Promise.all([
       db.select().from(tasks).where(eq(tasks.projectId, id)),
       db.select().from(riskItems).where(eq(riskItems.projectId, id)),
@@ -93,7 +93,14 @@ export async function getProjectDetail(id: string) {
         .from(projectResources)
         .innerJoin(resources, eq(projectResources.resourceId, resources.id))
         .where(eq(projectResources.projectId, id)),
+      db.select().from(costItems).where(eq(costItems.projectId, id)),
+      db.select().from(invoices).where(eq(invoices.projectId, id)),
     ]);
+
+  const taskIds = projectTasks.map((t) => t.id);
+  const projectTimeEntries = taskIds.length
+    ? await db.select().from(timeEntries).where(inArray(timeEntries.taskId, taskIds))
+    : [];
 
   const overdueTaskCount = projectTasks.filter((t) => isOverdueTask(t)).length;
   const openHighRiskCount = projectRisks.filter(
@@ -118,6 +125,9 @@ export async function getProjectDetail(id: string) {
     communications: comms.sort((a, b) => b.date.getTime() - a.date.getTime()),
     milestones: projectMilestones,
     resources: allocations,
+    costItems: projectCostItems,
+    invoices: projectInvoices.sort((a, b) => (b.invoiceDate?.getTime() ?? 0) - (a.invoiceDate?.getTime() ?? 0)),
+    timeEntries: projectTimeEntries.sort((a, b) => b.entryDate.getTime() - a.entryDate.getTime()),
   };
 }
 

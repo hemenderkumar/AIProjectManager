@@ -1,11 +1,11 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { Fragment, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge } from "@/components/badges";
-import { formatDate } from "@/lib/format";
-import { Plus, Sparkles, Loader2, Bot, Mail, Check, X } from "lucide-react";
+import { formatDate, formatDateInput } from "@/lib/format";
+import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2 } from "lucide-react";
 
 type Resource = { id: string; name: string };
 
@@ -44,6 +44,10 @@ type ApproachRecommendation = {
   rationale?: string;
 };
 
+type MaterialCostItem = { name: string; amount: number; cadence: string; notes?: string };
+type OngoingSupportRole = { role: string; hoursPerWeek?: number };
+type OngoingSupportPlan = { summary: string; monthlyCost: number; roles: OngoingSupportRole[] };
+
 type PlanPreview = {
   plan: { milestones: PlanMilestone[]; tasks: PlanTask[]; agentFollowUps: PlanFollowUp[] };
   approach: ApproachRecommendation | null;
@@ -52,7 +56,10 @@ type PlanPreview = {
   suggestedEndDate: string;
   teamComposition: TeamCompositionRow[];
   phaseBreakdown: PhaseRow[];
-  totalEstimatedCost: number;
+  laborCost: number;
+  materialCosts: MaterialCostItem[];
+  ongoingSupport: OngoingSupportPlan;
+  contingencyPercent: number;
 };
 
 // Mirrors PROJECT_TYPES on the server (src/app/api/ai/plan-project/route.ts). Keep the
@@ -119,8 +126,15 @@ export default function TasksTab({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [contingencyPercent, setContingencyPercent] = useState(10);
+  const [materialCosts, setMaterialCosts] = useState<MaterialCostItem[]>([]);
+  const [ongoingSupport, setOngoingSupport] = useState<OngoingSupportPlan>({ summary: "", monthlyCost: 0, roles: [] });
 
   const [requestingFor, setRequestingFor] = useState<string | null>(null);
+
+  const [openTimeLogTaskId, setOpenTimeLogTaskId] = useState<string | null>(null);
+  const [timeLogForm, setTimeLogForm] = useState({ hours: 0, entryDate: formatDateInput(new Date()), notes: "" });
+  const [loggingTime, setLoggingTime] = useState(false);
 
   const resourceName = (id: string | null) => allResources.find((r) => r.id === id)?.name ?? "Unassigned";
   const typeConfig = PROJECT_TYPES[projectType] ?? PROJECT_TYPES.TECHNOLOGY;
@@ -168,6 +182,9 @@ export default function TasksTab({
     setEditedTasks(data.plan.tasks);
     setStartDate(data.suggestedStartDate);
     setEndDate(data.suggestedEndDate);
+    setContingencyPercent(data.contingencyPercent ?? 10);
+    setMaterialCosts(data.materialCosts ?? []);
+    setOngoingSupport(data.ongoingSupport ?? { summary: "", monthlyCost: 0, roles: [] });
   }
 
   // When a project is freshly created, land here with the plan already generated —
@@ -186,7 +203,33 @@ export default function TasksTab({
   }
 
   const editedTotalHours = editedTasks.reduce((sum, t) => sum + (t.estimateHours ?? 0), 0);
-  const editedTotalCost = editedTasks.reduce((sum, t) => sum + (t.estimateHours ?? 0) * (t.rate ?? 75), 0);
+  const laborCost = editedTasks.reduce((sum, t) => sum + (t.estimateHours ?? 0) * (t.rate ?? 75), 0);
+  const materialCostTotal = materialCosts.reduce((sum, m) => sum + (m.amount ?? 0), 0);
+  const contingencyAmount = Math.round(((laborCost + materialCostTotal) * contingencyPercent) / 100);
+  const totalProjectBudget = Math.round(laborCost + materialCostTotal + contingencyAmount);
+
+  function updateMaterialCost<K extends keyof MaterialCostItem>(index: number, key: K, value: MaterialCostItem[K]) {
+    setMaterialCosts((prev) => prev.map((m, i) => (i === index ? { ...m, [key]: value } : m)));
+  }
+  function addMaterialCost() {
+    setMaterialCosts((prev) => [...prev, { name: "", amount: 0, cadence: "one-time", notes: "" }]);
+  }
+  function removeMaterialCost(index: number) {
+    setMaterialCosts((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateOngoingRole(index: number, key: keyof OngoingSupportRole, value: string | number) {
+    setOngoingSupport((prev) => ({
+      ...prev,
+      roles: prev.roles.map((r, i) => (i === index ? { ...r, [key]: value } : r)),
+    }));
+  }
+  function addOngoingRole() {
+    setOngoingSupport((prev) => ({ ...prev, roles: [...prev.roles, { role: "", hoursPerWeek: 0 }] }));
+  }
+  function removeOngoingRole(index: number) {
+    setOngoingSupport((prev) => ({ ...prev, roles: prev.roles.filter((_, i) => i !== index) }));
+  }
 
   async function confirmPlan() {
     if (!preview) return;
@@ -200,7 +243,10 @@ export default function TasksTab({
         plan: { ...preview.plan, tasks: editedTasks },
         startDate,
         targetEndDate: endDate,
-        budgetPlanned: Math.round(editedTotalCost),
+        budgetPlanned: totalProjectBudget,
+        contingencyPercent,
+        materialCosts,
+        ongoingSupport,
       }),
     });
     setConfirming(false);
@@ -217,6 +263,8 @@ export default function TasksTab({
   function discardPreview() {
     setPreview(null);
     setEditedTasks([]);
+    setMaterialCosts([]);
+    setOngoingSupport({ summary: "", monthlyCost: 0, roles: [] });
   }
 
   async function requestStatus(taskId: string, resourceId: string | null) {
@@ -237,6 +285,33 @@ export default function TasksTab({
           : `No email configured — link copied to your clipboard instead:\n${data.link}`
       );
     }
+    router.refresh();
+  }
+
+  function entriesForTask(taskId: string) {
+    return (detail.timeEntries ?? []).filter((e) => e.taskId === taskId);
+  }
+
+  function toggleTimeLog(taskId: string) {
+    setOpenTimeLogTaskId((prev) => (prev === taskId ? null : taskId));
+    setTimeLogForm({ hours: 0, entryDate: formatDateInput(new Date()), notes: "" });
+  }
+
+  async function logTime(taskId: string) {
+    if (!timeLogForm.hours || timeLogForm.hours <= 0) return;
+    setLoggingTime(true);
+    await fetch(`/api/projects/${detail.project.id}/tasks/${taskId}/time-entries`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(timeLogForm),
+    });
+    setLoggingTime(false);
+    setTimeLogForm({ hours: 0, entryDate: formatDateInput(new Date()), notes: "" });
+    router.refresh();
+  }
+
+  async function deleteTimeEntry(taskId: string, entryId: string) {
+    await fetch(`/api/projects/${detail.project.id}/tasks/${taskId}/time-entries/${entryId}`, { method: "DELETE" });
     router.refresh();
   }
 
@@ -320,7 +395,7 @@ export default function TasksTab({
                 )}
                 <div className="grid grid-cols-3 gap-3">
                   <SummaryStat label="Total effort" value={`${editedTotalHours.toFixed(0)} hrs`} />
-                  <SummaryStat label="Estimated cost" value={`$${editedTotalCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+                  <SummaryStat label="Total project budget" value={`$${totalProjectBudget.toLocaleString()}`} />
                   <SummaryStat label="Duration" value={`${Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))} days`} />
                 </div>
 
@@ -443,6 +518,167 @@ export default function TasksTab({
                   </table>
                 </div>
 
+                <div className="border-t border-slate-200 pt-3">
+                  <p className="text-xs font-semibold text-slate-700 mb-1.5">Budget breakdown</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    <SummaryStat label="Labor cost" value={`$${laborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+                    <SummaryStat label="Material costs" value={`$${materialCostTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+                    <SummaryStat label={`Contingency (${contingencyPercent}%)`} value={`$${contingencyAmount.toLocaleString()}`} />
+                    <SummaryStat label="Total budget" value={`$${totalProjectBudget.toLocaleString()}`} />
+                  </div>
+                  <div className="mt-2 max-w-[200px]">
+                    <Field label="Contingency %">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={contingencyPercent}
+                        onChange={(e) => setContingencyPercent(Number(e.target.value))}
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-semibold text-slate-700">
+                      Material costs — licenses, servers, other one-time/recurring items
+                    </p>
+                    <button
+                      onClick={addMaterialCost}
+                      className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                    >
+                      <Plus size={12} /> Add item
+                    </button>
+                  </div>
+                  {materialCosts.length > 0 ? (
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-slate-400 border-b border-slate-200">
+                          <th className="py-1.5 font-medium">Name</th>
+                          <th className="py-1.5 font-medium text-right">Amount</th>
+                          <th className="py-1.5 font-medium">Cadence</th>
+                          <th className="py-1.5 font-medium">Notes</th>
+                          <th className="py-1.5 font-medium"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {materialCosts.map((m, i) => (
+                          <tr key={i} className="border-b border-slate-100 last:border-0">
+                            <td className="py-1.5">
+                              <input
+                                value={m.name}
+                                onChange={(e) => updateMaterialCost(i, "name", e.target.value)}
+                                className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
+                                placeholder="e.g. Salesforce licenses"
+                              />
+                            </td>
+                            <td className="py-1.5 text-right">
+                              <input
+                                type="number"
+                                min={0}
+                                value={m.amount}
+                                onChange={(e) => updateMaterialCost(i, "amount", Number(e.target.value))}
+                                className="w-24 text-right text-xs border border-slate-200 rounded px-1.5 py-1"
+                              />
+                            </td>
+                            <td className="py-1.5">
+                              <select
+                                value={m.cadence}
+                                onChange={(e) => updateMaterialCost(i, "cadence", e.target.value)}
+                                className="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white"
+                              >
+                                <option value="one-time">One-time</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="annual">Annual</option>
+                              </select>
+                            </td>
+                            <td className="py-1.5">
+                              <input
+                                value={m.notes ?? ""}
+                                onChange={(e) => updateMaterialCost(i, "notes", e.target.value)}
+                                className="w-full text-xs border border-slate-200 rounded px-1.5 py-1"
+                                placeholder="optional"
+                              />
+                            </td>
+                            <td className="py-1.5 text-right">
+                              <button onClick={() => removeMaterialCost(i)} className="text-slate-400 hover:text-rose-600">
+                                <X size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="text-[11px] text-slate-400">No material costs — add licenses, servers, or other costs if needed.</p>
+                  )}
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Amounts shown as a total for the project duration, even for recurring items. Included in the total
+                    project budget above (before contingency).
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-slate-700 mb-1.5">Ongoing support — cost to keep this running after launch</p>
+                  <Field label="Summary">
+                    <textarea
+                      value={ongoingSupport.summary}
+                      onChange={(e) => setOngoingSupport((prev) => ({ ...prev, summary: e.target.value }))}
+                      className={inputCls}
+                      rows={2}
+                      placeholder="e.g. Part-time maintenance for bug fixes, monitoring, and minor enhancements"
+                    />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <Field label="Estimated monthly cost">
+                      <input
+                        type="number"
+                        min={0}
+                        value={ongoingSupport.monthlyCost}
+                        onChange={(e) => setOngoingSupport((prev) => ({ ...prev, monthlyCost: Number(e.target.value) }))}
+                        className={inputCls}
+                      />
+                    </Field>
+                  </div>
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[11px] font-medium text-slate-600">Support roles needed</p>
+                      <button
+                        onClick={addOngoingRole}
+                        className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                      >
+                        <Plus size={12} /> Add role
+                      </button>
+                    </div>
+                    {ongoingSupport.roles.map((r, i) => (
+                      <div key={i} className="flex items-center gap-2 mb-1.5">
+                        <input
+                          value={r.role}
+                          onChange={(e) => updateOngoingRole(i, "role", e.target.value)}
+                          className="flex-1 text-xs border border-slate-200 rounded px-1.5 py-1"
+                          placeholder="e.g. Salesforce admin"
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          value={r.hoursPerWeek ?? 0}
+                          onChange={(e) => updateOngoingRole(i, "hoursPerWeek", Number(e.target.value))}
+                          className="w-20 text-right text-xs border border-slate-200 rounded px-1.5 py-1"
+                        />
+                        <span className="text-[10px] text-slate-400">hrs/wk</span>
+                        <button onClick={() => removeOngoingRole(i)} className="text-slate-400 hover:text-rose-600">
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Tracked as an ongoing operational cost, separate from the one-time project budget above.
+                  </p>
+                </div>
+
                 <div className="flex items-center gap-2 pt-1">
                   <PrimaryButton onClick={confirmPlan} disabled={confirming} className="flex items-center gap-1.5">
                     {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
@@ -538,47 +774,136 @@ export default function TasksTab({
               <th className="py-2 font-medium">Assignee</th>
               <th className="py-2 font-medium">Priority</th>
               <th className="py-2 font-medium">Due</th>
+              <th className="py-2 font-medium text-right">Hours</th>
               <th className="py-2 font-medium">Status</th>
               <th className="py-2 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {sorted.map((t) => (
-              <tr key={t.id} className="border-b border-slate-50 last:border-0">
-                <td className="py-2.5 font-medium text-slate-800">
-                  {t.title}
-                  {t.createdByAi && <span className="ml-1.5 text-[10px] text-indigo-500 align-middle">AI</span>}
-                </td>
-                <td className="py-2.5 text-slate-600">{resourceName(t.assigneeId)}</td>
-                <td className="py-2.5"><PriorityBadge priority={t.priority} /></td>
-                <td className="py-2.5 text-slate-600">{formatDate(t.dueDate)}</td>
-                <td className="py-2.5">
-                  <select
-                    value={t.status}
-                    onChange={(e) => updateStatus(t.id, e.target.value)}
-                    className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
-                  >
-                    {["TODO", "IN_PROGRESS", "BLOCKED", "DONE"].map((s) => (
-                      <option key={s} value={s}>{s.replace("_", " ")}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="py-2.5 text-right">
-                  {t.assigneeId && t.status !== "DONE" && (
-                    <button
-                      onClick={() => requestStatus(t.id, t.assigneeId)}
-                      disabled={requestingFor === t.id}
-                      title="Request a status update from the assignee"
-                      className="text-slate-400 hover:text-indigo-600 disabled:opacity-50"
-                    >
-                      {requestingFor === t.id ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
-                    </button>
+            {sorted.map((t) => {
+              const entries = entriesForTask(t.id);
+              const over = (t.actualHours ?? 0) > (t.estimateHours ?? 0) && (t.estimateHours ?? 0) > 0;
+              return (
+                <Fragment key={t.id}>
+                  <tr className="border-b border-slate-50 last:border-0">
+                    <td className="py-2.5 font-medium text-slate-800">
+                      {t.title}
+                      {t.createdByAi && <span className="ml-1.5 text-[10px] text-indigo-500 align-middle">AI</span>}
+                    </td>
+                    <td className="py-2.5 text-slate-600">{resourceName(t.assigneeId)}</td>
+                    <td className="py-2.5"><PriorityBadge priority={t.priority} /></td>
+                    <td className="py-2.5 text-slate-600">{formatDate(t.dueDate)}</td>
+                    <td className={`py-2.5 text-right ${over ? "text-rose-600" : "text-slate-600"}`}>
+                      {(t.actualHours ?? 0).toFixed(1)}/{(t.estimateHours ?? 0).toFixed(0)}h
+                    </td>
+                    <td className="py-2.5">
+                      <select
+                        value={t.status}
+                        onChange={(e) => updateStatus(t.id, e.target.value)}
+                        className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
+                      >
+                        {["TODO", "IN_PROGRESS", "BLOCKED", "DONE"].map((s) => (
+                          <option key={s} value={s}>{s.replace("_", " ")}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => toggleTimeLog(t.id)}
+                          title="Log time / view effort history"
+                          className={`hover:text-indigo-600 ${openTimeLogTaskId === t.id ? "text-indigo-600" : "text-slate-400"}`}
+                        >
+                          <Clock size={14} />
+                        </button>
+                        {t.assigneeId && t.status !== "DONE" && (
+                          <button
+                            onClick={() => requestStatus(t.id, t.assigneeId)}
+                            disabled={requestingFor === t.id}
+                            title="Request a status update from the assignee"
+                            className="text-slate-400 hover:text-indigo-600 disabled:opacity-50"
+                          >
+                            {requestingFor === t.id ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {openTimeLogTaskId === t.id && (
+                    <tr className="bg-slate-50/70">
+                      <td colSpan={7} className="py-3 px-2">
+                        <div className="flex items-end gap-2 mb-2">
+                          <Field label="Hours">
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.25}
+                              value={timeLogForm.hours}
+                              onChange={(e) => setTimeLogForm((f) => ({ ...f, hours: Number(e.target.value) }))}
+                              className="w-20 text-xs border border-slate-200 rounded px-1.5 py-1"
+                            />
+                          </Field>
+                          <Field label="Date">
+                            <input
+                              type="date"
+                              value={timeLogForm.entryDate}
+                              onChange={(e) => setTimeLogForm((f) => ({ ...f, entryDate: e.target.value }))}
+                              className="text-xs border border-slate-200 rounded px-1.5 py-1"
+                            />
+                          </Field>
+                          <Field label="Notes">
+                            <input
+                              value={timeLogForm.notes}
+                              onChange={(e) => setTimeLogForm((f) => ({ ...f, notes: e.target.value }))}
+                              className="text-xs border border-slate-200 rounded px-1.5 py-1 w-40"
+                              placeholder="optional"
+                            />
+                          </Field>
+                          <button
+                            onClick={() => logTime(t.id)}
+                            disabled={loggingTime}
+                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                          >
+                            {loggingTime ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                            Log
+                          </button>
+                        </div>
+                        {entries.length > 0 ? (
+                          <table className="w-full text-[11px]">
+                            <thead>
+                              <tr className="text-left text-slate-400 border-b border-slate-200">
+                                <th className="py-1 font-medium">Date</th>
+                                <th className="py-1 font-medium text-right">Hours</th>
+                                <th className="py-1 font-medium">Notes</th>
+                                <th className="py-1 font-medium"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {entries.map((e) => (
+                                <tr key={e.id} className="border-b border-slate-100 last:border-0">
+                                  <td className="py-1 text-slate-600">{formatDate(e.entryDate)}</td>
+                                  <td className="py-1 text-right text-slate-700">{e.hours}h</td>
+                                  <td className="py-1 text-slate-500">{e.notes ?? "—"}</td>
+                                  <td className="py-1 text-right">
+                                    <button onClick={() => deleteTimeEntry(t.id, e.id)} className="text-slate-400 hover:text-rose-600">
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p className="text-[11px] text-slate-400">No time logged yet for this task.</p>
+                        )}
+                      </td>
+                    </tr>
                   )}
-                </td>
-              </tr>
-            ))}
+                </Fragment>
+              );
+            })}
             {sorted.length === 0 && (
-              <tr><td colSpan={6} className="py-6 text-center text-slate-400">No tasks yet.</td></tr>
+              <tr><td colSpan={7} className="py-6 text-center text-slate-400">No tasks yet.</td></tr>
             )}
           </tbody>
         </table>

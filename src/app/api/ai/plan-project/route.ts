@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { tasks, milestones, resources, projects } from "@/lib/db/schema";
+import { tasks, milestones, resources, projects, costItems } from "@/lib/db/schema";
 import { askClaudeJSON } from "@/lib/ai";
 import { requireRole } from "@/lib/auth";
+import { syncAllocationsFromEffort } from "@/lib/allocations";
 
 // Different kinds of projects go through very different lifecycles. Each project
 // type defines its own phase list and its own guidance for what "the approach" even
@@ -88,11 +89,31 @@ interface ApproachRecommendation {
   rationale?: string;
 }
 
+interface MaterialCostItem {
+  name: string;
+  amount?: number;
+  cadence?: string; // e.g. "one-time", "monthly", "annual" — informational; amount should already be sized for the project
+  notes?: string;
+}
+
+interface OngoingSupportRole {
+  role: string;
+  hoursPerWeek?: number;
+}
+
+interface OngoingSupportPlan {
+  summary: string;
+  monthlyCost?: number;
+  roles?: OngoingSupportRole[];
+}
+
 interface ProjectPlan {
   milestones: PlanMilestone[];
   tasks: PlanTask[];
   agentFollowUps: PlanFollowUp[];
   approach?: ApproachRecommendation;
+  materialCosts?: MaterialCostItem[];
+  ongoingSupport?: OngoingSupportPlan;
 }
 
 type Resource = {
@@ -259,6 +280,9 @@ export async function POST(req: NextRequest) {
     const startDate: string | undefined = body.startDate;
     const targetEndDate: string | undefined = body.targetEndDate;
     const budgetPlanned: number | undefined = body.budgetPlanned;
+    const contingencyPercent: number | undefined = body.contingencyPercent;
+    const materialCosts: MaterialCostItem[] = Array.isArray(body.materialCosts) ? body.materialCosts : [];
+    const ongoingSupport: OngoingSupportPlan | undefined = body.ongoingSupport;
 
     if (!plan) {
       return NextResponse.json({ error: "plan is required when confirming" }, { status: 400 });
@@ -321,22 +345,74 @@ export async function POST(req: NextRequest) {
             .returning()
         : [];
 
-    if (startDate || targetEndDate || budgetPlanned !== undefined) {
+    const createdCostItems = materialCosts.length
+      ? await db
+          .insert(costItems)
+          .values(
+            materialCosts.map((m) => ({
+              projectId,
+              category: "MATERIAL" as const,
+              name: m.name,
+              amount: m.amount ?? 0,
+              isRecurring: (m.cadence ?? "one-time") !== "one-time",
+              cadence: m.cadence ?? "one-time",
+              notes: m.notes ?? null,
+              createdByAi: true,
+            }))
+          )
+          .returning()
+      : [];
+
+    if (ongoingSupport && (ongoingSupport.summary || ongoingSupport.monthlyCost)) {
+      const rolesText = ongoingSupport.roles?.length
+        ? ongoingSupport.roles.map((r) => `${r.role} (${r.hoursPerWeek ?? "?"} hrs/wk)`).join(", ")
+        : "";
+      await db.insert(costItems).values({
+        projectId,
+        category: "ONGOING_SUPPORT",
+        name: "Ongoing support",
+        amount: ongoingSupport.monthlyCost ?? 0,
+        isRecurring: true,
+        cadence: "monthly",
+        notes: [ongoingSupport.summary, rolesText ? `Roles: ${rolesText}` : null].filter(Boolean).join(" — "),
+        createdByAi: true,
+      });
+    }
+
+    if (
+      startDate ||
+      targetEndDate ||
+      budgetPlanned !== undefined ||
+      contingencyPercent !== undefined ||
+      ongoingSupport
+    ) {
       await db
         .update(projects)
         .set({
           ...(startDate ? { startDate: new Date(startDate) } : {}),
           ...(targetEndDate ? { targetEndDate: new Date(targetEndDate) } : {}),
           ...(budgetPlanned !== undefined ? { budgetPlanned } : {}),
+          ...(contingencyPercent !== undefined ? { contingencyPercent } : {}),
+          ...(ongoingSupport
+            ? {
+                ongoingSupportMonthlyCost: ongoingSupport.monthlyCost ?? 0,
+                ongoingSupportPlan: ongoingSupport.summary ?? null,
+              }
+            : {}),
           updatedAt: new Date(),
         })
         .where(eq(projects.id, projectId));
     }
 
+    // Resource allocation % should reflect the effort actually assigned, not a manually
+    // guessed number — sync it now that this batch of tasks (and possibly new dates) exist.
+    await syncAllocationsFromEffort(projectId);
+
     return NextResponse.json({
       milestones: createdMilestones,
       tasks: createdTasks,
       agentFollowUps: createdFollowUps,
+      costItems: createdCostItems,
     });
   }
 
@@ -403,12 +479,37 @@ ${resourceList || "No team members yet — suggest generic roles and realistic m
 Also list 2-4 follow-up actions YOU (the AI PM) will own — things like "check in with X on Y" or "prepare
 steering committee update" — not delivery work; these don't need a phase or role.
 
+ALSO estimate materialCosts: the non-labor, one-time costs this project needs beyond people's time —
+software licenses, cloud/server hosting for the build, domain/SSL, third-party API or data costs, hardware,
+permits/fees, materials (for physical work), etc. Only include items that genuinely apply to this specific
+project — do not pad the list with generic line items that don't fit. Size each "amount" as the realistic
+total cost for the project's duration (if something is a recurring monthly cost during the build, multiply
+it out to a total; note the monthly figure in "notes" too). Leave materialCosts as an empty array if a
+project genuinely has no material costs (e.g. a pure research or advisory engagement).
+
+ALSO estimate ongoingSupport: what it will realistically take to support/operate this after delivery —
+a brief summary, a realistic total monthlyCost (hosting/license renewals + support staff time, in USD), and
+roles (each with hoursPerWeek) for the ongoing support effort needed (e.g. "Support Engineer" at 5 hrs/wk).
+If a project has no meaningful ongoing support need (e.g. a one-time physical task), say so in the summary
+and use small/zero numbers rather than inventing an unnecessary ongoing cost.
+
+CRITICAL — realism over false precision: every dollar figure and hour estimate must be grounded in
+realistic, defensible market rates and typical costs for this kind of work — the kind of numbers an
+experienced PM or estimator would actually stand behind, not invented, overly-precise-sounding numbers.
+Prefer sensible round numbers over suspiciously exact ones. If you are genuinely uncertain about a cost,
+say so explicitly in its "notes" field and give a conservative estimate rather than fabricating confidence.
+Do not hallucinate specific vendor names, product versions, or prices you aren't reasonably confident are
+typical — describe the category generically instead (e.g. "cloud hosting (AWS/Azure-tier)" rather than
+inventing a specific SKU and price).
+
 Output strict JSON matching this shape exactly:
 {
   "approach": { "summary": string, "details": { "<label>": "<value>", ... }, "rationale": string },
   "milestones": [{ "name": string, "phase": string, "dueInDays": number }],
   "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "requiredSkills": string[], "requiredExperienceYears": number, "phase": string, "dueInDays": number }],
-  "agentFollowUps": [{ "title": string, "description": string, "dueInDays": number }]
+  "agentFollowUps": [{ "title": string, "description": string, "dueInDays": number }],
+  "materialCosts": [{ "name": string, "amount": number, "cadence": "one-time"|"monthly"|"annual", "notes": string }],
+  "ongoingSupport": { "summary": string, "monthlyCost": number, "roles": [{ "role": string, "hoursPerWeek": number }] }
 }
 "phase" values must be exactly one of: ${phases.join(", ")}. The "details" object in "approach" should have
 2-4 short entries relevant to this project type (e.g. for a technology project: frontend/backend/database/
@@ -435,7 +536,27 @@ today, and should increase roughly in phase order (earlier phases due sooner, la
   const schedule = estimateSchedule(planTasks, allResources);
   const teamComposition = buildTeamComposition(planTasks, allResources);
   const phaseBreakdown = buildPhaseBreakdown(planTasks, allResources, phases);
-  const totalEstimatedCost = teamComposition.reduce((sum, r) => sum + r.cost, 0);
+  const laborCost = teamComposition.reduce((sum, r) => sum + r.cost, 0);
+
+  const materialCosts = (plan.materialCosts ?? []).map((m) => ({
+    name: m.name,
+    amount: m.amount ?? 0,
+    cadence: m.cadence ?? "one-time",
+    notes: m.notes ?? "",
+  }));
+  const materialCostTotal = materialCosts.reduce((sum, m) => sum + m.amount, 0);
+
+  const ongoingSupport = {
+    summary: plan.ongoingSupport?.summary ?? "",
+    monthlyCost: plan.ongoingSupport?.monthlyCost ?? 0,
+    roles: plan.ongoingSupport?.roles ?? [],
+  };
+
+  const DEFAULT_CONTINGENCY_PERCENT = 10;
+  const contingencyPercent =
+    typeof body.contingencyPercent === "number" ? body.contingencyPercent : DEFAULT_CONTINGENCY_PERCENT;
+  const contingencyAmount = Math.round(((laborCost + materialCostTotal) * contingencyPercent) / 100);
+  const totalProjectBudget = laborCost + materialCostTotal + contingencyAmount;
 
   const fallbackPhase = phases[Math.min(2, phases.length - 1)] ?? phases[0];
   const tasksWithAssignee = planTasks.map((t) => ({
@@ -458,6 +579,14 @@ today, and should increase roughly in phase order (earlier phases due sooner, la
     suggestedEndDate: schedule.suggestedEndDate.toISOString().slice(0, 10),
     teamComposition,
     phaseBreakdown,
-    totalEstimatedCost,
+    laborCost,
+    materialCosts,
+    materialCostTotal,
+    ongoingSupport,
+    contingencyPercent,
+    contingencyAmount,
+    totalProjectBudget,
+    // Kept for backward compatibility with anything still reading the old field name.
+    totalEstimatedCost: laborCost,
   });
 }
