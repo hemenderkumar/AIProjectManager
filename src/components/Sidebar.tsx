@@ -1,7 +1,30 @@
 import Link from "next/link";
-import { LayoutDashboard, FolderKanban, Sparkles, PlusCircle, ShieldCheck, FileBarChart, Users } from "lucide-react";
+import {
+  LayoutDashboard,
+  FolderKanban,
+  Sparkles,
+  PlusCircle,
+  ShieldCheck,
+  FileBarChart,
+  Users,
+  Lightbulb,
+  Rocket,
+  LifeBuoy,
+} from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
+
+const navLinkCls =
+  "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900";
+
+function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <p className="px-3 pt-3 pb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+      {children}
+    </div>
+  );
+}
 
 export default function Sidebar({ user }: { user: SessionUser | null }) {
   return (
@@ -17,51 +40,51 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
           </div>
         </div>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-        >
+      <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+        <Link href="/dashboard" className={navLinkCls}>
           <LayoutDashboard size={17} />
           Dashboard
         </Link>
-        <Link
-          href="/projects"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-        >
-          <FolderKanban size={17} />
-          Projects
-        </Link>
-        <Link
-          href="/ai"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-        >
-          <Sparkles size={17} />
-          AI Assistant
-        </Link>
-        <Link
-          href="/reports"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-        >
-          <FileBarChart size={17} />
-          Reports
-        </Link>
-        <Link
-          href="/resources"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-        >
-          <Users size={17} />
-          Resources
-        </Link>
-        {user?.role === "ADMIN" && (
-          <Link
-            href="/admin"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          >
-            <ShieldCheck size={17} />
-            Admin
+
+        <NavSection label="Project Lifecycle">
+          <Link href="/ideation" className={navLinkCls}>
+            <Lightbulb size={17} />
+            Ideation
           </Link>
-        )}
+          <Link href="/execution" className={navLinkCls}>
+            <Rocket size={17} />
+            Project Execution
+          </Link>
+          <Link href="/support" className={navLinkCls}>
+            <LifeBuoy size={17} />
+            Ongoing Support
+          </Link>
+        </NavSection>
+
+        <NavSection label="More">
+          <Link href="/projects" className={navLinkCls}>
+            <FolderKanban size={17} />
+            All Projects
+          </Link>
+          <Link href="/ai" className={navLinkCls}>
+            <Sparkles size={17} />
+            AI Assistant
+          </Link>
+          <Link href="/reports" className={navLinkCls}>
+            <FileBarChart size={17} />
+            Reports
+          </Link>
+          <Link href="/resources" className={navLinkCls}>
+            <Users size={17} />
+            Resources
+          </Link>
+          {user?.role === "ADMIN" && (
+            <Link href="/admin" className={navLinkCls}>
+              <ShieldCheck size={17} />
+              Admin
+            </Link>
+          )}
+        </NavSection>
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">
         <Link

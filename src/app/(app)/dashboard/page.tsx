@@ -4,6 +4,7 @@ import KpiCard from "@/components/KpiCard";
 import RagPie from "@/components/RagPie";
 import StageBar from "@/components/StageBar";
 import AiAskPanel from "@/components/AiAskPanel";
+import ExecutiveExportButtons from "@/components/ExecutiveExportButtons";
 import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getPortfolioSummary } from "@/lib/portfolio";
 
@@ -16,14 +17,26 @@ export default async function DashboardPage() {
     .filter((p) => p.stage !== "CLOSED" && p.autoRag !== "GREEN")
     .sort((a) => (a.autoRag === "RED" ? -1 : 1));
 
+  const budgetVariancePercent =
+    summary.totalBudgetPlanned > 0
+      ? Math.round(((summary.totalBudgetActual - summary.totalBudgetPlanned) / summary.totalBudgetPlanned) * 100)
+      : 0;
+  const healthNarrative = `${summary.activeCount} active project${summary.activeCount === 1 ? "" : "s"} — ${summary.byRag.GREEN ?? 0} on track, ${summary.byRag.YELLOW ?? 0} at risk, ${summary.byRag.RED ?? 0} off track. Portfolio spend is $${summary.totalBudgetActual.toLocaleString()} of $${summary.totalBudgetPlanned.toLocaleString()} planned (${budgetVariancePercent > 0 ? "+" : ""}${budgetVariancePercent}% variance).`;
+
   return (
     <div>
       <Topbar
         title="Portfolio Dashboard"
         subtitle={`${summary.activeCount} active projects across the portfolio`}
+        action={<ExecutiveExportButtons />}
       />
 
       <div className="p-8 space-y-6">
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-5 py-4">
+          <p className="text-xs font-semibold text-indigo-900 uppercase tracking-wide mb-1">Executive Summary</p>
+          <p className="text-sm text-indigo-900">{healthNarrative}</p>
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <KpiCard label="Active Projects" value={summary.activeCount} />
           <KpiCard

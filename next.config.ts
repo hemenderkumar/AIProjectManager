@@ -6,7 +6,11 @@ const nextConfig: NextConfig = {
   // build can drop those non-JS files and the charter PDF export breaks in production
   // even though it works locally. Marking it external keeps it as a plain node_modules
   // require at runtime so those files stay alongside the code that needs them.
-  serverExternalPackages: ["pdfkit"],
+  // pptxgenjs depends on a package literally named "https" (not Node's built-in module)
+  // plus jszip/image-size — bundling these through webpack/Turbopack can break the
+  // PowerPoint export in a way that only shows up on Vercel, not locally. Same fix as
+  // pdfkit above: keep it external so it's a plain node_modules require at runtime.
+  serverExternalPackages: ["pdfkit", "pptxgenjs"],
 };
 
 export default nextConfig;

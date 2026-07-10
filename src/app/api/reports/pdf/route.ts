@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProjectDetail } from "@/lib/portfolio";
 import { buildPlannedVsActual } from "@/lib/reportData";
-import { generateReportPdf } from "@/lib/reportExport";
+import { generateReportPdf, generateReportOnePagerPdf } from "@/lib/reportExport";
 import { requireRole } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const user = await requireRole("VIEWER");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { projectId, report } = await req.json().catch(() => ({}));
+  const { projectId, report, onePager } = await req.json().catch(() => ({}));
   if (!projectId || !report) {
     return NextResponse.json({ error: "projectId and report are required" }, { status: 400 });
   }
@@ -17,18 +17,20 @@ export async function POST(req: NextRequest) {
   if (!detail) return NextResponse.json({ error: "project not found" }, { status: 404 });
 
   const chartData = buildPlannedVsActual(detail);
-  const buffer = await generateReportPdf({
+  const input = {
     projectName: detail.project.name,
     reportText: report,
     chartData,
     generatedAt: new Date(),
-  });
+  };
+  const buffer = onePager ? await generateReportOnePagerPdf(input) : await generateReportPdf(input);
 
   const slug = detail.project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "project";
+  const suffix = onePager ? "status-report-1pager" : "status-report";
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${slug}-status-report.pdf"`,
+      "Content-Disposition": `attachment; filename="${slug}-${suffix}.pdf"`,
       "Content-Length": String(buffer.length),
     },
   });

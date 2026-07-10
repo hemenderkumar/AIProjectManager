@@ -31,15 +31,16 @@ export async function PATCH(
     "country", "program",
     "ragStatus", "startDate", "targetEndDate", "actualEndDate", "budgetPlanned",
     "budgetActual", "percentComplete", "problemStatement", "proposedSolution",
-    "expectedBenefits", "ideationNotes", "businessCase", "objectives",
+    "expectedBenefits", "ideationNotes", "ideationAlignment", "businessCase", "objectives",
     "scopeInScope", "scopeOutOfScope", "deliverables", "successCriteria",
     "stakeholders", "assumptionsRisks", "risks", "totalFundingRequired",
     "integratedSystems", "highLevelArchitecture", "roiExpected",
     "charterApprovedBy", "charterApprovedAt",
+    "feasibilityScore", "feasibilityNotes", "stageApprovedBy", "stageApprovedAt",
   ];
 
-  const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt"];
-  const numericFields = ["budgetPlanned", "budgetActual", "percentComplete", "totalFundingRequired"];
+  const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt", "stageApprovedAt"];
+  const numericFields = ["budgetPlanned", "budgetActual", "percentComplete", "totalFundingRequired", "feasibilityScore"];
 
   const update: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {

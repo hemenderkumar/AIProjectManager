@@ -16,7 +16,7 @@ export default function ReportTab({ detail }: { detail: ProjectDetail }) {
   const [report, setReport] = useState<string | null>(null);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [copied, setCopied] = useState(false);
-  const [exporting, setExporting] = useState<"pdf" | "pptx" | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | "pptx" | "pdf1" | "pptx1" | null>(null);
 
   async function generate() {
     setLoading(true);
@@ -43,22 +43,24 @@ export default function ReportTab({ detail }: { detail: ProjectDetail }) {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  async function exportFile(format: "pdf" | "pptx") {
+  async function exportFile(format: "pdf" | "pptx", onePager: boolean) {
     if (!report) return;
-    setExporting(format);
+    const key = onePager ? (format === "pdf" ? "pdf1" : "pptx1") : format;
+    setExporting(key);
     try {
       const res = await fetch(`/api/reports/${format}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: detail.project.id, report }),
+        body: JSON.stringify({ projectId: detail.project.id, report, onePager }),
       });
       if (!res.ok) return;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const slug = detail.project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "project";
+      const suffix = onePager ? "status-report-1pager" : "status-report";
       a.href = url;
-      a.download = `${slug}-status-report.${format}`;
+      a.download = `${slug}-${suffix}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -94,7 +96,7 @@ export default function ReportTab({ detail }: { detail: ProjectDetail }) {
                 {copied ? "Copied" : "Copy"}
               </button>
               <button
-                onClick={() => exportFile("pdf")}
+                onClick={() => exportFile("pdf", false)}
                 disabled={exporting === "pdf"}
                 className="flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
               >
@@ -102,12 +104,31 @@ export default function ReportTab({ detail }: { detail: ProjectDetail }) {
                 Export PDF
               </button>
               <button
-                onClick={() => exportFile("pptx")}
+                onClick={() => exportFile("pptx", false)}
                 disabled={exporting === "pptx"}
                 className="flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
               >
                 {exporting === "pptx" ? <Loader2 size={14} className="animate-spin" /> : <Presentation size={14} />}
                 Export PowerPoint
+              </button>
+              <span className="text-slate-300">|</span>
+              <button
+                onClick={() => exportFile("pdf", true)}
+                disabled={exporting === "pdf1"}
+                title="Condensed single-page PDF for a quick executive read"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {exporting === "pdf1" ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+                1-Pager PDF
+              </button>
+              <button
+                onClick={() => exportFile("pptx", true)}
+                disabled={exporting === "pptx1"}
+                title="Condensed single-slide deck for a quick executive read"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {exporting === "pptx1" ? <Loader2 size={14} className="animate-spin" /> : <Presentation size={14} />}
+                1-Pager PPTX
               </button>
             </>
           )}

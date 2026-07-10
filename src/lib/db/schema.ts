@@ -116,6 +116,15 @@ export const projects = pgTable("projects", {
   proposedSolution: text("proposed_solution"),
   expectedBenefits: text("expected_benefits"),
   ideationNotes: text("ideation_notes"),
+  ideationAlignment: text("ideation_alignment"),
+
+  // Technical evaluation & feasibility (Ideation step 2)
+  feasibilityScore: integer("feasibility_score"),
+  feasibilityNotes: text("feasibility_notes"),
+
+  // Ideation -> Execution approval gate (Ideation step 5)
+  stageApprovedBy: text("stage_approved_by"),
+  stageApprovedAt: timestamp("stage_approved_at"),
 
   // Charter
   businessCase: text("business_case"),
@@ -342,6 +351,33 @@ export const timeEntries = pgTable("time_entries", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const incidentStatusEnum = pgEnum("incident_status", [
+  "OPEN",
+  "IN_PROGRESS",
+  "RESOLVED",
+  "CLOSED",
+]);
+
+// Ongoing Support: a standalone, portfolio-wide incident/issue queue — not scoped to a
+// single project's tabs. projectId is optional since an incident may not tie to any
+// specific project (e.g. shared infrastructure); set null rather than cascade-delete so
+// incident history survives a project being removed.
+export const incidents = pgTable("incidents", {
+  id: cuid(),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  severity: priorityEnum("severity").notNull().default("MEDIUM"),
+  status: incidentStatusEnum("status").notNull().default("OPEN"),
+  reportedBy: text("reported_by"),
+  assignee: text("assignee"),
+  reportedAt: timestamp("reported_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNotes: text("resolution_notes"),
+  aiRecommendation: text("ai_recommendation"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const settings = pgTable("settings", {
   id: text("id").primaryKey().default("default"),
   weeklyReportCadence: reportCadenceEnum("weekly_report_cadence").notNull().default("WEEKLY"),
@@ -360,6 +396,7 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   milestones: many(milestones),
   costItems: many(costItems),
   invoices: many(invoices),
+  incidents: many(incidents),
 }));
 
 export const resourcesRelations = relations(resources, ({ many }) => ({
@@ -412,6 +449,13 @@ export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
   resource: one(resources, {
     fields: [timeEntries.resourceId],
     references: [resources.id],
+  }),
+}));
+
+export const incidentsRelations = relations(incidents, ({ one }) => ({
+  project: one(projects, {
+    fields: [incidents.projectId],
+    references: [projects.id],
   }),
 }));
 

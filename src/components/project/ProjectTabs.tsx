@@ -12,6 +12,7 @@ import RisksTab from "./RisksTab";
 import MilestonesTab from "./MilestonesTab";
 import ReportTab from "./ReportTab";
 import InvoicesTab from "./InvoicesTab";
+import type { SessionUser } from "@/lib/auth";
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
 
@@ -37,16 +38,26 @@ const TABS = [
   "C-Level Report",
 ] as const;
 
+function resolveInitialTab(tabParam: string | null, autoPlan: boolean): (typeof TABS)[number] {
+  if (autoPlan) return "Tasks";
+  const match = TABS.find((t) => t.toLowerCase() === tabParam?.toLowerCase());
+  return match ?? "Inception & Ideation";
+}
+
 export default function ProjectTabs({
   detail,
   allResources,
+  user,
 }: {
   detail: ProjectDetail;
   allResources: Resource[];
+  user?: SessionUser | null;
 }) {
   const searchParams = useSearchParams();
   const autoPlan = searchParams.get("autoplan") === "1";
-  const [active, setActive] = useState<(typeof TABS)[number]>(autoPlan ? "Tasks" : "Inception & Ideation");
+  const [active, setActive] = useState<(typeof TABS)[number]>(() =>
+    resolveInitialTab(searchParams.get("tab"), autoPlan)
+  );
 
   return (
     <div>
@@ -66,7 +77,13 @@ export default function ProjectTabs({
         ))}
       </div>
 
-      {active === "Inception & Ideation" && <OverviewTab detail={detail} />}
+      {active === "Inception & Ideation" && (
+        <OverviewTab
+          detail={detail}
+          user={user ?? null}
+          onNavigate={(tab) => setActive(tab)}
+        />
+      )}
       {active === "Charter" && <CharterTab detail={detail} />}
       {active === "Tasks" && <TasksTab detail={detail} allResources={allResources} autoPlan={autoPlan} />}
       {active === "Resources" && <ResourcesTab detail={detail} allResources={allResources} />}

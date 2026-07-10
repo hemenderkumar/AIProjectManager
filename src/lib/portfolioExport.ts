@@ -1,0 +1,207 @@
+import PDFDocument from "pdfkit";
+import PptxGenJS from "pptxgenjs";
+import type { PortfolioOnePager } from "./portfolioReportData";
+
+const RAG_HEX: Record<string, string> = { GREEN: "10b981", YELLOW: "f59e0b", RED: "ef4444" };
+
+export function generatePortfolioOnePagerPdf(data: PortfolioOnePager, generatedAt: Date): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 40, size: "LETTER" });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    const left = doc.page.margins.left;
+    const right = doc.page.width - doc.page.margins.right;
+    const fullWidth = right - left;
+
+    doc.font("Helvetica-Bold").fontSize(19).fillColor("#0f172a").text("Portfolio Executive Summary");
+    doc
+      .font("Helvetica")
+      .fontSize(8.5)
+      .fillColor("#94a3b8")
+      .text(`Generated ${generatedAt.toLocaleString("en-US")}`);
+    doc.moveDown(0.7);
+
+    // KPI row
+    const kpis: { label: string; value: string; tone?: string }[] = [
+      { label: "Active Projects", value: String(data.activeCount) },
+      { label: "Avg % Complete", value: `${data.avgPercentComplete}%` },
+      {
+        label: "Overdue Tasks",
+        value: String(data.totalOverdueTasks),
+        tone: data.totalOverdueTasks > 0 ? "#dc2626" : "#059669",
+      },
+      {
+        label: "Open High Risks",
+        value: String(data.totalOpenHighRisks),
+        tone: data.totalOpenHighRisks > 0 ? "#dc2626" : "#059669",
+      },
+    ];
+    const kpiGap = 10;
+    const kpiWidth = (fullWidth - kpiGap * (kpis.length - 1)) / kpis.length;
+    const kpiTop = doc.y;
+    kpis.forEach((k, i) => {
+      const x = left + i * (kpiWidth + kpiGap);
+      doc.roundedRect(x, kpiTop, kpiWidth, 54, 5).fillAndStroke("#f8fafc", "#e2e8f0");
+      doc.font("Helvetica").fontSize(8).fillColor("#64748b").text(k.label, x + 8, kpiTop + 8, { width: kpiWidth - 16 });
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(18)
+        .fillColor(k.tone ?? "#0f172a")
+        .text(k.value, x + 8, kpiTop + 22, { width: kpiWidth - 16 });
+    });
+    doc.y = kpiTop + 54 + 16;
+
+    // RAG breakdown bar
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Portfolio Health (RAG)");
+    doc.moveDown(0.3);
+    const ragTotal = Math.max(1, data.byRag.GREEN + data.byRag.YELLOW + data.byRag.RED);
+    const barY = doc.y;
+    const barHeight = 20;
+    let cursorX = left;
+    (["GREEN", "YELLOW", "RED"] as const).forEach((key) => {
+      const count = data.byRag[key];
+      const segWidth = (count / ragTotal) * fullWidth;
+      if (segWidth > 0) {
+        doc.rect(cursorX, barY, segWidth, barHeight).fill(`#${RAG_HEX[key]}`);
+      }
+      cursorX += segWidth;
+    });
+    doc.y = barY + barHeight + 4;
+    doc
+      .font("Helvetica")
+      .fontSize(8.5)
+      .fillColor("#475569")
+      .text(
+        `Green: ${data.byRag.GREEN}    Yellow: ${data.byRag.YELLOW}    Red: ${data.byRag.RED}`,
+        left,
+        doc.y
+      );
+    doc.moveDown(1);
+
+    // Budget bar
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Budget — Planned vs Actual (active projects)");
+    doc.moveDown(0.3);
+    const maxBudget = Math.max(data.totalBudgetPlanned, data.totalBudgetActual, 1);
+    const rowY1 = doc.y;
+    const plannedW = Math.max(2, (data.totalBudgetPlanned / maxBudget) * fullWidth);
+    doc.rect(left, rowY1, plannedW, 16).fill("#c7d2fe");
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor("#4338ca")
+      .text(`Planned: $${data.totalBudgetPlanned.toLocaleString()}`, left + plannedW + 6, rowY1 + 3, { width: 180 });
+    const rowY2 = rowY1 + 20;
+    const actualW = Math.max(2, (data.totalBudgetActual / maxBudget) * fullWidth);
+    const over = data.totalBudgetActual > data.totalBudgetPlanned;
+    doc.rect(left, rowY2, actualW, 16).fill(over ? "#fca5a5" : "#6366f1");
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor(over ? "#b91c1c" : "#312e81")
+      .text(`Actual: $${data.totalBudgetActual.toLocaleString()}`, left + actualW + 6, rowY2 + 3, { width: 180 });
+    doc.y = rowY2 + 20 + 12;
+
+    // At-risk table
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Needs Attention");
+    doc.moveDown(0.3);
+    if (data.topAtRisk.length === 0) {
+      doc.font("Helvetica").fontSize(9).fillColor("#64748b").text("Nothing flagged — every active project is green.");
+    } else {
+      data.topAtRisk.forEach((p) => {
+        const rowY = doc.y;
+        doc.circle(left + 3, rowY + 5, 3).fill(`#${RAG_HEX[p.rag] ?? "94a3b8"}`);
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(9)
+          .fillColor("#1e293b")
+          .text(p.name, left + 12, rowY, { width: fullWidth - 12, continued: false });
+        doc
+          .font("Helvetica")
+          .fontSize(8)
+          .fillColor("#64748b")
+          .text(`${p.stage} — ${p.reason}`, left + 12, doc.y, { width: fullWidth - 12 });
+        doc.moveDown(0.4);
+      });
+    }
+
+    doc.end();
+  });
+}
+
+export async function generatePortfolioOnePagerPptx(data: PortfolioOnePager, generatedAt: Date): Promise<Buffer> {
+  const pptx = new PptxGenJS();
+  pptx.defineLayout({ name: "WIDE", width: 13.33, height: 7.5 });
+  pptx.layout = "WIDE";
+
+  const NAVY = "0F172A";
+  const SLATE = "334155";
+  const MUTED = "94A3B8";
+
+  const slide = pptx.addSlide();
+  slide.addText("Portfolio Executive Summary", { x: 0.5, y: 0.3, w: 12, h: 0.6, fontSize: 26, bold: true, color: NAVY });
+  slide.addText(`Generated ${generatedAt.toLocaleDateString("en-US")}`, {
+    x: 0.5,
+    y: 0.85,
+    w: 6,
+    h: 0.3,
+    fontSize: 10,
+    color: MUTED,
+  });
+
+  const kpis: { label: string; value: string; color?: string }[] = [
+    { label: "Active Projects", value: String(data.activeCount) },
+    { label: "Avg % Complete", value: `${data.avgPercentComplete}%` },
+    { label: "Overdue Tasks", value: String(data.totalOverdueTasks), color: data.totalOverdueTasks > 0 ? "DC2626" : "059669" },
+    { label: "Open High Risks", value: String(data.totalOpenHighRisks), color: data.totalOpenHighRisks > 0 ? "DC2626" : "059669" },
+  ];
+  const kpiW = 2.9;
+  const kpiGap = 0.25;
+  kpis.forEach((k, i) => {
+    const x = 0.5 + i * (kpiW + kpiGap);
+    slide.addShape(pptx.ShapeType.roundRect, { x, y: 1.35, w: kpiW, h: 1.15, fill: { color: "F8FAFC" }, line: { color: "E2E8F0" }, rectRadius: 0.06 });
+    slide.addText(k.label, { x: x + 0.15, y: 1.45, w: kpiW - 0.3, h: 0.3, fontSize: 11, color: SLATE });
+    slide.addText(k.value, { x: x + 0.15, y: 1.7, w: kpiW - 0.3, h: 0.7, fontSize: 26, bold: true, color: k.color ?? NAVY });
+  });
+
+  slide.addText("Portfolio Health (RAG)", { x: 0.5, y: 2.75, w: 6, h: 0.35, fontSize: 14, bold: true, color: NAVY });
+  slide.addChart(
+    pptx.ChartType.pie,
+    [{ name: "RAG", labels: ["Green", "Yellow", "Red"], values: [data.byRag.GREEN, data.byRag.YELLOW, data.byRag.RED] }],
+    { x: 0.5, y: 3.1, w: 3.2, h: 2.6, chartColors: ["10B981", "F59E0B", "EF4444"], showLegend: true, legendPos: "b" }
+  );
+
+  slide.addText("Budget — Planned vs Actual", { x: 4.0, y: 2.75, w: 5, h: 0.35, fontSize: 14, bold: true, color: NAVY });
+  slide.addChart(
+    pptx.ChartType.bar,
+    [
+      { name: "Planned", labels: ["Budget"], values: [data.totalBudgetPlanned] },
+      { name: "Actual", labels: ["Budget"], values: [data.totalBudgetActual] },
+    ],
+    { x: 4.0, y: 3.1, w: 4.0, h: 2.6, barDir: "col", chartColors: ["C7D2FE", "4F46E5"], showLegend: true, legendPos: "b", showValue: true }
+  );
+
+  slide.addText("Needs Attention", { x: 8.3, y: 2.75, w: 4.5, h: 0.35, fontSize: 14, bold: true, color: NAVY });
+  if (data.topAtRisk.length === 0) {
+    slide.addText("Nothing flagged — every active project is green.", { x: 8.3, y: 3.15, w: 4.5, h: 0.5, fontSize: 11, color: SLATE });
+  } else {
+    const rows = data.topAtRisk.map((p) => [
+      { text: p.name, options: { fontSize: 9, bold: true, color: SLATE } },
+      { text: `${p.stage}\n${p.reason}`, options: { fontSize: 8, color: MUTED } },
+    ]);
+    slide.addTable(rows, {
+      x: 8.3,
+      y: 3.1,
+      w: 4.5,
+      h: 2.7,
+      fontSize: 9,
+      border: { type: "solid", color: "E2E8F0", pt: 0.5 },
+      autoPage: false,
+    });
+  }
+
+  const result = await pptx.write({ outputType: "nodebuffer" });
+  return result as Buffer;
+}

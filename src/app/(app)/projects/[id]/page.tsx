@@ -4,6 +4,7 @@ import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getProjectDetail } from "@/lib/portfolio";
 import { db } from "@/lib/db";
 import { resources as resourcesTable } from "@/lib/db/schema";
+import { getCurrentUser } from "@/lib/auth";
 import ProjectTabs from "@/components/project/ProjectTabs";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function ProjectDetailPage({
   if (!detail) notFound();
 
   const allResources = await db.select().from(resourcesTable);
+  const user = await getCurrentUser();
 
   return (
     <div>
@@ -33,7 +35,7 @@ export default async function ProjectDetailPage({
         }
       />
       <div className="p-8">
-        <ProjectTabs detail={detail} allResources={allResources} />
+        <ProjectTabs detail={detail} allResources={allResources} user={user} />
       </div>
     </div>
   );

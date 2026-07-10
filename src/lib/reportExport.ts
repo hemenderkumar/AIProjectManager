@@ -33,6 +33,16 @@ function splitSections(reportText: string): { heading: string | null; body: stri
   return sections.filter((s) => s.heading || s.body);
 }
 
+function findSection(sections: { heading: string | null; body: string }[], keyword: string): string | null {
+  const match = sections.find((s) => s.heading && s.heading.toLowerCase().includes(keyword.toLowerCase()));
+  return match?.body || null;
+}
+
+function truncate(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  return text.slice(0, maxChars).replace(/\s+\S*$/, "") + "…";
+}
+
 export function generateReportPdf(input: ReportInput): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 56, size: "LETTER" });
@@ -193,6 +203,113 @@ export async function generateReportPptx(input: ReportInput): Promise<Buffer> {
       wrap: true,
     });
   }
+
+  const result = await pptx.write({ outputType: "nodebuffer" });
+  return result as Buffer;
+}
+
+// One-pager variants: same underlying data, condensed onto a single page/slide —
+// just the chart plus the two sections leadership scans first (Executive Summary,
+// Recommended Actions), each truncated so nothing overflows the page.
+export function generateReportOnePagerPdf(input: ReportInput): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 40, size: "LETTER" });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    doc.font("Helvetica-Bold").fontSize(18).fillColor("#0f172a").text("Executive Status Report — 1-Pager");
+    doc.font("Helvetica-Bold").fontSize(13).fillColor("#334155").text(input.projectName);
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor("#94a3b8")
+      .text(`Generated ${input.generatedAt.toLocaleString("en-US")}`);
+    doc.moveDown(0.6);
+    doc
+      .moveTo(doc.page.margins.left, doc.y)
+      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+      .strokeColor("#e2e8f0")
+      .stroke();
+    doc.moveDown(0.6);
+
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Planned vs Actual");
+    doc.moveDown(0.4);
+    drawPlannedVsActualChart(doc, input.chartData);
+    doc.moveDown(0.8);
+
+    const sections = splitSections(input.reportText);
+    const execSummary = findSection(sections, "executive summary");
+    const actions = findSection(sections, "recommended action");
+
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Executive Summary");
+    doc.moveDown(0.2);
+    doc
+      .font("Helvetica")
+      .fontSize(9.5)
+      .fillColor("#334155")
+      .text(execSummary ? truncate(execSummary, 500) : "—");
+    doc.moveDown(0.7);
+
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Recommended Actions");
+    doc.moveDown(0.2);
+    doc
+      .font("Helvetica")
+      .fontSize(9.5)
+      .fillColor("#334155")
+      .text(actions ? truncate(actions, 500) : "—");
+
+    doc.end();
+  });
+}
+
+export async function generateReportOnePagerPptx(input: ReportInput): Promise<Buffer> {
+  const pptx = new PptxGenJS();
+  pptx.defineLayout({ name: "WIDE", width: 13.33, height: 7.5 });
+  pptx.layout = "WIDE";
+
+  const NAVY = "0F172A";
+  const SLATE = "334155";
+  const MUTED = "94A3B8";
+  const INDIGO = "4F46E5";
+
+  const slide = pptx.addSlide();
+  slide.addText("Executive Status Report — 1-Pager", { x: 0.5, y: 0.3, w: 12, h: 0.5, fontSize: 22, bold: true, color: NAVY });
+  slide.addText(input.projectName, { x: 0.5, y: 0.8, w: 12, h: 0.4, fontSize: 15, color: SLATE });
+  slide.addText(`Generated ${input.generatedAt.toLocaleDateString("en-US")}`, { x: 0.5, y: 1.2, w: 6, h: 0.3, fontSize: 9, color: MUTED });
+
+  const categories = ["Budget ($)", "Schedule (%)", "Effort (hrs)"];
+  const plannedSeries = [input.chartData.budget.planned, input.chartData.schedule.plannedPercent, input.chartData.effort.plannedHours];
+  const actualSeries = [input.chartData.budget.actual, input.chartData.schedule.actualPercent, input.chartData.effort.actualHours];
+  slide.addChart(
+    pptx.ChartType.bar,
+    [
+      { name: "Planned", labels: categories, values: plannedSeries },
+      { name: "Actual", labels: categories, values: actualSeries },
+    ],
+    {
+      x: 0.5,
+      y: 1.6,
+      w: 6.2,
+      h: 5.4,
+      barDir: "col",
+      chartColors: [INDIGO, "F97316"],
+      showLegend: true,
+      legendPos: "b",
+      showValue: true,
+    }
+  );
+
+  const sections = splitSections(input.reportText);
+  const execSummary = findSection(sections, "executive summary");
+  const actions = findSection(sections, "recommended action");
+
+  slide.addText("Executive Summary", { x: 7.0, y: 1.6, w: 5.8, h: 0.4, fontSize: 14, bold: true, color: NAVY });
+  slide.addText(execSummary ? truncate(execSummary, 420) : "—", { x: 7.0, y: 2.0, w: 5.8, h: 2.4, fontSize: 11, color: SLATE, valign: "top" });
+
+  slide.addText("Recommended Actions", { x: 7.0, y: 4.5, w: 5.8, h: 0.4, fontSize: 14, bold: true, color: NAVY });
+  slide.addText(actions ? truncate(actions, 420) : "—", { x: 7.0, y: 4.9, w: 5.8, h: 2.1, fontSize: 11, color: SLATE, valign: "top" });
 
   const result = await pptx.write({ outputType: "nodebuffer" });
   return result as Buffer;
