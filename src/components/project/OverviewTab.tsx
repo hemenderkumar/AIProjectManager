@@ -5,8 +5,15 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
-import { roleAtLeast } from "@/lib/auth";
 import { Sparkles, Loader2, CheckCircle2, Lock } from "lucide-react";
+
+// Duplicated (not imported) on purpose: "@/lib/auth" pulls in next/headers, which breaks
+// the build if a value (non-type) import from it ends up in a "use client" component's
+// bundle. This is the same tiny role-order check as roleAtLeast() in lib/auth.ts.
+function roleAtLeast(role: SessionUser["role"], min: SessionUser["role"]) {
+  const order = { VIEWER: 0, CONTRIBUTOR: 1, PM: 2, ADMIN: 3 };
+  return order[role] >= order[min];
+}
 
 type BrainstormResult = { angles: string[]; openQuestions: string[]; recommendation: string };
 type FeasibilityResult = {
