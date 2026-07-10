@@ -1,5 +1,5 @@
 import Topbar from "@/components/Topbar";
-import IncidentsBoard from "@/components/IncidentsBoard";
+import SupportTabs from "@/components/SupportTabs";
 import { db } from "@/lib/db";
 import { incidents, projects } from "@/lib/db/schema";
 
@@ -25,7 +25,7 @@ export default async function SupportPage() {
         subtitle="Incident management and issue resolution across all projects"
       />
       <div className="p-8">
-        <IncidentsBoard incidents={serialized} projects={projectRows} />
+        <SupportTabs incidents={serialized} projects={projectRows} />
       </div>
     </div>
   );

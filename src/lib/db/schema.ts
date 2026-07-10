@@ -22,6 +22,19 @@ export const projectStageEnum = pgEnum("project_stage", [
 
 export const ragStatusEnum = pgEnum("rag_status", ["GREEN", "YELLOW", "RED"]);
 
+// Ideation redesign: where an idea originates from changes how it should be brainstormed —
+// a proactive opportunity needs value-case validation, a problem needs root-cause +
+// solution-option comparison before anyone commits to a direction.
+export const ideaTypeEnum = pgEnum("idea_type", ["OPPORTUNITY", "PROBLEM"]);
+
+// Lightweight internal progress within the IDEATION stage itself (not a full workflow
+// stage change) so an idea's status is visible without adding process overhead.
+export const ideationStatusEnum = pgEnum("ideation_status", [
+  "EXPLORING",
+  "COMPARING_OPTIONS",
+  "READY_FOR_CHARTER",
+]);
+
 export const priorityEnum = pgEnum("priority", [
   "LOW",
   "MEDIUM",
@@ -117,6 +130,8 @@ export const projects = pgTable("projects", {
   expectedBenefits: text("expected_benefits"),
   ideationNotes: text("ideation_notes"),
   ideationAlignment: text("ideation_alignment"),
+  ideaType: ideaTypeEnum("idea_type"),
+  ideationStatus: ideationStatusEnum("ideation_status").notNull().default("EXPLORING"),
 
   // Technical evaluation & feasibility (Ideation step 2)
   feasibilityScore: integer("feasibility_score"),
@@ -378,6 +393,40 @@ export const incidents = pgTable("incidents", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Running ideation brainstorm log: a dated, append-only list of entries (AI-generated or
+// manual notes) so an idea's thinking is preserved across multiple sessions instead of
+// being overwritten by the latest AI call.
+export const brainstormEntrySourceEnum = pgEnum("brainstorm_entry_source", ["AI", "MANUAL"]);
+
+export const brainstormEntries = pgTable("brainstorm_entries", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  source: brainstormEntrySourceEnum("source").notNull().default("MANUAL"),
+  author: text("author"),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Candidate solution approaches for Problem-type ideas — a lightweight side-by-side
+// comparison so a team compares options before committing to one, rather than jumping
+// straight to a single proposed solution.
+export const solutionOptions = pgTable("solution_options", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  pros: text("pros"),
+  cons: text("cons"),
+  feasibilityNotes: text("feasibility_notes"),
+  isSelected: boolean("is_selected").notNull().default(false),
+  createdByAi: boolean("created_by_ai").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const settings = pgTable("settings", {
   id: text("id").primaryKey().default("default"),
   weeklyReportCadence: reportCadenceEnum("weekly_report_cadence").notNull().default("WEEKLY"),
@@ -397,6 +446,8 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   costItems: many(costItems),
   invoices: many(invoices),
   incidents: many(incidents),
+  brainstormEntries: many(brainstormEntries),
+  solutionOptions: many(solutionOptions),
 }));
 
 export const resourcesRelations = relations(resources, ({ many }) => ({
@@ -455,6 +506,20 @@ export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
 export const incidentsRelations = relations(incidents, ({ one }) => ({
   project: one(projects, {
     fields: [incidents.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const brainstormEntriesRelations = relations(brainstormEntries, ({ one }) => ({
+  project: one(projects, {
+    fields: [brainstormEntries.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const solutionOptionsRelations = relations(solutionOptions, ({ one }) => ({
+  project: one(projects, {
+    fields: [solutionOptions.projectId],
     references: [projects.id],
   }),
 }));

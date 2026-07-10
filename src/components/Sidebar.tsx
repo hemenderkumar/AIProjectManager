@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Home,
   LayoutDashboard,
   FolderKanban,
   Sparkles,
@@ -41,6 +42,10 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
         </div>
       </div>
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+        <Link href="/home" className={navLinkCls}>
+          <Home size={17} />
+          Home
+        </Link>
         <Link href="/dashboard" className={navLinkCls}>
           <LayoutDashboard size={17} />
           Dashboard

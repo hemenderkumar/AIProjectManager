@@ -6,6 +6,7 @@ import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
 import { Sparkles, Loader2, CheckCircle2, Lock } from "lucide-react";
+import IdeationWorkspace from "./IdeationWorkspace";
 
 // Duplicated (not imported) on purpose: "@/lib/auth" pulls in next/headers, which breaks
 // the build if a value (non-type) import from it ends up in a "use client" component's
@@ -15,7 +16,6 @@ function roleAtLeast(role: SessionUser["role"], min: SessionUser["role"]) {
   return order[role] >= order[min];
 }
 
-type BrainstormResult = { angles: string[]; openQuestions: string[]; recommendation: string };
 type FeasibilityResult = {
   technicalApproach: string;
   feasibilityScore: number;
@@ -60,10 +60,6 @@ export default function OverviewTab({
     feasibilityNotes: p.feasibilityNotes ?? "",
   });
 
-  const [brainstorming, setBrainstorming] = useState(false);
-  const [brainstormError, setBrainstormError] = useState<string | null>(null);
-  const [brainstormResult, setBrainstormResult] = useState<BrainstormResult | null>(null);
-
   const [assessing, setAssessing] = useState(false);
   const [feasibilityError, setFeasibilityError] = useState<string | null>(null);
   const [feasibilityResult, setFeasibilityResult] = useState<FeasibilityResult | null>(null);
@@ -84,27 +80,6 @@ export default function OverviewTab({
     });
     setSaving(false);
     router.refresh();
-  }
-
-  async function brainstorm() {
-    setBrainstorming(true);
-    setBrainstormError(null);
-    setBrainstormResult(null);
-    try {
-      const res = await fetch("/api/ai/brainstorm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: p.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setBrainstormError(data.error ?? "Couldn't brainstorm right now.");
-        return;
-      }
-      setBrainstormResult(data);
-    } finally {
-      setBrainstorming(false);
-    }
   }
 
   async function assessFeasibility() {
@@ -217,16 +192,6 @@ export default function OverviewTab({
 
       <Card
         title="Step 1 — Idea Generation, Brainstorming & Alignment"
-        action={
-          <button
-            onClick={brainstorm}
-            disabled={brainstorming}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
-          >
-            {brainstorming ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-            Brainstorm with AI
-          </button>
-        }
       >
         <div className="space-y-4">
           <Field label="Problem statement">
@@ -241,26 +206,13 @@ export default function OverviewTab({
           <Field label="Ideation notes">
             <textarea value={form.ideationNotes} onChange={(e) => update("ideationNotes", e.target.value)} className={inputCls} rows={3} />
           </Field>
+        </div>
 
-          {brainstormError && <p className="text-xs text-rose-600">{brainstormError}</p>}
-          {brainstormResult && (
-            <div className="border border-indigo-200 bg-indigo-50/60 rounded-lg p-3 space-y-2">
-              <div>
-                <p className="text-xs font-semibold text-indigo-900 mb-1">Angles to discuss</p>
-                <ul className="list-disc list-inside text-xs text-indigo-800 space-y-0.5">
-                  {brainstormResult.angles.map((a, i) => <li key={i}>{a}</li>)}
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-indigo-900 mb-1">Open questions to align on</p>
-                <ul className="list-disc list-inside text-xs text-indigo-800 space-y-0.5">
-                  {brainstormResult.openQuestions.map((q, i) => <li key={i}>{q}</li>)}
-                </ul>
-              </div>
-              <p className="text-xs text-indigo-700 italic">{brainstormResult.recommendation}</p>
-            </div>
-          )}
+        <div className="border-t border-slate-200 mt-4 pt-4">
+          <IdeationWorkspace detail={detail} />
+        </div>
 
+        <div className="mt-4">
           <Field label="Alignment — what the team decided to take forward, and why">
             <textarea
               value={form.ideationAlignment}
