@@ -1,10 +1,23 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Topbar from "@/components/Topbar";
 
 export default function NewProjectPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewProjectForm />
+    </Suspense>
+  );
+}
+
+function NewProjectForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // "idea" intent (from the Ideation entry point) lands back on the Inception & Ideation
+  // tab to continue brainstorming; everything else (Execution entry point, sidebar, etc.)
+  // keeps the old behavior of jumping straight into the AI task planner.
+  const isIdeaIntent = searchParams.get("intent") === "idea";
   const [saving, setSaving] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -40,7 +53,9 @@ export default function NewProjectPage() {
     });
     const created = await res.json();
     setSaving(false);
-    if (created?.id) router.push(`/projects/${created.id}?autoplan=1`);
+    if (created?.id) {
+      router.push(isIdeaIntent ? `/projects/${created.id}` : `/projects/${created.id}?autoplan=1`);
+    }
   }
 
   async function generateWithAi() {
@@ -83,7 +98,14 @@ export default function NewProjectPage() {
 
   return (
     <div>
-      <Topbar title="New Project" subtitle="Kick off inception & ideation for a new project" />
+      <Topbar
+        title={isIdeaIntent ? "New Idea" : "New Project"}
+        subtitle={
+          isIdeaIntent
+            ? "Capture the idea, then move into brainstorming and alignment before a charter is drafted"
+            : "Kick off inception & ideation for a new project"
+        }
+      />
       <div className="p-8 max-w-3xl">
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-6 space-y-3">
           <p className="text-sm font-semibold text-indigo-900">✨ Describe it, and AI fills the form</p>

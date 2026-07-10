@@ -21,7 +21,7 @@ export default async function IdeationPage() {
         subtitle="Idea generation, feasibility, estimates, charter, and approval — before a project moves into execution"
         action={
           <Link
-            href="/projects/new"
+            href="/projects/new?intent=idea"
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
           >
             <PlusCircle size={16} />
