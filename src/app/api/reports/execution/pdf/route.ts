@@ -8,11 +8,11 @@ type Row = Awaited<ReturnType<typeof getAllProjectsWithMetrics>>[number];
 
 const columns: TableColumn<Row>[] = [
   { key: "name", label: "Project", width: 2, get: (r) => r.name },
-  { key: "stage", label: "Stage", get: (r) => r.stage },
-  { key: "priority", label: "Priority", get: (r) => r.priority },
-  { key: "rag", label: "Health", get: (r) => r.autoRag },
-  { key: "pct", label: "% Complete", align: "right", get: (r) => `${r.percentComplete}%` },
-  { key: "budget", label: "Budget (Actual/Planned)", width: 1.6, align: "right", get: (r) => `$${(r.budgetActual ?? 0).toLocaleString()} / $${(r.budgetPlanned ?? 0).toLocaleString()}` },
+  { key: "stage", label: "Stage", width: 1.3, get: (r) => r.stage },
+  { key: "priority", label: "Priority", width: 1.1, get: (r) => r.priority },
+  { key: "rag", label: "Health", width: 0.9, get: (r) => r.autoRag },
+  { key: "pct", label: "% Done", width: 0.9, align: "right", get: (r) => `${r.percentComplete}%` },
+  { key: "budget", label: "Actual / Planned", width: 1.8, align: "right", get: (r) => `$${(r.budgetActual ?? 0).toLocaleString()} / $${(r.budgetPlanned ?? 0).toLocaleString()}` },
 ];
 
 export async function POST() {

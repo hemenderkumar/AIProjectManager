@@ -16,7 +16,7 @@ export async function askClaude(system: string, user: string, maxTokens: number 
   if (!anthropic) {
     return (
       "AI features are not configured yet. Add an ANTHROPIC_API_KEY environment " +
-      "variable (Vercel Project Settings → Environment Variables) to enable AI-generated " +
+      "variable (Vercel Project Settings -> Environment Variables) to enable AI-generated " +
       "charters, status reports, and the portfolio assistant."
     );
   }

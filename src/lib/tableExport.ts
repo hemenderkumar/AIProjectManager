@@ -1,6 +1,27 @@
 import type PptxGenJS from "pptxgenjs";
 import { BRAND, BRAND_HEX, createKeelPdf, finalizeKeelPdf, coverMasthead, setupKeelPptx, titleSlide } from "./brand";
 
+// PDFKit's `ellipsis: true` + `lineBreak: false` combination does NOT reliably stop long
+// text from wrapping onto a second line inside a fixed-height row — confirmed by rendering
+// real reports where a header like "Budget (Actual/Planned)" or a value like "EXECUTION" in
+// a narrow column wrapped and visually overlapped the row below it. Truncating the string
+// ourselves before handing it to doc.text() is deterministic regardless of pdfkit's internal
+// wrapping heuristics.
+function fitText(doc: PDFKit.PDFDocument, text: string, maxWidth: number): string {
+  if (doc.widthOfString(text) <= maxWidth) return text;
+  const ellipsis = "…"; // U+2026 — present in WinAnsi/Helvetica, renders fine (unlike arrows)
+  if (doc.widthOfString(ellipsis) > maxWidth) return "";
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const candidate = text.slice(0, mid).trimEnd() + ellipsis;
+    if (doc.widthOfString(candidate) <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo).trimEnd() + ellipsis;
+}
+
 export type TableColumn<T> = {
   key: string;
   label: string;
@@ -41,11 +62,11 @@ export function generateTablePdf<T>(
       doc.rect(left, y, fullWidth, rowHeight).fill(BRAND.navy);
       let x = left;
       columns.forEach((c, i) => {
+        doc.font("Helvetica-Bold").fontSize(8.5);
+        const label = fitText(doc, c.label, colWidths[i] - 12);
         doc
-          .font("Helvetica-Bold")
-          .fontSize(8.5)
           .fillColor("#ffffff")
-          .text(c.label, x + 6, y + 6, { width: colWidths[i] - 12, align: c.align ?? "left", lineBreak: false });
+          .text(label, x + 6, y + 6, { width: colWidths[i] - 12, align: c.align ?? "left", lineBreak: false });
         x += colWidths[i];
       });
       doc.y = y + rowHeight;
@@ -64,11 +85,11 @@ export function generateTablePdf<T>(
       }
       let x = left;
       columns.forEach((c, i) => {
+        doc.font("Helvetica").fontSize(8.5);
+        const value = fitText(doc, c.get(row), colWidths[i] - 12);
         doc
-          .font("Helvetica")
-          .fontSize(8.5)
           .fillColor(BRAND.slate)
-          .text(c.get(row), x + 6, y + 6, { width: colWidths[i] - 12, align: c.align ?? "left", lineBreak: false, ellipsis: true });
+          .text(value, x + 6, y + 6, { width: colWidths[i] - 12, align: c.align ?? "left", lineBreak: false });
         x += colWidths[i];
       });
       doc.y = y + rowHeight;
