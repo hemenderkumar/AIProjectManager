@@ -150,6 +150,21 @@ export const sprintStatusEnum = pgEnum("sprint_status", [
   "COMPLETED",
 ]);
 
+export const rfpStatusEnum = pgEnum("rfp_status", [
+  "DRAFT",
+  "PUBLISHED",
+  "EVALUATING",
+  "AWARDED",
+  "CLOSED",
+]);
+
+export const vendorResponseStatusEnum = pgEnum("vendor_response_status", [
+  "INVITED",
+  "VIEWED",
+  "SUBMITTED",
+  "DECLINED",
+]);
+
 const cuid = () => text("id").primaryKey().$defaultFn(() => createId());
 
 export const projects = pgTable("projects", {
@@ -161,6 +176,12 @@ export const projects = pgTable("projects", {
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   description: text("description"),
   sponsor: text("sponsor"),
+  // Structured sponsor mapping: when set, this is the source of truth and `sponsor` above
+  // is kept as a denormalized copy of the stakeholder's name so every existing consumer
+  // (AI prompts, charter/report exports) that already reads the plain `sponsor` text field
+  // keeps working unchanged. Null for internal-only projects (stakeholders are org-scoped)
+  // or organizations that haven't set up a stakeholder directory yet.
+  sponsorStakeholderId: text("sponsor_stakeholder_id").references((): AnyPgColumn => stakeholders.id, { onDelete: "set null" }),
   projectManager: text("project_manager"),
   stage: projectStageEnum("stage").notNull().default("INCEPTION"),
   priority: priorityEnum("priority").notNull().default("MEDIUM"),
@@ -401,6 +422,40 @@ export const organizations = pgTable("organizations", {
   deletionRequestedBy: text("deletion_requested_by"), // snapshot of requester's name/email
 });
 
+// A department/business unit within one client organization (e.g. "Finance", "Operations").
+// Company-owner-managed (add/remove from the My Organization page) so a SUPER_USER can
+// organize their own team and stakeholders without needing Keel support to do it for them.
+export const divisions = pgTable(
+  "divisions",
+  {
+    id: cuid(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("division_org_name_uq").on(t.organizationId, t.name),
+  })
+);
+
+// A named business stakeholder at a client organization (not necessarily a Keel login —
+// most project sponsors are executives who never touch the tool themselves). Structured
+// so the same person can be picked as sponsor across multiple projects and carries their
+// division with them, instead of re-typing a name as free text every time.
+export const stakeholders = pgTable("stakeholders", {
+  id: cuid(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  title: text("title"),
+  email: text("email"),
+  divisionId: text("division_id").references(() => divisions.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const users = pgTable("users", {
   id: cuid(),
   name: text("name").notNull(),
@@ -409,6 +464,10 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("VIEWER"),
   resourceId: text("resource_id").references(() => resources.id),
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+  // Which division of their organization this teammate sits in — set by the company
+  // owner from the My Organization team list. Null for internal staff (divisions are a
+  // client-organization concept) and for client users not yet assigned one.
+  divisionId: text("division_id").references(() => divisions.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -601,6 +660,114 @@ export const auditLog = pgTable("audit_log", {
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   detail: text("detail"), // free-text description of what changed
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// --- Vendor Evaluation (RFP) module ---
+// A company owner (SUPER_USER) builds an RFP — either auto-drafted from a project's
+// completed charter, or from a handful of pointers the owner types in when there's no
+// project/charter yet — invites vendors by email (no-login, tokenized response link, same
+// pattern as the existing status-request flow), collects their proposals, then has the AI
+// score each vendor against a weighted rubric and recommend one. Standalone by design: an
+// RFP may or may not be linked to a project, and can exist before a project is ever created.
+
+export const rfps = pgTable("rfps", {
+  id: cuid(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  // Optional — an RFP can be created standalone, before any project exists, or linked to
+  // one later. If linked to a project with a completed charter, the charter's own fields
+  // are what seed the AI draft.
+  projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  status: rfpStatusEnum("status").notNull().default("DRAFT"),
+
+  // Inputs — either pulled from the linked project's charter, or typed in directly by the
+  // owner when there's no charter to draw from.
+  background: text("background"),
+  scope: text("scope"),
+  requirements: text("requirements"),
+  timeline: text("timeline"),
+  budgetRange: text("budget_range"),
+
+  // The full AI-drafted (or owner-edited) RFP document vendors actually see.
+  content: text("content"),
+  createdByAi: boolean("created_by_ai").notNull().default(false),
+  createdBy: text("created_by"), // snapshot of the owner's name
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  publishedAt: timestamp("published_at"),
+});
+
+// Weighted scoring rubric, defined by the company owner per RFP (some fields — the
+// criteria and their weights — are exactly the "owner-editable fields" called for).
+export const rfpCriteria = pgTable("rfp_criteria", {
+  id: cuid(),
+  rfpId: text("rfp_id")
+    .notNull()
+    .references(() => rfps.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // e.g. "Cost", "Timeline", "Technical Fit"
+  weightPercent: real("weight_percent").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// One row per invited vendor. `token` is the sole credential for the vendor's no-login
+// response link — treat it like a password: a vendor's link must only ever resolve their
+// own row, never another vendor's, and must never expose the scoring rubric or any other
+// vendor's response.
+export const rfpVendors = pgTable("rfp_vendors", {
+  id: cuid(),
+  rfpId: text("rfp_id")
+    .notNull()
+    .references(() => rfps.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // vendor company name
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email").notNull(),
+  token: text("token").notNull().unique(),
+  status: vendorResponseStatusEnum("status").notNull().default("INVITED"),
+  invitedAt: timestamp("invited_at").notNull().defaultNow(),
+  viewedAt: timestamp("viewed_at"),
+  responseText: text("response_text"), // vendor's submitted proposed solution
+  proposedCost: real("proposed_cost"),
+  proposedTimelineWeeks: real("proposed_timeline_weeks"),
+  submittedAt: timestamp("submitted_at"),
+});
+
+// AI-generated per-criterion score for one vendor. createdByAi is always true today (there's
+// no manual override UI yet) but the flag is kept for the same "AI proposes" convention
+// used elsewhere (delivery role mix, cost items) in case manual adjustment is added later.
+export const rfpVendorScores = pgTable(
+  "rfp_vendor_scores",
+  {
+    id: cuid(),
+    rfpVendorId: text("rfp_vendor_id")
+      .notNull()
+      .references(() => rfpVendors.id, { onDelete: "cascade" }),
+    criterionId: text("criterion_id")
+      .notNull()
+      .references(() => rfpCriteria.id, { onDelete: "cascade" }),
+    score: real("score").notNull().default(0), // 0-10
+    rationale: text("rationale"),
+    createdByAi: boolean("created_by_ai").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("rfp_vendor_score_uq").on(t.rfpVendorId, t.criterionId),
+  })
+);
+
+// One overall AI recommendation per RFP — re-generated (overwritten) each time the owner
+// re-runs evaluation, so there's always exactly one current recommendation, not a growing
+// history of stale ones.
+export const rfpRecommendations = pgTable("rfp_recommendations", {
+  id: cuid(),
+  rfpId: text("rfp_id")
+    .notNull()
+    .references(() => rfps.id, { onDelete: "cascade" })
+    .unique(),
+  recommendedVendorId: text("recommended_vendor_id").references(() => rfpVendors.id, { onDelete: "set null" }),
+  summary: text("summary"), // AI-generated overall comparison + rationale
+  generatedAt: timestamp("generated_at").notNull().defaultNow(),
 });
 
 // Relations

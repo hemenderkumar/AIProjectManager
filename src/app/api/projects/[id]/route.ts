@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projects } from "@/lib/db/schema";
+import { projects, stakeholders } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
@@ -28,7 +28,7 @@ export async function PATCH(
   const body = await req.json();
 
   const allowed = [
-    "name", "description", "sponsor", "projectManager", "stage", "priority",
+    "name", "description", "sponsor", "sponsorStakeholderId", "projectManager", "stage", "priority",
     "country", "program",
     "ragStatus", "startDate", "targetEndDate", "actualEndDate", "budgetPlanned",
     "budgetActual", "percentComplete", "problemStatement", "proposedSolution",
@@ -64,6 +64,21 @@ export async function PATCH(
       } else {
         update[key] = v;
       }
+    }
+  }
+
+  // When a structured sponsor (stakeholder) is selected, denormalize their name into the
+  // plain-text `sponsor` column too — every existing consumer (AI charter drafting, PDF/PPTX
+  // exports, ideation reports) reads `sponsor` as text and shouldn't need to change.
+  if ("sponsorStakeholderId" in body) {
+    if (body.sponsorStakeholderId) {
+      const [stakeholder] = await db
+        .select({ name: stakeholders.name })
+        .from(stakeholders)
+        .where(eq(stakeholders.id, body.sponsorStakeholderId));
+      if (stakeholder) update.sponsor = stakeholder.name;
+    } else {
+      update.sponsorStakeholderId = null;
     }
   }
 

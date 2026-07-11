@@ -13,6 +13,7 @@ import {
   Rocket,
   LifeBuoy,
   Building2,
+  FileSearch,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
@@ -92,6 +93,12 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
             <Link href="/organization" className={navLinkCls}>
               <Building2 size={17} />
               My Organization
+            </Link>
+          )}
+          {user?.role === "SUPER_USER" && (
+            <Link href="/vendor-evaluation" className={navLinkCls}>
+              <FileSearch size={17} />
+              Vendor Evaluation
             </Link>
           )}
           {user?.role === "ADMIN" && (

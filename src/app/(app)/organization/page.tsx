@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
-import { Download, AlertTriangle, Loader2 } from "lucide-react";
+import { Download, AlertTriangle, Loader2, Plus, Trash2 } from "lucide-react";
 
 type Organization = {
   id: string;
@@ -11,6 +11,13 @@ type Organization = {
   deletionRequestedBy: string | null;
 };
 
+type TeamUser = { id: string; name: string; email: string; role: string; divisionId: string | null; createdAt: string };
+type Division = { id: string; name: string };
+type Stakeholder = { id: string; name: string; title: string | null; email: string | null; divisionId: string | null };
+
+const ASSIGNABLE_ROLES = ["PM", "CONTRIBUTOR", "VIEWER"];
+const teamInputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+
 export default function OrganizationPage() {
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,11 +26,137 @@ export default function OrganizationPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [team, setTeam] = useState<TeamUser[]>([]);
+  const [showTeamForm, setShowTeamForm] = useState(false);
+  const [teamForm, setTeamForm] = useState({ name: "", email: "", password: "", role: "VIEWER" });
+  const [teamSaving, setTeamSaving] = useState(false);
+  const [teamError, setTeamError] = useState<string | null>(null);
+
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [newDivisionName, setNewDivisionName] = useState("");
+  const [divisionSaving, setDivisionSaving] = useState(false);
+  const [divisionError, setDivisionError] = useState<string | null>(null);
+
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+  const [showStakeholderForm, setShowStakeholderForm] = useState(false);
+  const [stakeholderForm, setStakeholderForm] = useState({ name: "", title: "", email: "", divisionId: "" });
+  const [stakeholderSaving, setStakeholderSaving] = useState(false);
+  const [stakeholderError, setStakeholderError] = useState<string | null>(null);
+
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/organization");
-    if (res.ok) setOrg(await res.json());
+    const [orgRes, teamRes, divisionsRes, stakeholdersRes] = await Promise.all([
+      fetch("/api/organization"),
+      fetch("/api/organization/users"),
+      fetch("/api/organization/divisions"),
+      fetch("/api/organization/stakeholders"),
+    ]);
+    if (orgRes.ok) setOrg(await orgRes.json());
+    if (teamRes.ok) setTeam(await teamRes.json());
+    if (divisionsRes.ok) setDivisions(await divisionsRes.json());
+    if (stakeholdersRes.ok) setStakeholders(await stakeholdersRes.json());
     setLoading(false);
+  }
+
+  async function addDivision() {
+    if (!newDivisionName.trim()) return;
+    setDivisionSaving(true);
+    setDivisionError(null);
+    const res = await fetch("/api/organization/divisions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newDivisionName }),
+    });
+    setDivisionSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setDivisionError(data?.error ?? "Could not add division.");
+      return;
+    }
+    setNewDivisionName("");
+    load();
+  }
+
+  async function removeDivision(id: string) {
+    await fetch(`/api/organization/divisions/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  async function addStakeholder() {
+    if (!stakeholderForm.name.trim()) return;
+    setStakeholderSaving(true);
+    setStakeholderError(null);
+    const res = await fetch("/api/organization/stakeholders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...stakeholderForm, divisionId: stakeholderForm.divisionId || null }),
+    });
+    setStakeholderSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setStakeholderError(data?.error ?? "Could not add stakeholder.");
+      return;
+    }
+    setShowStakeholderForm(false);
+    setStakeholderForm({ name: "", title: "", email: "", divisionId: "" });
+    load();
+  }
+
+  async function updateStakeholderDivision(id: string, divisionId: string) {
+    await fetch(`/api/organization/stakeholders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ divisionId: divisionId || null }),
+    });
+    load();
+  }
+
+  async function removeStakeholder(id: string) {
+    await fetch(`/api/organization/stakeholders/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  async function updateTeamDivision(id: string, divisionId: string) {
+    await fetch(`/api/organization/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ divisionId: divisionId || null }),
+    });
+    load();
+  }
+
+  async function inviteTeamMember() {
+    if (!teamForm.name || !teamForm.email || !teamForm.password) return;
+    setTeamSaving(true);
+    setTeamError(null);
+    const res = await fetch("/api/organization/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(teamForm),
+    });
+    setTeamSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setTeamError(data?.error ?? "Could not invite this user.");
+      return;
+    }
+    setShowTeamForm(false);
+    setTeamForm({ name: "", email: "", password: "", role: "VIEWER" });
+    load();
+  }
+
+  async function updateTeamRole(id: string, role: string) {
+    await fetch(`/api/organization/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role }),
+    });
+    load();
+  }
+
+  async function removeTeamMember(id: string) {
+    await fetch(`/api/organization/users/${id}`, { method: "DELETE" });
+    load();
   }
 
   useEffect(() => {
@@ -93,6 +226,191 @@ export default function OrganizationPage() {
     <div>
       <Topbar title="My Organization" subtitle={org.name} />
       <div className="p-8 max-w-2xl space-y-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-semibold text-slate-900">Your team</p>
+            <button
+              onClick={() => setShowTeamForm((s) => !s)}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            >
+              <Plus size={14} /> Invite teammate
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Add PM, Contributor, or Viewer logins for people at {org.name} — no need to ask Keel support.
+            Only a Keel administrator can create another account owner.
+          </p>
+
+          {showTeamForm && (
+            <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input placeholder="Full name" value={teamForm.name} onChange={(e) => setTeamForm((f) => ({ ...f, name: e.target.value }))} className={teamInputCls} />
+                <input placeholder="Email" type="email" value={teamForm.email} onChange={(e) => setTeamForm((f) => ({ ...f, email: e.target.value }))} className={teamInputCls} />
+                <input placeholder="Temporary password" value={teamForm.password} onChange={(e) => setTeamForm((f) => ({ ...f, password: e.target.value }))} className={teamInputCls} />
+                <select value={teamForm.role} onChange={(e) => setTeamForm((f) => ({ ...f, role: e.target.value }))} className={teamInputCls}>
+                  {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              {teamError && <p className="text-xs text-rose-600">{teamError}</p>}
+              <button onClick={inviteTeamMember} disabled={teamSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                {teamSaving ? "Inviting..." : "Invite"}
+              </button>
+            </div>
+          )}
+
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                <th className="py-2 font-medium">Name</th>
+                <th className="py-2 font-medium">Email</th>
+                <th className="py-2 font-medium">Role</th>
+                <th className="py-2 font-medium">Division</th>
+                <th className="py-2 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {team.map((u) => (
+                <tr key={u.id} className="border-b border-slate-50 last:border-0">
+                  <td className="py-2.5 font-medium text-slate-800">{u.name}</td>
+                  <td className="py-2.5 text-slate-600">{u.email}</td>
+                  <td className="py-2.5">
+                    <select
+                      value={u.role}
+                      onChange={(e) => updateTeamRole(u.id, e.target.value)}
+                      className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
+                    >
+                      {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </td>
+                  <td className="py-2.5">
+                    <select
+                      value={u.divisionId ?? ""}
+                      onChange={(e) => updateTeamDivision(u.id, e.target.value)}
+                      className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
+                    >
+                      <option value="">Unassigned</option>
+                      {divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <button onClick={() => removeTeamMember(u.id)} className="text-slate-400 hover:text-rose-600">
+                      <Trash2 size={15} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {team.length === 0 && (
+                <tr><td colSpan={5} className="py-6 text-center text-slate-400">No teammates yet — invite one above.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <p className="text-sm font-semibold text-slate-900 mb-1">Divisions</p>
+          <p className="text-xs text-slate-500 mb-4">
+            Departments or business units at {org.name} — used to organize your team and to tag project sponsors.
+          </p>
+          <div className="flex items-center gap-2 mb-4">
+            <input
+              placeholder="e.g. Finance, Operations"
+              value={newDivisionName}
+              onChange={(e) => setNewDivisionName(e.target.value)}
+              className={teamInputCls}
+            />
+            <button
+              onClick={addDivision}
+              disabled={divisionSaving || !newDivisionName.trim()}
+              className="shrink-0 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-medium hover:bg-indigo-100 disabled:opacity-50"
+            >
+              {divisionSaving ? "Adding..." : "+ Add division"}
+            </button>
+          </div>
+          {divisionError && <p className="text-xs text-rose-600 mb-2">{divisionError}</p>}
+          <div className="flex flex-wrap gap-2">
+            {divisions.map((d) => (
+              <span key={d.id} className="inline-flex items-center gap-1.5 text-xs bg-slate-100 text-slate-700 rounded-full px-3 py-1.5">
+                {d.name}
+                <button onClick={() => removeDivision(d.id)} className="text-slate-400 hover:text-rose-600">
+                  <Trash2 size={11} />
+                </button>
+              </span>
+            ))}
+            {divisions.length === 0 && <p className="text-xs text-slate-400">No divisions yet.</p>}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-semibold text-slate-900">Stakeholders (project sponsors)</p>
+            <button
+              onClick={() => setShowStakeholderForm((s) => !s)}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            >
+              <Plus size={14} /> Add stakeholder
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Business stakeholders at {org.name} who can be picked as a project&apos;s sponsor — they don&apos;t
+            need a Keel login of their own.
+          </p>
+
+          {showStakeholderForm && (
+            <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <input placeholder="Full name" value={stakeholderForm.name} onChange={(e) => setStakeholderForm((f) => ({ ...f, name: e.target.value }))} className={teamInputCls} />
+                <input placeholder="Title (optional)" value={stakeholderForm.title} onChange={(e) => setStakeholderForm((f) => ({ ...f, title: e.target.value }))} className={teamInputCls} />
+                <input placeholder="Email (optional)" type="email" value={stakeholderForm.email} onChange={(e) => setStakeholderForm((f) => ({ ...f, email: e.target.value }))} className={teamInputCls} />
+                <select value={stakeholderForm.divisionId} onChange={(e) => setStakeholderForm((f) => ({ ...f, divisionId: e.target.value }))} className={teamInputCls}>
+                  <option value="">No division</option>
+                  {divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              {stakeholderError && <p className="text-xs text-rose-600">{stakeholderError}</p>}
+              <button onClick={addStakeholder} disabled={stakeholderSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                {stakeholderSaving ? "Adding..." : "Add stakeholder"}
+              </button>
+            </div>
+          )}
+
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                <th className="py-2 font-medium">Name</th>
+                <th className="py-2 font-medium">Title</th>
+                <th className="py-2 font-medium">Division</th>
+                <th className="py-2 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {stakeholders.map((s) => (
+                <tr key={s.id} className="border-b border-slate-50 last:border-0">
+                  <td className="py-2.5 font-medium text-slate-800">{s.name}</td>
+                  <td className="py-2.5 text-slate-600">{s.title ?? "—"}</td>
+                  <td className="py-2.5">
+                    <select
+                      value={s.divisionId ?? ""}
+                      onChange={(e) => updateStakeholderDivision(s.id, e.target.value)}
+                      className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
+                    >
+                      <option value="">No division</option>
+                      {divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <button onClick={() => removeStakeholder(s.id)} className="text-slate-400 hover:text-rose-600">
+                      <Trash2 size={15} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {stakeholders.length === 0 && (
+                <tr><td colSpan={4} className="py-6 text-center text-slate-400">No stakeholders yet — add one above.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <p className="text-sm font-semibold text-slate-900 mb-1">Export your data</p>
           <p className="text-xs text-slate-500 mb-4">

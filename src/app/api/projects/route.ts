@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projects, projectMembers } from "@/lib/db/schema";
+import { projects, projectMembers, stakeholders } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { getAllProjectsWithMetrics } from "@/lib/portfolio";
 import { requireRole } from "@/lib/auth";
 
@@ -18,6 +19,15 @@ export async function POST(req: NextRequest) {
   if (!body.name) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
+  // If a structured sponsor (stakeholder) was picked, denormalize their name into the plain
+  // `sponsor` text column too — same reasoning as the PATCH route: every existing consumer
+  // reads `sponsor` as text.
+  let sponsorName: string | null = body.sponsor ?? null;
+  if (body.sponsorStakeholderId) {
+    const [stakeholder] = await db.select({ name: stakeholders.name }).from(stakeholders).where(eq(stakeholders.id, body.sponsorStakeholderId));
+    if (stakeholder) sponsorName = stakeholder.name;
+  }
+
   const [created] = await db
     .insert(projects)
     .values({
@@ -26,7 +36,8 @@ export async function POST(req: NextRequest) {
       // a project for their own organization — never unassigned or another company's.
       organizationId: _authUser.organizationId ?? null,
       description: body.description ?? null,
-      sponsor: body.sponsor ?? null,
+      sponsor: sponsorName,
+      sponsorStakeholderId: body.sponsorStakeholderId || null,
       projectManager: body.projectManager ?? null,
       stage: body.stage ?? "INCEPTION",
       priority: body.priority ?? "MEDIUM",

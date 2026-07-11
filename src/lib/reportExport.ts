@@ -10,7 +10,7 @@ type ReportInput = {
 
 // Splits the AI-generated markdown-ish report into (heading, body) blocks so the
 // PDF/PPTX can render real section headings instead of one wall of text.
-function splitSections(reportText: string): { heading: string | null; body: string }[] {
+export function splitSections(reportText: string): { heading: string | null; body: string }[] {
   const lines = reportText.split("\n");
   const sections: { heading: string | null; body: string }[] = [];
   let current: { heading: string | null; body: string[] } = { heading: null, body: [] };
@@ -89,8 +89,15 @@ function drawPlannedVsActualChart(doc: PDFKit.PDFDocument, data: PlannedVsActual
     { label: "Effort (hrs)", planned: data.effort.plannedHours, actual: data.effort.actualHours, format: (n) => `${n}h` },
   ];
 
-  const chartLeft = doc.page.margins.left + 90;
-  const chartWidth = doc.page.width - doc.page.margins.right - chartLeft - 70;
+  // Fixed-width label/value columns on either side of the bar, so the bar itself never
+  // needs to grow past a known-safe width — previously the value label was positioned
+  // immediately after the bar's rendered width, which ran off the right edge of the page
+  // whenever a bar was at or near its max (i.e. on almost every real report, since one of
+  // planned/actual is always the larger of the two by definition).
+  const rowLabelWidth = 82;
+  const valueGutter = 130;
+  const chartLeft = doc.page.margins.left + rowLabelWidth + 8;
+  const barAreaWidth = doc.page.width - doc.page.margins.right - chartLeft - valueGutter;
   const barHeight = 12;
   const rowGap = 34;
 
@@ -98,25 +105,25 @@ function drawPlannedVsActualChart(doc: PDFKit.PDFDocument, data: PlannedVsActual
     const max = Math.max(row.planned, row.actual, 1);
     const startY = doc.y;
 
-    doc.font("Helvetica-Bold").fontSize(9.5).fillColor(BRAND.slate).text(row.label, doc.page.margins.left, startY + 6, { width: 82 });
+    doc.font("Helvetica-Bold").fontSize(9.5).fillColor(BRAND.slate).text(row.label, doc.page.margins.left, startY + 6, { width: rowLabelWidth, lineBreak: false });
 
-    const plannedWidth = Math.max(2, (row.planned / max) * chartWidth);
+    const plannedWidth = Math.max(2, (row.planned / max) * barAreaWidth);
     doc.rect(chartLeft, startY, plannedWidth, barHeight).fill(BRAND.indigoLight);
     doc
       .font("Helvetica")
       .fontSize(8)
       .fillColor(BRAND.indigoDark)
-      .text(`Planned: ${row.format(row.planned)}`, chartLeft + plannedWidth + 6, startY + 1, { width: 150 });
+      .text(`Planned: ${row.format(row.planned)}`, chartLeft + barAreaWidth + 6, startY + 1, { width: valueGutter - 6, lineBreak: false });
 
     const actualY = startY + barHeight + 4;
-    const actualWidth = Math.max(2, (row.actual / max) * chartWidth);
+    const actualWidth = Math.max(2, (row.actual / max) * barAreaWidth);
     const overBudgetLike = row.actual > row.planned;
     doc.rect(chartLeft, actualY, actualWidth, barHeight).fill(overBudgetLike ? "#fca5a5" : BRAND.indigo);
     doc
       .font("Helvetica")
       .fontSize(8)
       .fillColor(overBudgetLike ? "#b91c1c" : BRAND.indigoDark)
-      .text(`Actual: ${row.format(row.actual)}`, chartLeft + actualWidth + 6, actualY + 1, { width: 150 });
+      .text(`Actual: ${row.format(row.actual)}`, chartLeft + barAreaWidth + 6, actualY + 1, { width: valueGutter - 6, lineBreak: false });
 
     doc.y = startY + rowGap;
   }

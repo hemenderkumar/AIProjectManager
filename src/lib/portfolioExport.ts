@@ -3,19 +3,14 @@ import { BRAND, BRAND_HEX, createKeelPdf, finalizeKeelPdf, sectionTitle, coverMa
 
 const RAG_HEX: Record<string, string> = { GREEN: "10b981", YELLOW: "f59e0b", RED: "ef4444" };
 
-export function generatePortfolioOnePagerPdf(data: PortfolioOnePager, generatedAt: Date): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = createKeelPdf({ margin: 44 });
-    const chunks: Buffer[] = [];
-    doc.on("data", (chunk) => chunks.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
-
+/** Draws the KPI cards / RAG bar / budget bars / at-risk list block used by the portfolio
+ * one-pager — pulled out so the narrative reports (weekly status, steering committee) can
+ * open with the same visual snapshot instead of duplicating this drawing code. Assumes the
+ * caller has already drawn a masthead/title and positioned doc.y beneath it. */
+export function drawPortfolioSnapshotBody(doc: PDFKit.PDFDocument, data: PortfolioOnePager) {
     const left = doc.page.margins.left;
     const right = doc.page.width - doc.page.margins.right;
     const fullWidth = right - left;
-
-    coverMasthead(doc, "Portfolio Executive Summary");
 
     // KPI row
     const kpis: { label: string; value: string; tone?: string }[] = [
@@ -73,26 +68,31 @@ export function generatePortfolioOnePagerPdf(data: PortfolioOnePager, generatedA
       );
     doc.moveDown(1);
 
-    // Budget bar
+    // Budget bar — value labels sit in a fixed-width gutter to the right of the bar area,
+    // so the label never runs off the page edge no matter how large the bar renders (a bar
+    // is at or near full width whenever its value is the larger of planned/actual, which by
+    // definition happens on one of the two rows every single time).
     sectionTitle(doc, "Budget — Planned vs Actual (active projects)", 11);
+    const budgetValueGutter = 160;
+    const budgetBarWidth = fullWidth - budgetValueGutter;
     const maxBudget = Math.max(data.totalBudgetPlanned, data.totalBudgetActual, 1);
     const rowY1 = doc.y;
-    const plannedW = Math.max(2, (data.totalBudgetPlanned / maxBudget) * fullWidth);
+    const plannedW = Math.max(2, (data.totalBudgetPlanned / maxBudget) * budgetBarWidth);
     doc.rect(left, rowY1, plannedW, 16).fill(BRAND.indigoLight);
     doc
       .font("Helvetica")
       .fontSize(8)
       .fillColor(BRAND.indigoDark)
-      .text(`Planned: $${data.totalBudgetPlanned.toLocaleString()}`, left + plannedW + 6, rowY1 + 3, { width: 180 });
+      .text(`Planned: $${data.totalBudgetPlanned.toLocaleString()}`, left + budgetBarWidth + 6, rowY1 + 3, { width: budgetValueGutter - 6, lineBreak: false });
     const rowY2 = rowY1 + 20;
-    const actualW = Math.max(2, (data.totalBudgetActual / maxBudget) * fullWidth);
+    const actualW = Math.max(2, (data.totalBudgetActual / maxBudget) * budgetBarWidth);
     const over = data.totalBudgetActual > data.totalBudgetPlanned;
     doc.rect(left, rowY2, actualW, 16).fill(over ? "#fca5a5" : BRAND.indigo);
     doc
       .font("Helvetica")
       .fontSize(8)
       .fillColor(over ? "#b91c1c" : BRAND.indigoDark)
-      .text(`Actual: $${data.totalBudgetActual.toLocaleString()}`, left + actualW + 6, rowY2 + 3, { width: 180 });
+      .text(`Actual: $${data.totalBudgetActual.toLocaleString()}`, left + budgetBarWidth + 6, rowY2 + 3, { width: budgetValueGutter - 6, lineBreak: false });
     doc.y = rowY2 + 20 + 12;
 
     // At-risk table
@@ -116,6 +116,18 @@ export function generatePortfolioOnePagerPdf(data: PortfolioOnePager, generatedA
         doc.moveDown(0.4);
       });
     }
+}
+
+export function generatePortfolioOnePagerPdf(data: PortfolioOnePager, generatedAt: Date): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = createKeelPdf({ margin: 44 });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    coverMasthead(doc, "Portfolio Executive Summary");
+    drawPortfolioSnapshotBody(doc, data);
 
     finalizeKeelPdf(doc, generatedAt);
     doc.end();

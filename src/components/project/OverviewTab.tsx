@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
@@ -7,6 +7,8 @@ import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
 import { Sparkles, Loader2, CheckCircle2, Lock, Trash2 } from "lucide-react";
 import IdeationWorkspace from "./IdeationWorkspace";
+
+type Stakeholder = { id: string; name: string; title: string | null; divisionId: string | null };
 
 // Duplicated (not imported) on purpose: "@/lib/auth" pulls in next/headers, which breaks
 // the build if a value (non-type) import from it ends up in a "use client" component's
@@ -41,6 +43,7 @@ export default function OverviewTab({
     name: p.name,
     description: p.description ?? "",
     sponsor: p.sponsor ?? "",
+    sponsorStakeholderId: p.sponsorStakeholderId ?? "",
     projectManager: p.projectManager ?? "",
     stage: p.stage,
     priority: p.priority,
@@ -70,6 +73,17 @@ export default function OverviewTab({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // The stakeholder directory only exists for projects tied to a client organization — this
+  // fetches THIS project's org's directory (not the caller's own), so internal staff working
+  // on a client project still see that client's sponsors. Empty list = fall back to free text.
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+  useEffect(() => {
+    fetch(`/api/projects/${p.id}/stakeholders`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => setStakeholders(Array.isArray(rows) ? rows : []))
+      .catch(() => setStakeholders([]));
+  }, [p.id]);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -171,7 +185,20 @@ export default function OverviewTab({
             </select>
           </Field>
           <Field label="Sponsor">
-            <input value={form.sponsor} onChange={(e) => update("sponsor", e.target.value)} className={inputCls} />
+            {stakeholders.length > 0 ? (
+              <select
+                value={form.sponsorStakeholderId}
+                onChange={(e) => update("sponsorStakeholderId", e.target.value)}
+                className={inputCls}
+              >
+                <option value="">— Select sponsor —</option>
+                {stakeholders.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}{s.title ? ` (${s.title})` : ""}</option>
+                ))}
+              </select>
+            ) : (
+              <input value={form.sponsor} onChange={(e) => update("sponsor", e.target.value)} className={inputCls} placeholder="No stakeholder directory yet — enter a name" />
+            )}
           </Field>
           <Field label="Project Manager">
             <input value={form.projectManager} onChange={(e) => update("projectManager", e.target.value)} className={inputCls} />

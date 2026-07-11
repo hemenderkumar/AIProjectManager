@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "./Avatar";
-import { Send, X, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { Send, X, Sparkles, Volume2, VolumeX, Square } from "lucide-react";
 
 export default function AvatarAssistant() {
   const [open, setOpen] = useState(false);
@@ -30,7 +30,44 @@ export default function AvatarAssistant() {
       load();
       window.speechSynthesis.onvoiceschanged = load;
     }
+
+    // Stop any in-progress speech if this component ever unmounts, so navigating away
+    // can't leave the assistant talking in the background with no visible controls.
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, []);
+
+  // Stops speech immediately (used by the Stop button, the mute toggle, and when the
+  // panel is closed) — previously nothing ever called speechSynthesis.cancel() once
+  // speech had started, so it would run to completion no matter what the user clicked.
+  function stopSpeaking() {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeaking(false);
+  }
+
+  function pickVoice(voices: SpeechSynthesisVoice[], voiceGender: "female" | "male") {
+    const genderPattern =
+      voiceGender === "female"
+        ? /female|zira|samantha|victoria|susan|karen|aria|jenny/i
+        : /male|david|daniel|alex|fred|guy|ryan/i;
+    // Prefer higher-quality "Natural"/"Neural"/"Premium"/"Enhanced" voices — most modern
+    // browsers (Chrome, Edge, Safari) expose at least one of these alongside the default,
+    // noticeably robotic system voice, and picking one is a free, no-integration way to
+    // sound less like a robot.
+    const qualityPattern = /natural|neural|premium|enhanced|online/i;
+    return (
+      voices.find((v) => genderPattern.test(v.name) && qualityPattern.test(v.name)) ??
+      voices.find((v) => qualityPattern.test(v.name) && v.lang.startsWith("en")) ??
+      voices.find((v) => genderPattern.test(v.name)) ??
+      voices.find((v) => v.lang.startsWith("en")) ??
+      voices[0]
+    );
+  }
 
   function speak(text: string) {
     setCaption(text);
@@ -39,15 +76,12 @@ export default function AvatarAssistant() {
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    const voices = voicesRef.current;
-    const preferred = voices.find((v) =>
-      gender === "female"
-        ? /female|zira|samantha|victoria|susan|karen/i.test(v.name)
-        : /male|david|daniel|alex|fred/i.test(v.name)
-    );
+    const preferred = pickVoice(voicesRef.current, gender);
     if (preferred) utterance.voice = preferred;
-    utterance.pitch = gender === "female" ? 1.15 : 0.9;
-    utterance.rate = 1;
+    // Slightly closer to natural human range than the previous 1.15/0.9 extremes, and a
+    // touch slower than the default 1.0 rate — reads as calmer/less clipped, not robotic.
+    utterance.pitch = gender === "female" ? 1.05 : 0.95;
+    utterance.rate = 0.95;
     utterance.onstart = () => setSpeaking(true);
     utterance.onend = () => setSpeaking(false);
     utterance.onerror = () => setSpeaking(false);
@@ -94,6 +128,15 @@ export default function AvatarAssistant() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {speaking && (
+            <button
+              onClick={stopSpeaking}
+              className="text-[11px] px-2 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 flex items-center gap-1"
+              title="Stop speaking"
+            >
+              <Square size={11} fill="currentColor" /> Stop
+            </button>
+          )}
           <button
             onClick={() => setGender((g) => (g === "female" ? "male" : "female"))}
             className="text-[11px] px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-500 hover:bg-slate-100"
@@ -101,10 +144,26 @@ export default function AvatarAssistant() {
           >
             {gender === "female" ? "Female voice" : "Male voice"}
           </button>
-          <button onClick={() => setMuted((m) => !m)} className="text-slate-400 hover:text-slate-700 p-1" title="Mute voice">
+          <button
+            onClick={() => {
+              setMuted((m) => {
+                if (!m) stopSpeaking(); // muting mid-sentence should stop it now, not just prevent the next one
+                return !m;
+              });
+            }}
+            className="text-slate-400 hover:text-slate-700 p-1"
+            title={muted ? "Unmute voice" : "Mute voice"}
+          >
             {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
           </button>
-          <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-700 p-1" aria-label="Close">
+          <button
+            onClick={() => {
+              stopSpeaking();
+              setOpen(false);
+            }}
+            className="text-slate-400 hover:text-slate-700 p-1"
+            aria-label="Close"
+          >
             <X size={15} />
           </button>
         </div>

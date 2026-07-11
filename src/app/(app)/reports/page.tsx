@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
+import ExportButtons from "@/components/ExportButtons";
 import { Sparkles, Loader2, FileText } from "lucide-react";
 
 type Report = { id: string; type: string; title: string; content: string; generatedAt: string };
@@ -89,7 +90,18 @@ export default function ReportsPage() {
         </div>
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
           {active ? (
-            <div className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">{active.content}</div>
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{active.title}</p>
+                  <p className="text-xs text-slate-400">
+                    {active.type === "STEERING_COMMITTEE" ? "Steering committee" : "Weekly status"}
+                  </p>
+                </div>
+                <ExportButtons endpoint={`/api/reports/${active.id}`} filenamePrefix="portfolio-report" />
+              </div>
+              <div className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">{active.content}</div>
+            </>
           ) : (
             <p className="text-sm text-slate-400">Select a report from the list, or generate a new one.</p>
           )}

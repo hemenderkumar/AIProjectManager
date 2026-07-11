@@ -115,6 +115,13 @@ export function finalizeKeelPdf(doc: PDFKit.PDFDocument, generatedAt: Date) {
     const left = doc.page.margins.left;
     const right = doc.page.width - doc.page.margins.right;
     const y = doc.page.height - doc.page.margins.bottom + 16;
+
+    // Writing text below the bottom margin (which is exactly where a footer belongs) makes
+    // pdfkit think the content overflowed and silently appends a brand-new blank page —
+    // the standard workaround is to zero out the bottom margin just for this write so
+    // pdfkit's auto-pagination check has nothing to trigger on, then restore it.
+    const originalBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
     doc.save();
     doc
       .font("Helvetica")
@@ -131,6 +138,7 @@ export function finalizeKeelPdf(doc: PDFKit.PDFDocument, generatedAt: Date) {
         lineBreak: false,
       });
     doc.restore();
+    doc.page.margins.bottom = originalBottomMargin;
   }
 }
 

@@ -1,7 +1,9 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Topbar from "@/components/Topbar";
+
+type Stakeholder = { id: string; name: string; title: string | null };
 
 export default function NewProjectPage() {
   return (
@@ -27,6 +29,7 @@ function NewProjectForm() {
     name: "",
     description: "",
     sponsor: "",
+    sponsorStakeholderId: "",
     projectManager: "",
     priority: "MEDIUM",
     stage: "INCEPTION",
@@ -41,6 +44,18 @@ function NewProjectForm() {
   function update<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  // Sourced from the creating user's own organization — a new project inherits the creator's
+  // organizationId, so this is the right directory to offer here (unlike the per-project
+  // endpoint used once a project already exists). Non-org (internal staff) callers get a
+  // 403/empty result and just see the free-text fallback below.
+  const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
+  useEffect(() => {
+    fetch("/api/organization/stakeholders")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => setStakeholders(Array.isArray(rows) ? rows : []))
+      .catch(() => setStakeholders([]));
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -151,7 +166,16 @@ function NewProjectForm() {
               </select>
             </Field>
             <Field label="Sponsor">
-              <input value={form.sponsor} onChange={(e) => update("sponsor", e.target.value)} className={inputCls} />
+              {stakeholders.length > 0 ? (
+                <select value={form.sponsorStakeholderId} onChange={(e) => update("sponsorStakeholderId", e.target.value)} className={inputCls}>
+                  <option value="">— Select sponsor —</option>
+                  {stakeholders.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}{s.title ? ` (${s.title})` : ""}</option>
+                  ))}
+                </select>
+              ) : (
+                <input value={form.sponsor} onChange={(e) => update("sponsor", e.target.value)} className={inputCls} />
+              )}
             </Field>
             <Field label="Project Manager">
               <input value={form.projectManager} onChange={(e) => update("projectManager", e.target.value)} className={inputCls} />
