@@ -125,7 +125,7 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
       </Card>
 
       <Card title="Pricing Model">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Model">
             <select value={pricingModel} onChange={(e) => savePricingModel(e.target.value)} className={inputCls}>
               <option value="">Not selected</option>
@@ -149,7 +149,7 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
         </div>
       </Card>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <SummaryStat label="Total hours" value={totals.totalHours.toLocaleString()} />
         <SummaryStat label="Recommended mix cost" value={`$${Math.round(totals.recommendedCost).toLocaleString()}`} />
         <SummaryStat label="If all onsite" value={`$${Math.round(totals.allOnsiteCost).toLocaleString()}`} />
@@ -169,7 +169,7 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
       >
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <Field label="Role">
                 <input value={newRole.role} onChange={(e) => setNewRole((f) => ({ ...f, role: e.target.value }))} className={inputCls} />
               </Field>
@@ -190,7 +190,8 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
           </div>
         )}
 
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
               <th className="py-2 font-medium">Role</th>
@@ -275,7 +276,8 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
               </tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </Card>
     </div>
   );

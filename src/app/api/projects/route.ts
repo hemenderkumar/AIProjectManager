@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       stage: body.stage ?? "INCEPTION",
       priority: body.priority ?? "MEDIUM",
       country: body.country ?? null,
+      stateProvince: body.stateProvince ?? null,
       program: body.program ?? null,
       problemStatement: body.problemStatement ?? null,
       proposedSolution: body.proposedSolution ?? null,

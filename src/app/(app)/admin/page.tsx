@@ -206,7 +206,7 @@ export default function AdminPage() {
                 the owner logs in to manage their own team, divisions, stakeholders, and vendor
                 evaluations.
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   placeholder="Company name"
                   value={companyForm.name}
@@ -244,7 +244,8 @@ export default function AdminPage() {
             </div>
           )}
 
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                 <th className="py-2 font-medium">Name</th>
@@ -299,7 +300,8 @@ export default function AdminPage() {
                 <tr><td colSpan={3} className="py-6 text-center text-slate-400">No organizations yet.</td></tr>
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -315,7 +317,7 @@ export default function AdminPage() {
 
           {showForm && (
             <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input placeholder="Full name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} />
                 <input placeholder="Email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} />
                 <input placeholder="Temporary password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className={inputCls} />
@@ -340,7 +342,8 @@ export default function AdminPage() {
             </div>
           )}
 
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                 <th className="py-2 font-medium">Name</th>
@@ -385,13 +388,14 @@ export default function AdminPage() {
                 <tr><td colSpan={5} className="py-6 text-center text-slate-400">No users yet.</td></tr>
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         {settings && (
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <p className="text-sm font-semibold text-slate-900 mb-4">Automation settings</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Weekly status report</label>
                 <select

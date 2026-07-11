@@ -265,7 +265,7 @@ export default function RfpDetailPage() {
             <p className="text-xs text-emerald-700">This project has a completed charter — AI will draft from it directly.</p>
           )}
           {!project?.hasCharter && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
                 <span className="block text-xs font-medium text-slate-500 mb-1">Background</span>
                 <textarea value={docForm.background} onChange={(e) => setDocForm((f) => ({ ...f, background: e.target.value }))} className={inputCls} rows={2} />
@@ -361,7 +361,7 @@ export default function RfpDetailPage() {
             </div>
           )}
           {vendorError && <p className="text-xs text-rose-600">{vendorError}</p>}
-          <form onSubmit={inviteVendor} className="grid grid-cols-3 gap-3 items-end">
+          <form onSubmit={inviteVendor} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
             <label className="block">
               <span className="block text-xs font-medium text-slate-500 mb-1">Vendor / company name</span>
               <input value={vendorForm.name} onChange={(e) => setVendorForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} />

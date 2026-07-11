@@ -71,7 +71,7 @@ export default function InvoicesTab({ detail }: { detail: ProjectDetail }) {
 
   return (
     <div className="max-w-3xl space-y-4">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <SummaryStat label="Total invoiced" value={`$${totalInvoiced.toLocaleString()}`} />
         <SummaryStat label="Paid" value={`$${totalPaid.toLocaleString()}`} />
         <SummaryStat label="Outstanding" value={`$${totalOutstanding.toLocaleString()}`} />
@@ -91,7 +91,7 @@ export default function InvoicesTab({ detail }: { detail: ProjectDetail }) {
       >
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Vendor">
                 <input value={form.vendor} onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))} className={inputCls} />
               </Field>
@@ -99,7 +99,7 @@ export default function InvoicesTab({ detail }: { detail: ProjectDetail }) {
                 <input value={form.invoiceNumber} onChange={(e) => setForm((f) => ({ ...f, invoiceNumber: e.target.value }))} className={inputCls} />
               </Field>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <Field label="Amount">
                 <input type="number" min={0} value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: Number(e.target.value) }))} className={inputCls} />
               </Field>
@@ -110,7 +110,7 @@ export default function InvoicesTab({ detail }: { detail: ProjectDetail }) {
                 <input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className={inputCls} />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Status">
                 <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))} className={inputCls}>
                   {["PENDING", "PAID", "OVERDUE", "DISPUTED"].map((s) => <option key={s} value={s}>{s}</option>)}
@@ -124,7 +124,8 @@ export default function InvoicesTab({ detail }: { detail: ProjectDetail }) {
           </div>
         )}
 
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
               <th className="py-2 font-medium">Vendor</th>
@@ -168,7 +169,8 @@ export default function InvoicesTab({ detail }: { detail: ProjectDetail }) {
               <tr><td colSpan={7} className="py-6 text-center text-slate-400">No invoices logged yet.</td></tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </Card>
     </div>
   );

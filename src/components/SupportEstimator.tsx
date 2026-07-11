@@ -141,7 +141,7 @@ export default function SupportEstimator({
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-4 gap-2 mb-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                   {SEVERITIES.map((sev) => (
                     <label key={sev} className="block">
                       <span className="block text-[10px] font-medium text-slate-500 mb-0.5">{sev} tickets/mo</span>
@@ -166,7 +166,7 @@ export default function SupportEstimator({
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 p-4">
-        <div className="grid grid-cols-2 gap-4 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-500 mb-1">Support coverage</span>
             <select
@@ -202,10 +202,10 @@ export default function SupportEstimator({
           Assumptions (editable)
         </button>
         {showAssumptions && (
-          <div className="mt-3 grid grid-cols-2 gap-4 bg-slate-50 rounded-lg p-3">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 rounded-lg p-3">
             <div>
               <p className="text-[11px] font-medium text-slate-600 mb-1.5">Resolution hours per ticket</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SEVERITIES.map((sev) => (
                   <label key={sev} className="block">
                     <span className="block text-[10px] text-slate-500">{sev}</span>
@@ -262,13 +262,13 @@ export default function SupportEstimator({
 
       <div className="bg-white rounded-xl border border-slate-200 p-4">
         <p className="text-xs font-semibold text-slate-700 mb-3">Estimate</p>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
           <Stat label="Support hours / mo" value={result.totalHours.toFixed(1)} />
           <Stat label="FTE required" value={result.fteRequired.toFixed(2)} />
           <Stat label="Monthly baseline" value={`$${Math.round(result.selectedMonthlyCost).toLocaleString()}`} highlight />
         </div>
         {result.canShare && (
-          <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
             <div className={`rounded-lg border p-3 ${!shared ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200"}`}>
               <p className="text-slate-500">Dedicated (per-app teams)</p>
               <p className="text-base font-semibold text-slate-800">${Math.round(result.dedicatedMonthlyCost).toLocaleString()}/mo</p>

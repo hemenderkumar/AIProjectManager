@@ -111,7 +111,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <StatCard label="Total Incidents" value={String(incidents.length)} />
         <StatCard label="Open / In Progress" value={String(open)} tone={open > 0 ? "warn" : "good"} />
         <StatCard label="Critical (unresolved)" value={String(critical)} tone={critical > 0 ? "bad" : "good"} />
@@ -130,7 +130,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
 
         {showForm && (
           <div className="p-4 bg-slate-50 border-b border-slate-100 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Title">
                 <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={fieldCls} />
               </FormField>
@@ -144,7 +144,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
             <FormField label="Description">
               <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={fieldCls} rows={2} />
             </FormField>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <FormField label="Severity">
                 <select value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))} className={fieldCls}>
                   {["LOW", "MEDIUM", "HIGH", "CRITICAL"].map((s) => <option key={s} value={s}>{s}</option>)}
@@ -167,7 +167,8 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
           </div>
         )}
 
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
               <th className="px-4 py-2.5 font-medium">Incident</th>
@@ -261,7 +262,8 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
               <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">No incidents logged. Everything&apos;s quiet.</td></tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   );

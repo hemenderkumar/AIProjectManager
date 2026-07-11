@@ -92,7 +92,7 @@ export default function ResourcesTab({
         )}
         {isInternal && showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Resource">
                 <select value={resourceId} onChange={(e) => setResourceId(e.target.value)} className={inputCls}>
                   <option value="">Select a resource...</option>
@@ -109,7 +109,8 @@ export default function ResourcesTab({
           </div>
         )}
 
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
               <th className="py-2 font-medium">Name</th>
@@ -137,7 +138,8 @@ export default function ResourcesTab({
               <tr><td colSpan={5} className="py-6 text-center text-slate-400">No resources allocated yet.</td></tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </Card>
 
       <TeamAccessCard projectId={detail.project.id} />

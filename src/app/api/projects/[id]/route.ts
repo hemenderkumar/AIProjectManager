@@ -29,7 +29,7 @@ export async function PATCH(
 
   const allowed = [
     "name", "description", "sponsor", "sponsorStakeholderId", "projectManager", "stage", "priority",
-    "country", "program",
+    "country", "stateProvince", "program",
     "ragStatus", "startDate", "targetEndDate", "actualEndDate", "budgetPlanned",
     "budgetActual", "percentComplete", "problemStatement", "proposedSolution",
     "expectedBenefits", "ideationNotes", "ideationAlignment", "ideaType", "ideationStatus", "businessCase", "objectives",

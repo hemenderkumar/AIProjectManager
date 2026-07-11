@@ -129,7 +129,7 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
     >
       {showNewSprint && (
         <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Name">
               <input value={newSprint.name} onChange={(e) => setNewSprint((f) => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="Sprint 1" />
             </Field>
@@ -137,7 +137,7 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
               <input value={newSprint.goal} onChange={(e) => setNewSprint((f) => ({ ...f, goal: e.target.value }))} className={inputCls} />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Start date">
               <input type="date" value={newSprint.startDate} onChange={(e) => setNewSprint((f) => ({ ...f, startDate: e.target.value }))} className={inputCls} />
             </Field>
@@ -221,7 +221,7 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-3 mb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
           {STATUS_COLUMNS.map((status) => (
             <div key={status} className="bg-slate-50 rounded-lg p-2 min-h-[120px]">
               <p className="text-[11px] font-semibold text-slate-500 mb-2">{STATUS_LABELS[status]}</p>

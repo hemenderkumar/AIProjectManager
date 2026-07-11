@@ -52,7 +52,7 @@ export default function StatusTab({ detail }: { detail: ProjectDetail }) {
       >
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="RAG status">
                 <select value={form.ragStatus} onChange={(e) => setForm((f) => ({ ...f, ragStatus: e.target.value as typeof f.ragStatus }))} className={inputCls}>
                   {["GREEN", "YELLOW", "RED"].map((s) => <option key={s} value={s}>{s}</option>)}
@@ -89,7 +89,7 @@ export default function StatusTab({ detail }: { detail: ProjectDetail }) {
                 <span className="text-xs text-slate-500">{u.percentComplete}% complete</span>
               </div>
               {u.summary && <p className="text-sm text-slate-700">{u.summary}</p>}
-              <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-2 text-xs">
                 {u.accomplishments && <div><span className="font-medium text-slate-500">Done:</span> {u.accomplishments}</div>}
                 {u.upcoming && <div><span className="font-medium text-slate-500">Next:</span> {u.upcoming}</div>}
                 {u.blockers && <div><span className="font-medium text-slate-500">Blockers:</span> {u.blockers}</div>}

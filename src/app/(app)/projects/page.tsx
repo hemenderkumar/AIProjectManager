@@ -39,7 +39,8 @@ export default async function ProjectsPage() {
       />
       <div className="p-8">
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
                 <th className="px-4 py-2.5 font-medium">Project</th>
@@ -63,7 +64,7 @@ export default async function ProjectsPage() {
                   </td>
                   <td className="px-4 py-3"><StageBadge stage={p.stage} /></td>
                   <td className="px-4 py-3"><PriorityBadge priority={p.priority} /></td>
-                  <td className="px-4 py-3 text-xs text-slate-500">{[p.country, p.program].filter(Boolean).join(" / ") || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">{[p.country, p.stateProvince, p.program].filter(Boolean).join(" / ") || "—"}</td>
                   <td className="px-4 py-3"><RagBadge rag={p.autoRag} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 w-28">
@@ -88,7 +89,8 @@ export default async function ProjectsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
     </div>

@@ -112,7 +112,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         <p className="text-xs text-slate-500 mb-3">
           A read-only rollup from Inception &amp; Ideation — what was explored before this direction was chosen.
         </p>
-        <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
           <SummaryStat label="Brainstorm entries" value={`${detail.brainstormEntries.length}`} />
           <SummaryStat label="Solution options compared" value={`${detail.solutionOptions.length}`} />
           <SummaryStat label="Technical review" value={p.technicalReviewStatus ?? "Not reviewed"} />
@@ -149,7 +149,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         <p className="text-xs text-slate-500 mb-3">
           Rolled up from the Tasks (implementation) and Ongoing Support estimates — edit those to change these numbers.
         </p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <SummaryStat label="Material cost" value={`$${materialCost.toLocaleString()}`} />
           <SummaryStat label="Implementation cost" value={`$${implementationCost.toLocaleString()}`} />
           <SummaryStat label="Ongoing support (monthly)" value={`$${ongoingSupportCost.toLocaleString()}`} />
@@ -179,7 +179,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           <Field label="Objectives">
             <textarea value={form.objectives} onChange={(e) => update("objectives", e.target.value)} className={inputCls} rows={2} />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="In scope">
               <textarea value={form.scopeInScope} onChange={(e) => update("scopeInScope", e.target.value)} className={inputCls} rows={2} />
             </Field>
@@ -286,7 +286,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
               className={inputCls}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Approved by">
               <input value={form.charterApprovedBy} onChange={(e) => update("charterApprovedBy", e.target.value)} className={inputCls} />
             </Field>

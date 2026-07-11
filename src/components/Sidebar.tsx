@@ -30,10 +30,15 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-export default function Sidebar({ user }: { user: SessionUser | null }) {
+export default function Sidebar({ user, open }: { user: SessionUser | null; open?: boolean }) {
   const isInternal = !!user && user.organizationId == null;
   return (
-    <aside className="w-60 shrink-0 border-r border-slate-200 bg-white h-screen sticky top-0 flex flex-col">
+    <aside
+      className={`w-64 md:w-60 shrink-0 border-r border-slate-200 bg-white h-screen flex flex-col
+        fixed top-0 left-0 z-50 transition-transform duration-200
+        md:sticky md:z-auto md:transition-none md:translate-x-0
+        ${open ? "translate-x-0" : "-translate-x-full"}`}
+    >
       <div className="px-5 py-5 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
           <Image src="/keel-mark.svg" alt="Keel" width={32} height={32} />

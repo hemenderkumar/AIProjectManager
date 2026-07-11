@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
-import AvatarAssistant from "@/components/AvatarAssistant";
+import AppShell from "@/components/AppShell";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function AppLayout({
@@ -13,11 +12,5 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return (
-    <div className="flex">
-      <Sidebar user={user} />
-      <div className="flex-1 min-w-0">{children}</div>
-      <AvatarAssistant />
-    </div>
-  );
+  return <AppShell user={user}>{children}</AppShell>;
 }

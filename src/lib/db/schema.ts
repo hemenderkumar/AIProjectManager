@@ -187,6 +187,7 @@ export const projects = pgTable("projects", {
   priority: priorityEnum("priority").notNull().default("MEDIUM"),
   ragStatus: ragStatusEnum("rag_status").notNull().default("GREEN"),
   country: text("country"),
+  stateProvince: text("state_province"),
   program: text("program"),
   startDate: timestamp("start_date"),
   targetEndDate: timestamp("target_end_date"),

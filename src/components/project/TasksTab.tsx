@@ -455,13 +455,13 @@ export default function TasksTab({
                     )}
                   </div>
                 )}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <SummaryStat label="Total effort" value={`${editedTotalHours.toFixed(0)} hrs`} />
                   <SummaryStat label="Total project budget" value={`$${totalProjectBudget.toLocaleString()}`} />
                   <SummaryStat label="Duration" value={`${Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000))} days`} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Start date">
                     <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
                   </Field>
@@ -475,7 +475,8 @@ export default function TasksTab({
 
                 <div>
                   <p className="text-xs font-semibold text-slate-700 mb-1.5">Who you&apos;ll need</p>
-                  <table className="w-full text-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
                     <thead>
                       <tr className="text-left text-slate-400 border-b border-slate-200">
                         <th className="py-1.5 font-medium">Role</th>
@@ -516,12 +517,13 @@ export default function TasksTab({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
 
                 <div>
                   <p className="text-xs font-semibold text-slate-700 mb-1.5">Plan by phase</p>
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                     {preview.phaseBreakdown.map((p) => (
                       <div key={p.phase} className="border border-slate-200 rounded-lg p-2 text-center">
                         <p className="text-[10px] text-slate-400">{phaseLabel(p.phase)}</p>
@@ -534,7 +536,8 @@ export default function TasksTab({
 
                 <div>
                   <p className="text-xs font-semibold text-slate-700 mb-1.5">Tasks — adjust hours if needed</p>
-                  <table className="w-full text-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
                     <thead>
                       <tr className="text-left text-slate-400 border-b border-slate-200">
                         <th className="py-1.5 font-medium">Phase</th>
@@ -577,12 +580,13 @@ export default function TasksTab({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                    </table>
+                  </div>
                 </div>
 
                 <div className="border-t border-slate-200 pt-3">
                   <p className="text-xs font-semibold text-slate-700 mb-1.5">Budget breakdown</p>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <SummaryStat label="Labor cost" value={`$${laborCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                     <SummaryStat label="Material costs" value={`$${materialCostTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                     <SummaryStat label={`Contingency (${contingencyPercent}%)`} value={`$${contingencyAmount.toLocaleString()}`} />
@@ -615,7 +619,8 @@ export default function TasksTab({
                     </button>
                   </div>
                   {materialCosts.length > 0 ? (
-                    <table className="w-full text-xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
                       <thead>
                         <tr className="text-left text-slate-400 border-b border-slate-200">
                           <th className="py-1.5 font-medium">Name</th>
@@ -672,7 +677,8 @@ export default function TasksTab({
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                      </table>
+                    </div>
                   ) : (
                     <p className="text-[11px] text-slate-400">No material costs — add licenses, servers, or other costs if needed.</p>
                   )}
@@ -693,7 +699,7 @@ export default function TasksTab({
                       placeholder="e.g. Part-time maintenance for bug fixes, monitoring, and minor enhancements"
                     />
                   </Field>
-                  <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                     <Field label="Estimated monthly cost">
                       <input
                         type="number"
@@ -823,7 +829,7 @@ export default function TasksTab({
             <Field label="Title">
               <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} />
             </Field>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <Field label="Assignee">
                 <select value={form.assigneeId} onChange={(e) => setForm((f) => ({ ...f, assigneeId: e.target.value }))} className={inputCls}>
                   <option value="">Unassigned</option>
@@ -874,7 +880,8 @@ export default function TasksTab({
         )}
 
         {taskView === "list" && (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
               <th className="py-2 font-medium">Task</th>
@@ -976,6 +983,7 @@ export default function TasksTab({
                           </button>
                         </div>
                         {entries.length > 0 ? (
+                          <div className="overflow-x-auto">
                           <table className="w-full text-[11px]">
                             <thead>
                               <tr className="text-left text-slate-400 border-b border-slate-200">
@@ -999,7 +1007,8 @@ export default function TasksTab({
                                 </tr>
                               ))}
                             </tbody>
-                          </table>
+                            </table>
+        </div>
                         ) : (
                           <p className="text-[11px] text-slate-400">No time logged yet for this task.</p>
                         )}
@@ -1014,6 +1023,7 @@ export default function TasksTab({
             )}
           </tbody>
         </table>
+        </div>
         )}
       </Card>
 

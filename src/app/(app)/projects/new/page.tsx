@@ -2,6 +2,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Topbar from "@/components/Topbar";
+import CountryStateFields from "@/components/CountryStateFields";
 
 type Stakeholder = { id: string; name: string; title: string | null };
 
@@ -34,6 +35,7 @@ function NewProjectForm() {
     priority: "MEDIUM",
     stage: "INCEPTION",
     country: "",
+    stateProvince: "",
     program: "",
     problemStatement: "",
     proposedSolution: "",
@@ -153,7 +155,7 @@ function NewProjectForm() {
       <form onSubmit={submit} className="px-8 pb-8 max-w-3xl space-y-6">
         <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
           <p className="text-sm font-semibold text-slate-900">Inception</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Project Name *">
               <input required value={form.name} onChange={(e) => update("name", e.target.value)} className={inputCls} />
             </Field>
@@ -188,9 +190,13 @@ function NewProjectForm() {
                 <option value="CRITICAL">Critical</option>
               </select>
             </Field>
-            <Field label="Country">
-              <input value={form.country} onChange={(e) => update("country", e.target.value)} className={inputCls} placeholder="e.g. United States" />
-            </Field>
+            <CountryStateFields
+              country={form.country}
+              stateProvince={form.stateProvince}
+              onCountryChange={(v) => update("country", v)}
+              onStateChange={(v) => update("stateProvince", v)}
+              selectCls={inputCls}
+            />
             <Field label="Program">
               <input value={form.program} onChange={(e) => update("program", e.target.value)} className={inputCls} placeholder="e.g. Digital Transformation" />
             </Field>

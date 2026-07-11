@@ -181,7 +181,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Idea type">
           <select
             value={p.ideaType ?? ""}
@@ -301,7 +301,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
 
           {showManualOption && (
             <div className="mb-3 p-3 bg-slate-50 rounded-lg space-y-2">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Field label="Name">
                   <input value={manualOption.name} onChange={(e) => setManualOption((o) => ({ ...o, name: e.target.value }))} className={inputCls} />
                 </Field>
@@ -309,7 +309,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                   <input value={manualOption.description} onChange={(e) => setManualOption((o) => ({ ...o, description: e.target.value }))} className={inputCls} />
                 </Field>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Field label="Pros">
                   <input value={manualOption.pros} onChange={(e) => setManualOption((o) => ({ ...o, pros: e.target.value }))} className={inputCls} />
                 </Field>
@@ -349,7 +349,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                   </div>
                   {o.description && <p className="text-[11px] text-slate-600 mb-1.5">{o.description}</p>}
                   {(o.pros || o.cons) && (
-                    <div className="grid grid-cols-2 gap-2 mb-1.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-1.5">
                       {o.pros && <p className="text-[10px] text-emerald-700"><span className="font-medium">Pros:</span> {o.pros}</p>}
                       {o.cons && <p className="text-[10px] text-rose-700"><span className="font-medium">Cons:</span> {o.cons}</p>}
                     </div>
@@ -415,7 +415,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                   {TECH_REVIEW_LABELS[p.technicalReviewStatus ?? "PENDING"]}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-3 mb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
                 <Field label="Review status">
                   <select
                     value={reviewForm.technicalReviewStatus}

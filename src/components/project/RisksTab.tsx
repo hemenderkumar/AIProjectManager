@@ -53,7 +53,7 @@ export default function RisksTab({ detail }: { detail: ProjectDetail }) {
             <Field label="Description">
               <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputCls} rows={2} />
             </Field>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <Field label="Impact">
                 <select value={form.impact} onChange={(e) => setForm((f) => ({ ...f, impact: e.target.value }))} className={inputCls}>
                   {["LOW", "MEDIUM", "HIGH", "CRITICAL"].map((s) => <option key={s} value={s}>{s}</option>)}
@@ -75,7 +75,8 @@ export default function RisksTab({ detail }: { detail: ProjectDetail }) {
           </div>
         )}
 
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
               <th className="py-2 font-medium">Risk</th>
@@ -110,7 +111,8 @@ export default function RisksTab({ detail }: { detail: ProjectDetail }) {
               <tr><td colSpan={5} className="py-6 text-center text-slate-400">No risks logged yet.</td></tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </Card>
     </div>
   );

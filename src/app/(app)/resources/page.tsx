@@ -220,7 +220,7 @@ export default function ResourcesPage() {
         {showForm && (
           <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
             <p className="text-sm font-semibold text-slate-900">{editingId ? "Edit resource" : "New resource"}</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Name</label>
                 <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} />
@@ -309,7 +309,8 @@ export default function ResourcesPage() {
         )}
 
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100 bg-slate-50">
                 <th className="px-4 py-2.5 font-medium">Name</th>
@@ -378,7 +379,8 @@ export default function ResourcesPage() {
                 </tr>
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         <RateCardSection />

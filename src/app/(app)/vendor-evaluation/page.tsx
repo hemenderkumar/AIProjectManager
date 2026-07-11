@@ -195,7 +195,7 @@ function VendorEvaluationInner() {
         {showForm && (
           <form onSubmit={createRfp} className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
             <p className="text-sm font-semibold text-slate-900">New Request for Proposal</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
                 <span className="block text-xs font-medium text-slate-500 mb-1">Title *</span>
                 <input required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} placeholder="e.g. CRM Implementation RFP" />
@@ -215,7 +215,7 @@ function VendorEvaluationInner() {
               Otherwise, add a few pointers below and AI will draft from those instead — all optional, and everything
               can be edited before you publish.
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
                 <span className="block text-xs font-medium text-slate-500 mb-1">Background</span>
                 <textarea value={form.background} onChange={(e) => setForm((f) => ({ ...f, background: e.target.value }))} className={inputCls} rows={2} />

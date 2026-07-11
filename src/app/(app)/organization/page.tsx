@@ -243,7 +243,7 @@ export default function OrganizationPage() {
 
           {showTeamForm && (
             <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input placeholder="Full name" value={teamForm.name} onChange={(e) => setTeamForm((f) => ({ ...f, name: e.target.value }))} className={teamInputCls} />
                 <input placeholder="Email" type="email" value={teamForm.email} onChange={(e) => setTeamForm((f) => ({ ...f, email: e.target.value }))} className={teamInputCls} />
                 <input placeholder="Temporary password" value={teamForm.password} onChange={(e) => setTeamForm((f) => ({ ...f, password: e.target.value }))} className={teamInputCls} />
@@ -258,7 +258,8 @@ export default function OrganizationPage() {
             </div>
           )}
 
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                 <th className="py-2 font-medium">Name</th>
@@ -303,7 +304,8 @@ export default function OrganizationPage() {
                 <tr><td colSpan={5} className="py-6 text-center text-slate-400">No teammates yet — invite one above.</td></tr>
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -357,7 +359,7 @@ export default function OrganizationPage() {
 
           {showStakeholderForm && (
             <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input placeholder="Full name" value={stakeholderForm.name} onChange={(e) => setStakeholderForm((f) => ({ ...f, name: e.target.value }))} className={teamInputCls} />
                 <input placeholder="Title (optional)" value={stakeholderForm.title} onChange={(e) => setStakeholderForm((f) => ({ ...f, title: e.target.value }))} className={teamInputCls} />
                 <input placeholder="Email (optional)" type="email" value={stakeholderForm.email} onChange={(e) => setStakeholderForm((f) => ({ ...f, email: e.target.value }))} className={teamInputCls} />
@@ -373,7 +375,8 @@ export default function OrganizationPage() {
             </div>
           )}
 
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                 <th className="py-2 font-medium">Name</th>
@@ -408,7 +411,8 @@ export default function OrganizationPage() {
                 <tr><td colSpan={4} className="py-6 text-center text-slate-400">No stakeholders yet — add one above.</td></tr>
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-5">

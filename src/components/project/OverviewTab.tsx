@@ -7,6 +7,7 @@ import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
 import { Sparkles, Loader2, CheckCircle2, Lock, Trash2 } from "lucide-react";
 import IdeationWorkspace from "./IdeationWorkspace";
+import CountryStateFields from "@/components/CountryStateFields";
 
 type Stakeholder = { id: string; name: string; title: string | null; divisionId: string | null };
 type OrgOption = { id: string; name: string };
@@ -54,6 +55,7 @@ export default function OverviewTab({
     budgetActual: p.budgetActual ?? 0,
     percentComplete: p.percentComplete,
     country: p.country ?? "",
+    stateProvince: p.stateProvince ?? "",
     program: p.program ?? "",
     problemStatement: p.problemStatement ?? "",
     proposedSolution: p.proposedSolution ?? "",
@@ -188,7 +190,7 @@ export default function OverviewTab({
   return (
     <div className="space-y-6 max-w-3xl">
       <Card title="Inception">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Project Name">
             <input value={form.name} onChange={(e) => update("name", e.target.value)} className={inputCls} />
           </Field>
@@ -238,9 +240,13 @@ export default function OverviewTab({
           <Field label="% Complete">
             <input type="number" min={0} max={100} value={form.percentComplete} onChange={(e) => update("percentComplete", Number(e.target.value))} className={inputCls} />
           </Field>
-          <Field label="Country">
-            <input value={form.country} onChange={(e) => update("country", e.target.value)} className={inputCls} placeholder="e.g. United States" />
-          </Field>
+          <CountryStateFields
+            country={form.country}
+            stateProvince={form.stateProvince}
+            onCountryChange={(v) => update("country", v)}
+            onStateChange={(v) => update("stateProvince", v)}
+            selectCls={inputCls}
+          />
           <Field label="Program">
             <input value={form.program} onChange={(e) => update("program", e.target.value)} className={inputCls} placeholder="e.g. Digital Transformation" />
           </Field>
@@ -336,7 +342,7 @@ export default function OverviewTab({
             </div>
           </div>
         )}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field label="Feasibility score (0-100)">
             <input
               type="number"

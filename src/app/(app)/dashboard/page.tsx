@@ -46,7 +46,7 @@ export default async function DashboardPage() {
           <p className="text-sm text-indigo-900">{healthNarrative}</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <KpiCard label="Active Projects" value={summary.activeCount} />
           <KpiCard
             label="On Track (Green)"
@@ -118,7 +118,8 @@ export default async function DashboardPage() {
                 Nothing flagged right now — every active project is green.
               </p>
             ) : (
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                     <th className="px-4 py-2 font-medium">Project</th>
@@ -145,7 +146,8 @@ export default async function DashboardPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             )}
           </div>
 
@@ -187,7 +189,8 @@ function RollupCard({
       {rows.length === 0 ? (
         <p className="text-sm text-slate-400">No data yet.</p>
       ) : (
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
           <tbody>
             {rows.map((r) => (
               <tr key={r.key} className="border-b border-slate-50 last:border-0">
@@ -197,7 +200,8 @@ function RollupCard({
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
     </div>
   );

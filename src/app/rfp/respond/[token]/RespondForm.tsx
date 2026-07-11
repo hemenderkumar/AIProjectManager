@@ -60,7 +60,7 @@ export default function RespondForm({ token }: { token: string }) {
           placeholder="Describe your approach, relevant experience, and why you're a good fit..."
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">Proposed cost ($)</label>
           <input type="number" value={proposedCost} onChange={(e) => setProposedCost(e.target.value)} className={inputCls} />
