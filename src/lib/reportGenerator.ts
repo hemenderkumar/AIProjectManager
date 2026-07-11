@@ -6,6 +6,9 @@ import { sendEmail } from "@/lib/email";
 import { inArray } from "drizzle-orm";
 
 export async function generateWeeklyStatusReport() {
+  // Intentionally unscoped (no user passed): this is a scheduled, internal PMO report
+  // covering the whole portfolio, not something generated on behalf of a specific
+  // (possibly client-scoped) logged-in user.
   const summary = await getPortfolioSummary();
   const context = formatPortfolioForAI(summary);
 
@@ -30,6 +33,7 @@ Budget Snapshot, Recommended Actions. Call out RED/YELLOW projects explicitly.`;
 }
 
 export async function generateSteeringCommitteeReport() {
+  // Same reasoning as generateWeeklyStatusReport above — intentionally unscoped.
   const summary = await getPortfolioSummary();
   const context = formatPortfolioForAI(summary);
 

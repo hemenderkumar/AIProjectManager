@@ -8,7 +8,7 @@ export async function POST() {
   const user = await requireRole("VIEWER");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const summary = await getPortfolioSummary();
+  const summary = await getPortfolioSummary(user);
   const data = buildPortfolioOnePager(summary);
   const generatedAt = new Date();
   const buffer = await generatePortfolioOnePagerPdf(data, generatedAt);

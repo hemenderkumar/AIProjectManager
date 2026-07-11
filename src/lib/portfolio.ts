@@ -2,9 +2,15 @@ import { db } from "./db";
 import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints } from "./db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { computeAutoRag, scheduleVarianceDays, budgetVariancePercent, isOverdueTask, riskScore, ProjectForHealth } from "./kpi";
+import { filterProjectsForUser } from "./tenancy";
+import type { SessionUser } from "./auth";
 
-export async function getAllProjectsWithMetrics() {
-  const allProjects = await db.select().from(projects);
+// `user` scopes which projects come back — see filterProjectsForUser in lib/tenancy.ts.
+// Every user-facing caller (pages, non-cron API routes) MUST pass the current user; omitting
+// it returns everything unfiltered, which is only appropriate for system/cron contexts.
+export async function getAllProjectsWithMetrics(user?: SessionUser | null) {
+  const allProjectsRaw = await db.select().from(projects);
+  const allProjects = await filterProjectsForUser(allProjectsRaw, user);
   const allTasks = await db.select().from(tasks);
   const allRisks = await db.select().from(riskItems);
 
@@ -36,8 +42,8 @@ export async function getAllProjectsWithMetrics() {
   });
 }
 
-export async function getPortfolioSummary() {
-  const withMetrics = await getAllProjectsWithMetrics();
+export async function getPortfolioSummary(user?: SessionUser | null) {
+  const withMetrics = await getAllProjectsWithMetrics(user);
   const active = withMetrics.filter((p) => p.stage !== "CLOSED");
 
   const byRag = { GREEN: 0, YELLOW: 0, RED: 0 } as Record<string, number>;

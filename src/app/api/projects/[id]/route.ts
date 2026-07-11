@@ -3,15 +3,15 @@ import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getProjectDetail } from "@/lib/portfolio";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireRole("VIEWER");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
+  const _authUser = await requireProjectAccess("VIEWER", id);
+  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const data = await getProjectDetail(id);
   if (!data) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(data);
@@ -21,9 +21,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
+  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
 
   const allowed = [
@@ -80,9 +80,18 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
-  await db.delete(projects).where(eq(projects.id, id));
+  // Deleting a whole project is irreversible and cascades to every task, milestone, sprint,
+  // invoice, etc. underneath it — require PM tier or above, not just any contributor.
+  const _authUser = await requireProjectAccess("PM", id);
+  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  try {
+    await db.delete(projects).where(eq(projects.id, id));
+  } catch {
+    return NextResponse.json(
+      { error: "Could not delete this project — it may still be referenced by other records. Contact support if this persists." },
+      { status: 409 }
+    );
+  }
   return NextResponse.json({ ok: true });
 }

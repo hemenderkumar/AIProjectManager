@@ -3,7 +3,7 @@ import { askClaudeJSON } from "@/lib/ai";
 import { getProjectDetail } from "@/lib/portfolio";
 import { db } from "@/lib/db";
 import { brainstormEntries } from "@/lib/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 type BrainstormResult = {
   angles: string[];
@@ -12,11 +12,11 @@ type BrainstormResult = {
 };
 
 export async function POST(req: NextRequest) {
-  const authUser = await requireRole("CONTRIBUTOR");
-  if (!authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const { projectId } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+
+  const authUser = await requireProjectAccess("CONTRIBUTOR", projectId);
+  if (!authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const detail = await getProjectDetail(projectId);
   if (!detail) return NextResponse.json({ error: "project not found" }, { status: 404 });

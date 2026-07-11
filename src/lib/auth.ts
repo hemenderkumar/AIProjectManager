@@ -6,7 +6,10 @@ export type SessionUser = {
   id: string;
   name: string;
   email: string;
-  role: "ADMIN" | "PM" | "CONTRIBUTOR" | "VIEWER";
+  role: "ADMIN" | "SUPER_USER" | "PM" | "CONTRIBUTOR" | "VIEWER";
+  // Which company this user belongs to, if any. Null = internal staff (your own team),
+  // not tied to a single client. Drives project visibility — see src/lib/tenancy.ts.
+  organizationId: string | null;
 };
 
 const COOKIE_NAME = "kpi_session";
@@ -51,6 +54,7 @@ const BYPASS_USER: SessionUser = {
   name: "Admin (auth disabled)",
   email: "bypass@local",
   role: "ADMIN",
+  organizationId: null,
 };
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
@@ -65,8 +69,11 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;
 
+// Permission tier (independent of visibility scope — see src/lib/tenancy.ts for who can
+// see which projects). SUPER_USER sits below ADMIN: they can act like a PM/approver across
+// their own company's projects, but never touch platform-wide/internal-only tools.
 export function roleAtLeast(role: SessionUser["role"], min: SessionUser["role"]) {
-  const order = { VIEWER: 0, CONTRIBUTOR: 1, PM: 2, ADMIN: 3 };
+  const order = { VIEWER: 0, CONTRIBUTOR: 1, PM: 2, SUPER_USER: 3, ADMIN: 4 };
   return order[role] >= order[min];
 }
 

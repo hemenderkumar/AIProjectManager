@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rateCards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireInternal } from "@/lib/tenancy";
 
 const allowed = ["role", "sourcingType", "hourlyRate", "notes"] as const;
 const numericFields = ["hourlyRate"] as const;
@@ -11,7 +11,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const _authUser = await requireInternal("CONTRIBUTOR");
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
   const body = await req.json();
@@ -36,7 +36,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const _authUser = await requireInternal("CONTRIBUTOR");
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
   await db.delete(rateCards).where(eq(rateCards.id, id));

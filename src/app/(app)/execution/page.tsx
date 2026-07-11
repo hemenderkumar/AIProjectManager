@@ -2,6 +2,7 @@ import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getAllProjectsWithMetrics } from "@/lib/portfolio";
+import { getCurrentUser } from "@/lib/auth";
 import ApproveIdeaButton from "@/components/ApproveIdeaButton";
 import { PlusCircle, Rocket, Lightbulb } from "lucide-react";
 
@@ -10,7 +11,8 @@ export const dynamic = "force-dynamic";
 const EXECUTION_STAGES = ["EXECUTION", "CLOSING", "CLOSED"];
 
 export default async function ExecutionPage() {
-  const all = await getAllProjectsWithMetrics();
+  const user = await getCurrentUser();
+  const all = await getAllProjectsWithMetrics(user);
   const readyToApprove = all.filter((p) => p.stage === "CHARTER");
   const inExecution = all
     .filter((p) => EXECUTION_STAGES.includes(p.stage))

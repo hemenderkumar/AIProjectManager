@@ -4,6 +4,7 @@ import { incidents, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { askClaudeJSON } from "@/lib/ai";
 import { requireRole } from "@/lib/auth";
+import { canAccessOptionalProject } from "@/lib/tenancy";
 
 type RecommendationResult = {
   likelyCategory: string;
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest) {
 
   const [incident] = await db.select().from(incidents).where(eq(incidents.id, incidentId));
   if (!incident) return NextResponse.json({ error: "incident not found" }, { status: 404 });
+  if (!(await canAccessOptionalProject(_authUser, incident.projectId))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   let projectName: string | null = null;
   if (incident.projectId) {

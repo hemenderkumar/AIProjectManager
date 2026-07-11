@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { tasks, milestones, resources, projects, costItems, sprints } from "@/lib/db/schema";
 import { askClaudeJSON } from "@/lib/ai";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 import { syncAllocationsFromEffort } from "@/lib/allocations";
 
 // Different kinds of projects go through very different lifecycles. Each project
@@ -267,14 +267,14 @@ function buildPhaseBreakdown(planTasks: PlanTask[], allResources: Resource[], ph
 }
 
 export async function POST(req: NextRequest) {
-  const user = await requireRole("CONTRIBUTOR");
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const body = await req.json();
   const { projectId, confirm } = body;
   if (!projectId) {
     return NextResponse.json({ error: "projectId is required" }, { status: 400 });
   }
+
+  const user = await requireProjectAccess("CONTRIBUTOR", projectId);
+  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const allResources = await db.select().from(resources);
 

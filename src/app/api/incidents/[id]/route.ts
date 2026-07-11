@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { incidents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
+import { canAccessOptionalProject } from "@/lib/tenancy";
 
 const dateFields = ["reportedAt", "resolvedAt"] as const;
 const allowed = [
@@ -17,6 +18,13 @@ export async function PATCH(
   const _authUser = await requireRole("CONTRIBUTOR");
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
+
+  const [existing] = await db.select().from(incidents).where(eq(incidents.id, id));
+  if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!(await canAccessOptionalProject(_authUser, existing.projectId))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await req.json();
 
   const update: Record<string, unknown> = {};
@@ -46,6 +54,13 @@ export async function DELETE(
   const _authUser = await requireRole("CONTRIBUTOR");
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
+
+  const [existing] = await db.select().from(incidents).where(eq(incidents.id, id));
+  if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!(await canAccessOptionalProject(_authUser, existing.projectId))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   await db.delete(incidents).where(eq(incidents.id, id));
   return NextResponse.json({ ok: true });
 }

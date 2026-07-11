@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resources } from "@/lib/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireInternal } from "@/lib/tenancy";
 
 export async function GET() {
-  const _authUser = await requireRole("VIEWER");
+  const _authUser = await requireInternal("VIEWER");
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const data = await db.select().from(resources);
   return NextResponse.json(data);
 }
 
 export async function POST(req: NextRequest) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const _authUser = await requireInternal("CONTRIBUTOR");
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
   if (!body.name) {

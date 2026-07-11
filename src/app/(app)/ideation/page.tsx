@@ -2,14 +2,17 @@ import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import { StageBadge, PriorityBadge } from "@/components/badges";
 import { getAllProjectsWithMetrics } from "@/lib/portfolio";
+import { getCurrentUser } from "@/lib/auth";
 import { PlusCircle, Lightbulb } from "lucide-react";
+import IdeaSuggestions from "@/components/IdeaSuggestions";
 
 export const dynamic = "force-dynamic";
 
 const IDEATION_STAGES = ["INCEPTION", "IDEATION", "CHARTER"];
 
 export default async function IdeationPage() {
-  const all = await getAllProjectsWithMetrics();
+  const user = await getCurrentUser();
+  const all = await getAllProjectsWithMetrics(user);
   const ideas = all
     .filter((p) => IDEATION_STAGES.includes(p.stage))
     .sort((a, b) => IDEATION_STAGES.indexOf(a.stage) - IDEATION_STAGES.indexOf(b.stage));
@@ -42,6 +45,8 @@ export default async function IdeationPage() {
             </p>
           </div>
         </div>
+
+        <IdeaSuggestions />
 
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <table className="w-full text-sm">

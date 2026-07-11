@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { timeEntries, tasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 async function recomputeActualHours(taskId: string) {
   const entries = await db.select().from(timeEntries).where(eq(timeEntries.taskId, taskId));
@@ -24,9 +24,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; taskId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, taskId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { taskId } = await params;
   const body = await req.json();
   const hours = Number(body.hours);
   if (!hours || Number.isNaN(hours) || hours <= 0) {

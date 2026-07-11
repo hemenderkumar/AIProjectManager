@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { milestones } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; milestoneId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, milestoneId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { milestoneId } = await params;
   const body = await req.json();
   const allowed = ["name", "dueDate", "completedAt", "status"];
   const update: Record<string, unknown> = {};
@@ -31,9 +31,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; milestoneId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, milestoneId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { milestoneId } = await params;
   await db.delete(milestones).where(eq(milestones.id, milestoneId));
   return NextResponse.json({ ok: true });
 }

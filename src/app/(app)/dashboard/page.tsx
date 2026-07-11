@@ -7,11 +7,13 @@ import AiAskPanel from "@/components/AiAskPanel";
 import ExecutiveExportButtons from "@/components/ExecutiveExportButtons";
 import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getPortfolioSummary } from "@/lib/portfolio";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const summary = await getPortfolioSummary();
+  const user = await getCurrentUser();
+  const summary = await getPortfolioSummary(user);
 
   const atRisk = summary.projects
     .filter((p) => p.stage !== "CLOSED" && p.autoRag !== "GREEN")

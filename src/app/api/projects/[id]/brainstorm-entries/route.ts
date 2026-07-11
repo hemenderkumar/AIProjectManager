@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { brainstormEntries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 export async function GET(
   _req: NextRequest,
@@ -17,9 +17,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authUser = await requireRole("CONTRIBUTOR");
-  if (!authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
+  const authUser = await requireProjectAccess("CONTRIBUTOR", id);
+  if (!authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
   if (!body.content || !String(body.content).trim()) {
     return NextResponse.json({ error: "content is required" }, { status: 400 });

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { requireInternal } from "@/lib/tenancy";
 import { generateWeeklyStatusReport, generateSteeringCommitteeReport } from "@/lib/reportGenerator";
 
 export async function POST(req: NextRequest) {
-  const user = await requireRole("PM");
+  // These reports aggregate the whole portfolio unscoped (by design, see reportGenerator.ts) —
+  // internal staff only.
+  const user = await requireInternal("PM");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { type } = await req.json();

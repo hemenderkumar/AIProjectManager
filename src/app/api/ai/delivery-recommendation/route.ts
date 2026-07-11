@@ -4,7 +4,7 @@ import { getProjectDetail } from "@/lib/portfolio";
 import { db } from "@/lib/db";
 import { deliveryRoleMix, projects, rateCards } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 import type { PricingModel } from "@/lib/deliveryModel";
 
 type RoleRecommendation = {
@@ -24,11 +24,11 @@ type DeliveryRecommendation = {
 };
 
 export async function POST(req: NextRequest) {
-  const _authUser = await requireRole("CONTRIBUTOR");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const { projectId } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", projectId);
+  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const detail = await getProjectDetail(projectId);
   if (!detail) return NextResponse.json({ error: "project not found" }, { status: 404 });

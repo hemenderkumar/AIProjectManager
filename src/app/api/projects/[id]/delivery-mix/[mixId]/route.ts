@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { deliveryRoleMix } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 const allowed = ["role", "hours", "onsitePercent", "offshorePercent", "contractorPercent", "rationale"] as const;
 const numericFields = ["hours", "onsitePercent", "offshorePercent", "contractorPercent"] as const;
@@ -11,9 +11,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; mixId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, mixId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { mixId } = await params;
   const body = await req.json();
 
   const update: Record<string, unknown> = {};
@@ -36,9 +36,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; mixId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, mixId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { mixId } = await params;
   await db.delete(deliveryRoleMix).where(eq(deliveryRoleMix.id, mixId));
   return NextResponse.json({ ok: true });
 }

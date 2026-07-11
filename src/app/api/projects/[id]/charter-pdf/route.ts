@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import { getProjectDetail } from "@/lib/portfolio";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 import { formatDate } from "@/lib/format";
 
 type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
@@ -148,10 +148,10 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireRole("VIEWER");
+  const { id } = await params;
+  const user = await requireProjectAccess("VIEWER", id);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { id } = await params;
   const detail = await getProjectDetail(id);
   if (!detail) return NextResponse.json({ error: "not found" }, { status: 404 });
 

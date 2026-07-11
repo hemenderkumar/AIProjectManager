@@ -2,18 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { statusRequests, resources, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 import { sendEmail } from "@/lib/email";
 import { randomBytes } from "crypto";
 
 export async function POST(req: NextRequest) {
-  const user = await requireRole("CONTRIBUTOR");
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const { projectId, taskId, resourceId, message } = await req.json();
   if (!projectId || !resourceId) {
     return NextResponse.json({ error: "projectId and resourceId are required" }, { status: 400 });
   }
+
+  const user = await requireProjectAccess("CONTRIBUTOR", projectId);
+  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const [resource] = await db.select().from(resources).where(eq(resources.id, resourceId));
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId));

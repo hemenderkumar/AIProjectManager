@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { askClaudeJSON } from "@/lib/ai";
 import { getProjectDetail } from "@/lib/portfolio";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 type FeasibilityResult = {
   technicalApproach: string;
@@ -13,11 +13,11 @@ type FeasibilityResult = {
 };
 
 export async function POST(req: NextRequest) {
-  const _authUser = await requireRole("CONTRIBUTOR");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const { projectId } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", projectId);
+  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const detail = await getProjectDetail(projectId);
   if (!detail) return NextResponse.json({ error: "project not found" }, { status: 404 });

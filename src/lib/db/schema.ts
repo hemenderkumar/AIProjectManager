@@ -66,8 +66,17 @@ export const riskStatusEnum = pgEnum("risk_status", [
   "ACCEPTED",
 ]);
 
+// Role hierarchy, by visibility scope (not just permission level):
+// - ADMIN: platform-wide — sees and manages every organization and every project.
+// - SUPER_USER: company-wide — tied to one organization, sees/manages all of that
+//   organization's projects (a client-side program lead, or an internal account owner).
+// - PM / CONTRIBUTOR / VIEWER: project-specific — see only the individual project(s)
+//   they're added to as a member (via project_members), regardless of which organization
+//   they belong to. This is what keeps one client's project invisible to another client's
+//   users, and (just as importantly) keeps internal staff scoped to what they're staffed on.
 export const userRoleEnum = pgEnum("user_role", [
   "ADMIN",
+  "SUPER_USER",
   "PM",
   "CONTRIBUTOR",
   "VIEWER",
@@ -146,6 +155,10 @@ const cuid = () => text("id").primaryKey().$defaultFn(() => createId());
 export const projects = pgTable("projects", {
   id: cuid(),
   name: text("name").notNull(),
+  // Which client company this project is for. Null means "internal-only" — visible to
+  // ADMIN and to whichever staff are added as project members, but no organization's
+  // SUPER_USER will see it since it isn't tied to their company.
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   description: text("description"),
   sponsor: text("sponsor"),
   projectManager: text("project_manager"),
@@ -372,6 +385,15 @@ export const milestones = pgTable("milestones", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// A client company (tenant). Internal staff (your own team) have organizationId = null on
+// their user row and are not "in" any organization; every client-side user belongs to
+// exactly one. Every project optionally belongs to one organization (the client it's for).
+export const organizations = pgTable("organizations", {
+  id: cuid(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const users = pgTable("users", {
   id: cuid(),
   name: text("name").notNull(),
@@ -379,6 +401,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: userRoleEnum("role").notNull().default("VIEWER"),
   resourceId: text("resource_id").references(() => resources.id),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -557,8 +580,28 @@ export const settings = pgTable("settings", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Append-only record of sensitive/high-stakes actions — approvals, reviews, rate changes,
+// deletions — so a decision can be traced back to who made it and when. Deliberately
+// generic (entityType/entityId/action, free-text detail) rather than one table per action
+// type, so new audited actions don't need a schema change.
+export const auditLog = pgTable("audit_log", {
+  id: cuid(),
+  actorUserId: text("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  actorName: text("actor_name"), // snapshot in case the user is later deleted
+  action: text("action").notNull(), // e.g. "charter.approved", "technical_review.approved", "rate_card.updated", "organization.deleted"
+  entityType: text("entity_type"), // e.g. "project", "rate_card", "organization"
+  entityId: text("entity_id"),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+  detail: text("detail"), // free-text description of what changed
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
-export const projectsRelations = relations(projects, ({ many }) => ({
+export const projectsRelations = relations(projects, ({ many, one }) => ({
+  organization: one(organizations, {
+    fields: [projects.organizationId],
+    references: [organizations.id],
+  }),
   tasks: many(tasks),
   resources: many(projectResources),
   statusUpdates: many(statusUpdates),
@@ -577,6 +620,11 @@ export const projectsRelations = relations(projects, ({ many }) => ({
 export const resourcesRelations = relations(resources, ({ many }) => ({
   projects: many(projectResources),
   tasks: many(tasks),
+}));
+
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  users: many(users),
+  projects: many(projects),
 }));
 
 export const deliveryRoleMixRelations = relations(deliveryRoleMix, ({ one }) => ({
@@ -700,6 +748,10 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   resource: one(resources, {
     fields: [users.resourceId],
     references: [resources.id],
+  }),
+  organization: one(organizations, {
+    fields: [users.organizationId],
+    references: [organizations.id],
   }),
 }));
 

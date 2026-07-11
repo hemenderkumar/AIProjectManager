@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProjectDetail } from "@/lib/portfolio";
 import { buildPlannedVsActual } from "@/lib/reportData";
 import { generateReportPdf, generateReportOnePagerPdf } from "@/lib/reportExport";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 export async function POST(req: NextRequest) {
-  const user = await requireRole("VIEWER");
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
   const { projectId, report, onePager } = await req.json().catch(() => ({}));
   if (!projectId || !report) {
     return NextResponse.json({ error: "projectId and report are required" }, { status: 400 });
   }
+
+  const user = await requireProjectAccess("VIEWER", projectId);
+  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const detail = await getProjectDetail(projectId);
   if (!detail) return NextResponse.json({ error: "project not found" }, { status: 404 });

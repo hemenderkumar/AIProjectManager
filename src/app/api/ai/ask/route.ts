@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "question is required" }, { status: 400 });
   }
 
-  const summary = await getPortfolioSummary();
+  const summary = await getPortfolioSummary(_authUser);
   const context = formatPortfolioForAI(summary);
 
   const system = `You are an AI project management assistant embedded in a KPI-driven project tracker.

@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 import { syncAllocationsFromEffort } from "@/lib/allocations";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireRole("VIEWER");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
+  const _authUser = await requireProjectAccess("VIEWER", id);
+  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const data = await db.select().from(tasks).where(eq(tasks.projectId, id));
   return NextResponse.json(data);
 }
@@ -20,9 +20,9 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
+  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
   if (!body.title) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sprints, tasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 const allowed = ["name", "goal", "startDate", "endDate", "status"] as const;
 const dateFields = ["startDate", "endDate"] as const;
@@ -11,9 +11,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; sprintId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, sprintId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { sprintId } = await params;
   const body = await req.json();
 
   const update: Record<string, unknown> = {};
@@ -36,9 +36,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; sprintId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, sprintId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { sprintId } = await params;
   // Unassign any tasks from this sprint first (they go back to the backlog) rather than
   // leaving a dangling reference or relying on a DB-level cascade for something this visible.
   await db.update(tasks).set({ sprintId: null }).where(eq(tasks.sprintId, sprintId));

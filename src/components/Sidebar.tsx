@@ -28,6 +28,7 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
 }
 
 export default function Sidebar({ user }: { user: SessionUser | null }) {
+  const isInternal = !!user && user.organizationId == null;
   return (
     <aside className="w-60 shrink-0 border-r border-slate-200 bg-white h-screen sticky top-0 flex flex-col">
       <div className="px-5 py-5 border-b border-slate-100">
@@ -75,14 +76,18 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
             <Sparkles size={17} />
             AI Assistant
           </Link>
-          <Link href="/reports" className={navLinkCls}>
-            <FileBarChart size={17} />
-            Reports
-          </Link>
-          <Link href="/resources" className={navLinkCls}>
-            <Users size={17} />
-            Resources
-          </Link>
+          {isInternal && (
+            <Link href="/reports" className={navLinkCls}>
+              <FileBarChart size={17} />
+              Reports
+            </Link>
+          )}
+          {isInternal && (
+            <Link href="/resources" className={navLinkCls}>
+              <Users size={17} />
+              Resources
+            </Link>
+          )}
           {user?.role === "ADMIN" && (
             <Link href="/admin" className={navLinkCls}>
               <ShieldCheck size={17} />

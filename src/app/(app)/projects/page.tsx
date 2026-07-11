@@ -2,12 +2,14 @@ import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getAllProjectsWithMetrics } from "@/lib/portfolio";
+import { getCurrentUser } from "@/lib/auth";
 import { PlusCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  const projects = await getAllProjectsWithMetrics();
+  const user = await getCurrentUser();
+  const projects = await getAllProjectsWithMetrics(user);
 
   const sorted = [...projects].sort((a, b) => {
     if (a.stage === "CLOSED" && b.stage !== "CLOSED") return 1;

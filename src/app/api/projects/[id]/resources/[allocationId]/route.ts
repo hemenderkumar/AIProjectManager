@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projectResources } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; allocationId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, allocationId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { allocationId } = await params;
   const body = await req.json();
   const [updated] = await db
     .update(projectResources)
@@ -25,9 +25,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; allocationId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, allocationId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { allocationId } = await params;
   await db.delete(projectResources).where(eq(projectResources.id, allocationId));
   return NextResponse.json({ ok: true });
 }

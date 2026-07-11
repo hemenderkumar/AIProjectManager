@@ -5,14 +5,14 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
-import { Sparkles, Loader2, CheckCircle2, Lock } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2, Lock, Trash2 } from "lucide-react";
 import IdeationWorkspace from "./IdeationWorkspace";
 
 // Duplicated (not imported) on purpose: "@/lib/auth" pulls in next/headers, which breaks
 // the build if a value (non-type) import from it ends up in a "use client" component's
 // bundle. This is the same tiny role-order check as roleAtLeast() in lib/auth.ts.
 function roleAtLeast(role: SessionUser["role"], min: SessionUser["role"]) {
-  const order = { VIEWER: 0, CONTRIBUTOR: 1, PM: 2, ADMIN: 3 };
+  const order = { VIEWER: 0, CONTRIBUTOR: 1, PM: 2, SUPER_USER: 3, ADMIN: 4 };
   return order[role] >= order[min];
 }
 
@@ -66,6 +66,10 @@ export default function OverviewTab({
 
   const [approving, setApproving] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
+
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -128,7 +132,25 @@ export default function OverviewTab({
     }
   }
 
+  async function deleteProject() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setDeleteError(data?.error ?? "Could not delete this project.");
+        return;
+      }
+      router.push("/projects");
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const canApprove = user ? roleAtLeast(user.role, "PM") : false;
+  const canDelete = user ? roleAtLeast(user.role, "PM") : false;
   const hasCharter = Boolean(p.businessCase?.trim() || p.objectives?.trim());
   const hasEstimate = (p.budgetPlanned ?? 0) > 0;
   const alreadyApproved = Boolean(p.stageApprovedAt);
@@ -343,6 +365,45 @@ export default function OverviewTab({
         </PrimaryButton>
         <AutoHealthNote detail={detail} />
       </div>
+
+      {canDelete && (
+        <Card title="Danger Zone">
+          <p className="text-sm text-slate-500 mb-3">
+            Permanently delete this project and everything under it — tasks, milestones, sprints,
+            invoices, charter, and reports. This cannot be undone.
+          </p>
+          {deleteError && <p className="text-xs text-rose-600 mb-2">{deleteError}</p>}
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 font-medium"
+            >
+              <Trash2 size={14} /> Delete Project
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-slate-700">
+                Type-free confirm: really delete <span className="font-semibold">{p.name}</span>?
+              </p>
+              <button
+                onClick={deleteProject}
+                disabled={deleting}
+                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 font-medium"
+              >
+                {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                {deleting ? "Deleting..." : "Yes, delete permanently"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="text-xs text-slate-500 hover:text-slate-700"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

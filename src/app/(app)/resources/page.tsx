@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Topbar from "@/components/Topbar";
 import { Plus, Trash2, Search } from "lucide-react";
 import { SOURCING_TYPES, SOURCING_LABELS, type SourcingType } from "@/lib/deliveryModel";
@@ -114,6 +114,22 @@ export default function ResourcesPage() {
     setEditingId(null);
     setForm(emptyForm);
     load();
+  }
+
+  // Debounce per-resource so fast typing (e.g. "1", "12", "125") doesn't fire a PATCH per
+  // keystroke — the UI updates instantly (optimistic), the save trails behind by 400ms.
+  const rateSaveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  function updateRate(id: string, costPerHour: number) {
+    setResources((prev) => prev.map((r) => (r.id === id ? { ...r, costPerHour } : r)));
+    clearTimeout(rateSaveTimers.current[id]);
+    rateSaveTimers.current[id] = setTimeout(async () => {
+      const res = await fetch(`/api/resources/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ costPerHour }),
+      });
+      if (!res.ok) load(); // roll back to server truth if the save failed
+    }, 400);
   }
 
   async function remove(id: string) {
@@ -329,7 +345,19 @@ export default function ResourcesPage() {
                     {r.experienceYears ? `${r.experienceYears} yrs` : "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{r.capacityHoursPerWk ?? "—"} hrs/wk</td>
-                  <td className="px-4 py-3 text-slate-600">${r.costPerHour ?? 0}/hr</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    <div className="flex items-center gap-0.5">
+                      <span className="text-slate-400 text-xs">$</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={r.costPerHour ?? 0}
+                        onChange={(e) => updateRate(r.id, Number(e.target.value))}
+                        className="w-16 text-sm border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      <span className="text-slate-400 text-xs">/hr</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{r.sourcingType ? SOURCING_LABELS[r.sourcingType] : "—"}</td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => remove(r.id)} className="text-slate-400 hover:text-rose-600">

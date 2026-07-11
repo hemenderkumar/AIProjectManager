@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { invoices } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireProjectAccess } from "@/lib/tenancy";
 
 const dateFields = ["invoiceDate", "dueDate"] as const;
 const numericFields = ["amount"] as const;
@@ -12,9 +12,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; invoiceId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, invoiceId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { invoiceId } = await params;
   const body = await req.json();
 
   const update: Record<string, unknown> = {};
@@ -39,9 +39,9 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; invoiceId: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
+  const { id, invoiceId } = await params;
+  const _authUser = await requireProjectAccess("CONTRIBUTOR", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const { invoiceId } = await params;
   await db.delete(invoices).where(eq(invoices.id, invoiceId));
   return NextResponse.json({ ok: true });
 }
