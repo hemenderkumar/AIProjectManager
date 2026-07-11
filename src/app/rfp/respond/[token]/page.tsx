@@ -43,6 +43,9 @@ export default async function RfpRespondPage({ params }: { params: Promise<{ tok
           Thanks, {vendor.contactName || vendor.name} &mdash; your proposal was submitted
           {vendor.submittedAt ? ` on ${new Date(vendor.submittedAt).toLocaleDateString("en-US")}` : ""}. No further action is needed.
         </p>
+        <a href={`/api/rfp-respond/${token}/pdf`} download className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+          Download the RFP as PDF
+        </a>
       </Shell>
     );
   }
@@ -59,7 +62,18 @@ export default async function RfpRespondPage({ params }: { params: Promise<{ tok
   return (
     <Shell wide>
       <p className="text-sm text-slate-500 mb-1">Hi {vendor.contactName || vendor.name},</p>
-      <h1 className="text-xl font-semibold text-slate-900 mb-4">{rfp.title}</h1>
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <h1 className="text-xl font-semibold text-slate-900">{rfp.title}</h1>
+        {rfp.content && (
+          <a
+            href={`/api/rfp-respond/${token}/pdf`}
+            download
+            className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap"
+          >
+            Download as PDF
+          </a>
+        )}
+      </div>
       <div className="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6 max-h-[50vh] overflow-y-auto">
         {rfp.content || "The RFP document is still being prepared. Please check back soon, or contact the requester."}
       </div>

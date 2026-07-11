@@ -79,11 +79,14 @@ export async function draftRfpContent(rfp: RfpRow, project: ProjectRow | null): 
   const inputText = buildDraftInputText(rfp, project);
   const system =
     "You are a procurement specialist drafting a professional Request for Proposal (RFP) document for a boutique " +
-    "IT consultancy's client. Write clear, well-structured prose organized under headings (plain text headings " +
-    "like 'Background', 'Scope of Work', 'Requirements', 'Timeline', 'Budget', 'Proposal Submission Instructions', " +
-    "'Evaluation Criteria'). Do not invent specific numbers, dates, or facts that were not provided — if timeline " +
-    "or budget wasn't given, ask vendors to propose their own instead of stating a figure. Keep it grounded, " +
-    "concrete, and free of filler. No markdown formatting (no #, **, or bullets with dashes) — plain text only.";
+    "IT consultancy's client. Write clear, well-structured prose organized under section headings — start each " +
+    "section with a markdown heading on its own line in the exact form '## Heading' (e.g. '## Background', " +
+    "'## Scope of Work', '## Requirements', '## Timeline', '## Budget', '## Proposal Submission Instructions', " +
+    "'## Evaluation Criteria'), so the document can be rendered with real section headings rather than one wall " +
+    "of text. Do not invent specific numbers, dates, or facts that were not provided — if timeline or budget " +
+    "wasn't given, ask vendors to propose their own instead of stating a figure. Keep it grounded, concrete, and " +
+    "free of filler. Other than the '## Heading' markers, use plain text — no other markdown (no **, no bullet " +
+    "dashes).";
   const user = `RFP title: ${rfp.title}\n\nInputs:\n${inputText || "(no additional detail provided — draft a reasonable general-purpose RFP structure the owner can fill in)"}`;
   return askClaude(system, user, 2000);
 }

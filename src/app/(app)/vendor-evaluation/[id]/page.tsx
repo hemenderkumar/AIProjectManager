@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Topbar from "@/components/Topbar";
-import { Sparkles, Loader2, Plus, Trash2, Copy, CheckCircle2, Trophy, Send } from "lucide-react";
+import { Sparkles, Loader2, Plus, Trash2, Copy, CheckCircle2, Trophy, Send, Download } from "lucide-react";
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
@@ -246,14 +246,25 @@ export default function RfpDetailPage() {
         <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-900">RFP Document</p>
-            <button
-              onClick={draftWithAi}
-              disabled={drafting}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
-            >
-              {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-              {rfp.content ? "Regenerate with AI" : "Draft with AI"}
-            </button>
+            <div className="flex items-center gap-2">
+              {rfp.content && (
+                <a
+                  href={`/api/rfps/${id}/pdf`}
+                  download
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                >
+                  <Download size={13} /> Download PDF
+                </a>
+              )}
+              <button
+                onClick={draftWithAi}
+                disabled={drafting}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+              >
+                {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {rfp.content ? "Regenerate with AI" : "Draft with AI"}
+              </button>
+            </div>
           </div>
           {project?.hasCharter && (
             <p className="text-xs text-emerald-700">This project has a completed charter — AI will draft from it directly.</p>
