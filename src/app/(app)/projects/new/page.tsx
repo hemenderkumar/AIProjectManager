@@ -143,7 +143,7 @@ function NewProjectForm() {
               type="button"
               onClick={generateWithAi}
               disabled={aiLoading || !aiMessage.trim()}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
               {aiLoading ? "Filling in..." : "Fill form with AI"}
             </button>
@@ -153,7 +153,7 @@ function NewProjectForm() {
         </div>
       </div>
       <form onSubmit={submit} className="px-8 pb-8 max-w-3xl space-y-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-4">
           <p className="text-sm font-semibold text-slate-900">Inception</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Project Name *">
@@ -206,7 +206,7 @@ function NewProjectForm() {
           </Field>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-4">
           <p className="text-sm font-semibold text-slate-900">Ideation</p>
           <Field label="Problem statement">
             <textarea value={form.problemStatement} onChange={(e) => update("problemStatement", e.target.value)} className={inputCls} rows={2} />
@@ -226,7 +226,7 @@ function NewProjectForm() {
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
           >
             {saving ? "Creating..." : "Create Project"}
           </button>

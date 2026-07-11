@@ -1,13 +1,21 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Avatar from "./Avatar";
-import { Send, X, Sparkles, Volume2, VolumeX, Square } from "lucide-react";
+import { Send, X, Sparkles, Volume2, VolumeX, Square, FolderPlus, FileSearch } from "lucide-react";
+
+const GREETING = "Hi, I'm your AI PM. What are you looking to do today?";
+// Sticks for the length of the browser tab's session (cleared when the tab closes, not
+// persisted forever) — so the greeting pops up once per visit instead of every single
+// page navigation, but a returning visitor still gets greeted again next time.
+const GREETED_KEY = "keel.assistantGreeted";
 
 export default function AvatarAssistant() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [gender, setGender] = useState<"female" | "male">("female");
   const [speaking, setSpeaking] = useState(false);
-  const [caption, setCaption] = useState("Hi, I'm your AI PM. Ask me for a status update anytime.");
+  const [caption, setCaption] = useState(GREETING);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -88,6 +96,21 @@ export default function AvatarAssistant() {
     window.speechSynthesis.speak(utterance);
   }
 
+  // Proactively greet once per browser-tab session: pop the panel open on the first page
+  // a visitor lands on, with a spoken/captioned "what are you looking to do?" and a few
+  // one-tap starting points, instead of waiting for them to notice the floating button.
+  // Doesn't repeat on every navigation within the same session.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.sessionStorage.getItem(GREETED_KEY)) return;
+    window.sessionStorage.setItem(GREETED_KEY, "1");
+    const timer = setTimeout(() => {
+      setOpen(true);
+      speak(GREETING);
+    }, 900);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function ask(q: string) {
     if (!q.trim()) return;
     setLoading(true);
@@ -118,7 +141,7 @@ export default function AvatarAssistant() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 w-80 bg-white rounded-xl border border-slate-200 shadow-xl z-50 flex flex-col overflow-hidden">
+    <div className="fixed bottom-5 right-5 w-80 bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 shadow-xl z-50 flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
         <div className="flex items-center gap-2">
           <Avatar speaking={speaking} gender={gender} />
@@ -182,11 +205,23 @@ export default function AvatarAssistant() {
           <Sparkles size={12} /> Brief me
         </button>
         <button
-          onClick={() => ask("What's the status?")}
+          onClick={() => ask("What needs my attention right now?")}
           disabled={loading}
           className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
         >
-          What&apos;s the status?
+          What needs attention?
+        </button>
+        <button
+          onClick={() => router.push("/projects/new")}
+          className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1"
+        >
+          <FolderPlus size={12} /> Start a project
+        </button>
+        <button
+          onClick={() => router.push("/vendor-evaluation")}
+          className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1"
+        >
+          <FileSearch size={12} /> Draft an RFP
         </button>
       </div>
 
@@ -203,7 +238,7 @@ export default function AvatarAssistant() {
           placeholder="Ask your AI PM..."
           className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        <button type="submit" disabled={loading} className="px-3 py-2 rounded-lg bg-indigo-600 text-white disabled:opacity-50">
+        <button type="submit" disabled={loading} className="px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors disabled:opacity-50">
           <Send size={15} />
         </button>
       </form>

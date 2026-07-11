@@ -117,7 +117,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
         <StatCard label="Critical (unresolved)" value={String(critical)} tone={critical > 0 ? "bad" : "good"} />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200">
+      <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <p className="text-sm font-semibold text-slate-900">Incidents ({incidents.length})</p>
           <button
@@ -160,7 +160,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
             <button
               onClick={submit}
               disabled={saving}
-              className="text-xs px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              className="text-xs px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50 font-medium"
             >
               {saving ? "Saving..." : "Log Incident"}
             </button>
@@ -288,7 +288,7 @@ function StatCard({ label, value, tone = "default" }: { label: string; value: st
     bad: "text-rose-600",
   };
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4">
       <p className="text-xs font-medium text-slate-500">{label}</p>
       <p className={`text-2xl font-semibold mt-1 ${toneClasses[tone]}`}>{value}</p>
     </div>

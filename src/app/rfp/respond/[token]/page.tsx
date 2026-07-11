@@ -88,7 +88,7 @@ export default async function RfpRespondPage({ params }: { params: Promise<{ tok
 function Shell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-10">
-      <div className={`w-full ${wide ? "max-w-2xl" : "max-w-md"} bg-white rounded-xl border border-slate-200 p-6`}>{children}</div>
+      <div className={`w-full ${wide ? "max-w-2xl" : "max-w-md"} bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6`}>{children}</div>
     </div>
   );
 }

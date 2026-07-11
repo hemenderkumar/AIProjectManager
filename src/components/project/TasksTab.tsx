@@ -976,7 +976,7 @@ export default function TasksTab({
                           <button
                             onClick={() => logTime(t.id)}
                             disabled={loggingTime}
-                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50"
                           >
                             {loggingTime ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                             Log

@@ -1,5 +1,7 @@
+"use client";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import {
   Home,
   LayoutDashboard,
@@ -18,8 +20,21 @@ import {
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
 
-const navLinkCls =
-  "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900";
+function NavLink({ href, icon, children, pathname }: { href: string; icon: React.ReactNode; children: React.ReactNode; pathname: string }) {
+  const active = pathname === href || pathname.startsWith(`${href}/`);
+  return (
+    <Link
+      href={href}
+      className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+      }`}
+    >
+      {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-indigo-600" />}
+      {icon}
+      {children}
+    </Link>
+  );
+}
 
 function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -32,6 +47,7 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
 
 export default function Sidebar({ user, open }: { user: SessionUser | null; open?: boolean }) {
   const isInternal = !!user && user.organizationId == null;
+  const pathname = usePathname();
   return (
     <aside
       className={`w-64 md:w-60 shrink-0 border-r border-slate-200 bg-white h-screen flex flex-col
@@ -49,75 +65,39 @@ export default function Sidebar({ user, open }: { user: SessionUser | null; open
         </div>
       </div>
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        <Link href="/home" className={navLinkCls}>
-          <Home size={17} />
-          Home
-        </Link>
-        <Link href="/dashboard" className={navLinkCls}>
-          <LayoutDashboard size={17} />
-          Dashboard
-        </Link>
+        <NavLink href="/home" icon={<Home size={17} />} pathname={pathname}>Home</NavLink>
+        <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
 
         <NavSection label="Project Lifecycle">
-          <Link href="/ideation" className={navLinkCls}>
-            <Lightbulb size={17} />
-            Ideation
-          </Link>
-          <Link href="/execution" className={navLinkCls}>
-            <Rocket size={17} />
-            Project Execution
-          </Link>
-          <Link href="/support" className={navLinkCls}>
-            <LifeBuoy size={17} />
-            Ongoing Support
-          </Link>
+          <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
+          <NavLink href="/execution" icon={<Rocket size={17} />} pathname={pathname}>Project Execution</NavLink>
+          <NavLink href="/support" icon={<LifeBuoy size={17} />} pathname={pathname}>Ongoing Support</NavLink>
         </NavSection>
 
         <NavSection label="More">
-          <Link href="/projects" className={navLinkCls}>
-            <FolderKanban size={17} />
-            All Projects
-          </Link>
-          <Link href="/ai" className={navLinkCls}>
-            <Sparkles size={17} />
-            AI Assistant
-          </Link>
+          <NavLink href="/projects" icon={<FolderKanban size={17} />} pathname={pathname}>All Projects</NavLink>
+          <NavLink href="/ai" icon={<Sparkles size={17} />} pathname={pathname}>AI Assistant</NavLink>
           {isInternal && (
-            <Link href="/reports" className={navLinkCls}>
-              <FileBarChart size={17} />
-              Reports
-            </Link>
+            <NavLink href="/reports" icon={<FileBarChart size={17} />} pathname={pathname}>Reports</NavLink>
           )}
           {isInternal && (
-            <Link href="/resources" className={navLinkCls}>
-              <Users size={17} />
-              Resources
-            </Link>
+            <NavLink href="/resources" icon={<Users size={17} />} pathname={pathname}>Resources</NavLink>
           )}
           {user?.role === "SUPER_USER" && (
-            <Link href="/organization" className={navLinkCls}>
-              <Building2 size={17} />
-              My Organization
-            </Link>
+            <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>
           )}
           {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
-            <Link href="/vendor-evaluation" className={navLinkCls}>
-              <FileSearch size={17} />
-              Vendor Evaluation
-            </Link>
+            <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
           )}
           {user?.role === "ADMIN" && (
-            <Link href="/admin" className={navLinkCls}>
-              <ShieldCheck size={17} />
-              Admin
-            </Link>
+            <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Admin</NavLink>
           )}
         </NavSection>
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">
         <Link
           href="/projects/new"
-          className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+          className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
         >
           <PlusCircle size={16} />
           New Project

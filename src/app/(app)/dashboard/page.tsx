@@ -89,11 +89,11 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 lg:col-span-1">
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 lg:col-span-1">
             <p className="text-sm font-semibold text-slate-900 mb-1">Portfolio Health</p>
             <RagPie byRag={summary.byRag} />
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 lg:col-span-2">
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 lg:col-span-2">
             <p className="text-sm font-semibold text-slate-900 mb-1">Projects by Stage</p>
             <StageBar byStage={summary.byStage} />
           </div>
@@ -106,7 +106,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <p className="text-sm font-semibold text-slate-900">Needs Attention</p>
               <Link href="/projects" className="text-xs text-indigo-600 hover:underline">
@@ -184,7 +184,7 @@ function RollupCard({
   rows: { key: string; count: number; budgetPlanned: number; budgetActual: number }[];
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4">
       <p className="text-sm font-semibold text-slate-900 mb-2">{title}</p>
       {rows.length === 0 ? (
         <p className="text-sm text-slate-400">No data yet.</p>

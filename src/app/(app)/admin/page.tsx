@@ -188,7 +188,7 @@ export default function AdminPage() {
       />
       <div className="p-8 max-w-3xl space-y-6">
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-slate-900">Organizations</p>
             <button
@@ -237,7 +237,7 @@ export default function AdminPage() {
               <button
                 onClick={createCompany}
                 disabled={companySaving}
-                className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
               >
                 {companySaving ? "Creating..." : "Create Company & Owner"}
               </button>
@@ -304,7 +304,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-slate-900">Users & roles</p>
             <button
@@ -336,7 +336,7 @@ export default function AdminPage() {
               {form.role === "SUPER_USER" && (
                 <p className="text-xs text-amber-600">A SUPER_USER must be assigned to an organization above.</p>
               )}
-              <button onClick={createUser} disabled={saving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              <button onClick={createUser} disabled={saving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {saving ? "Creating..." : "Create user"}
               </button>
             </div>
@@ -393,7 +393,7 @@ export default function AdminPage() {
         </div>
 
         {settings && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
             <p className="text-sm font-semibold text-slate-900 mb-4">Automation settings</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>

@@ -105,7 +105,7 @@ export default function SupportEstimator({
         adjust. Add more than one application to see the savings from pooling them under shared support.
       </p>
 
-      <div className="bg-white rounded-xl border border-slate-200">
+      <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <p className="text-sm font-semibold text-slate-900">Applications ({apps.length})</p>
           <button
@@ -165,7 +165,7 @@ export default function SupportEstimator({
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
           <label className="block">
             <span className="block text-xs font-medium text-slate-500 mb-1">Support coverage</span>
@@ -260,7 +260,7 @@ export default function SupportEstimator({
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4">
         <p className="text-xs font-semibold text-slate-700 mb-3">Estimate</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
           <Stat label="Support hours / mo" value={result.totalHours.toFixed(1)} />
@@ -299,7 +299,7 @@ export default function SupportEstimator({
           <button
             onClick={saveToProject}
             disabled={!selectedProjectId || saving}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50"
           >
             {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : <Save size={13} />}
             {saved ? "Saved" : "Save to project"}

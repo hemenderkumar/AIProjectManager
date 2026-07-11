@@ -226,7 +226,7 @@ export default function OrganizationPage() {
     <div>
       <Topbar title="My Organization" subtitle={org.name} />
       <div className="p-8 max-w-2xl space-y-6">
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-slate-900">Your team</p>
             <button
@@ -252,7 +252,7 @@ export default function OrganizationPage() {
                 </select>
               </div>
               {teamError && <p className="text-xs text-rose-600">{teamError}</p>}
-              <button onClick={inviteTeamMember} disabled={teamSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              <button onClick={inviteTeamMember} disabled={teamSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {teamSaving ? "Inviting..." : "Invite"}
               </button>
             </div>
@@ -308,7 +308,7 @@ export default function OrganizationPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <p className="text-sm font-semibold text-slate-900 mb-1">Divisions</p>
           <p className="text-xs text-slate-500 mb-4">
             Departments or business units at {org.name} — used to organize your team and to tag project sponsors.
@@ -342,7 +342,7 @@ export default function OrganizationPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-slate-900">Stakeholders (project sponsors)</p>
             <button
@@ -369,7 +369,7 @@ export default function OrganizationPage() {
                 </select>
               </div>
               {stakeholderError && <p className="text-xs text-rose-600">{stakeholderError}</p>}
-              <button onClick={addStakeholder} disabled={stakeholderSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              <button onClick={addStakeholder} disabled={stakeholderSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {stakeholderSaving ? "Adding..." : "Add stakeholder"}
               </button>
             </div>
@@ -415,7 +415,7 @@ export default function OrganizationPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <p className="text-sm font-semibold text-slate-900 mb-1">Export your data</p>
           <p className="text-xs text-slate-500 mb-4">
             Download every project, task, and record tied to {org.name} as a single JSON file.
@@ -423,7 +423,7 @@ export default function OrganizationPage() {
           <button
             onClick={exportData}
             disabled={exporting}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
           >
             {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
             {exporting ? "Preparing export..." : "Export my organization's data (JSON)"}

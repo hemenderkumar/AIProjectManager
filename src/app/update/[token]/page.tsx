@@ -50,7 +50,7 @@ export default async function UpdatePage({
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-xl border border-slate-200 p-6">{children}</div>
+      <div className="w-full max-w-md bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">{children}</div>
     </div>
   );
 }

@@ -83,7 +83,7 @@ export default function IdeaSuggestions() {
         <button
           onClick={suggest}
           disabled={loading}
-          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 shrink-0"
+          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50 shrink-0"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
           {loading ? "Thinking..." : ideas ? "Suggest more" : "Suggest Ideas with AI"}

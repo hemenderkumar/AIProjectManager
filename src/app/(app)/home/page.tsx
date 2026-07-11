@@ -63,7 +63,7 @@ function ChoiceCard({
   return (
     <Link
       href={href}
-      className="group bg-white rounded-xl border border-slate-200 p-5 hover:border-indigo-300 hover:shadow-sm transition-all flex flex-col"
+      className="group bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 hover:border-indigo-300 hover:shadow-sm transition-all flex flex-col"
     >
       <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center mb-3">{icon}</div>
       <p className="text-sm font-semibold text-slate-900 mb-1.5">{title}</p>

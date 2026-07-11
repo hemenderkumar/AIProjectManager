@@ -32,7 +32,7 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm bg-white rounded-xl border border-slate-200 p-6">
+      <div className="w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
         <div className="flex items-center gap-2.5 mb-6">
           <Image src="/keel-mark.svg" alt="Keel" width={36} height={36} />
           <div>
@@ -67,7 +67,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
           >
             {loading ? "Signing in..." : "Sign in"}
           </button>

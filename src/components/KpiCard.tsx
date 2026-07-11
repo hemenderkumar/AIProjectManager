@@ -18,7 +18,7 @@ export default function KpiCard({
     bad: "text-rose-600",
   };
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4">
       <p className="text-xs font-medium text-slate-500">{label}</p>
       <p className={clsx("text-2xl font-semibold mt-1", toneClasses[tone])}>{value}</p>
       {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}

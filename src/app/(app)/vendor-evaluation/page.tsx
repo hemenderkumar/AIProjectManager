@@ -169,7 +169,7 @@ function VendorEvaluationInner() {
       />
       <div className="p-8 max-w-4xl space-y-6">
         {isAdmin && (
-          <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 flex items-center gap-3">
             <span className="text-xs font-medium text-slate-500">Company</span>
             <select value={selectedOrgId} onChange={(e) => selectOrg(e.target.value)} className={`${inputCls} max-w-xs`}>
               <option value="">— Select a company —</option>
@@ -185,7 +185,7 @@ function VendorEvaluationInner() {
           <div className="flex justify-end">
             <button
               onClick={() => setShowForm((s) => !s)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700"
             >
               <Plus size={15} /> New RFP
             </button>
@@ -193,7 +193,7 @@ function VendorEvaluationInner() {
         )}
 
         {showForm && (
-          <form onSubmit={createRfp} className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+          <form onSubmit={createRfp} className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-4">
             <p className="text-sm font-semibold text-slate-900">New Request for Proposal</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
@@ -242,7 +242,7 @@ function VendorEvaluationInner() {
               <button
                 type="submit"
                 disabled={saving || draftingNew}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 {saving ? "Creating..." : "Create RFP"}
@@ -264,7 +264,7 @@ function VendorEvaluationInner() {
           </form>
         )}
 
-        <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 divide-y divide-slate-100">
           {isAdmin && !activeOrgId ? (
             <p className="p-5 text-sm text-slate-400">Pick a company above to see its RFPs.</p>
           ) : loading ? (

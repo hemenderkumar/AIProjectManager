@@ -319,7 +319,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
               </div>
               <button
                 onClick={addManualOption}
-                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
+                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 font-medium"
               >
                 Save option
               </button>
@@ -449,7 +449,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
               <button
                 onClick={saveReview}
                 disabled={savingReview}
-                className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 font-medium disabled:opacity-50"
+                className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 font-medium disabled:opacity-50"
               >
                 {savingReview ? "Saving..." : "Save review"}
               </button>

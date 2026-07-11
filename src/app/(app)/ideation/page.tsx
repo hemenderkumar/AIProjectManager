@@ -28,7 +28,7 @@ export default async function IdeationPage() {
             <ExportButtons endpoint="/api/reports/ideation" filenamePrefix="ideation" />
             <Link
               href="/projects/new?intent=idea"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
             >
               <PlusCircle size={16} />
               New Idea
@@ -52,7 +52,7 @@ export default async function IdeationPage() {
 
         <IdeaSuggestions />
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
             <thead>

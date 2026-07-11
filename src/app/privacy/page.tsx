@@ -1,7 +1,7 @@
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
-      <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200 p-8 space-y-6 text-sm text-slate-700 leading-relaxed">
+      <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-8 space-y-6 text-sm text-slate-700 leading-relaxed">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
           This is a template, not legal advice. It has not been reviewed by a lawyer. Before relying
           on this for a real product — especially if you handle data from the EU/UK (GDPR),

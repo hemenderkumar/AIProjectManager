@@ -79,7 +79,7 @@ export default function RateCardSection() {
   }));
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+    <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-900">Rate Card</p>
@@ -145,7 +145,7 @@ export default function RateCardSection() {
             <button
               onClick={save}
               disabled={saving}
-              className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
               {saving ? "Saving..." : "Add rate"}
             </button>

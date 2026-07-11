@@ -33,7 +33,7 @@ export default async function ExecutionPage() {
       />
       <div className="p-8 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
             <div className="flex items-center gap-2 mb-2">
               <Lightbulb size={18} className="text-indigo-600" />
               <p className="text-sm font-semibold text-slate-900">Continue from an Approved Idea</p>
@@ -68,7 +68,7 @@ export default async function ExecutionPage() {
             )}
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
             <div className="flex items-center gap-2 mb-2">
               <Rocket size={18} className="text-indigo-600" />
               <p className="text-sm font-semibold text-slate-900">Start a New Project</p>
@@ -79,7 +79,7 @@ export default async function ExecutionPage() {
             </p>
             <Link
               href="/projects/new"
-              className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+              className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
             >
               <PlusCircle size={16} />
               New Project
@@ -87,7 +87,7 @@ export default async function ExecutionPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100">
             <p className="text-sm font-semibold text-slate-900">In Execution ({inExecution.length})</p>
           </div>

@@ -167,7 +167,7 @@ export default function ResourcesPage() {
             <ExportButtons endpoint="/api/reports/resources" filenamePrefix="resources" />
             <button
               onClick={startCreate}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
             >
               <Plus size={16} /> Add Resource
             </button>
@@ -175,7 +175,7 @@ export default function ResourcesPage() {
         }
       />
       <div className="p-8 space-y-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-wrap items-end gap-4">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[220px]">
             <label className="block text-xs font-medium text-slate-500 mb-1">Search by skill</label>
             <div className="relative">
@@ -218,7 +218,7 @@ export default function ResourcesPage() {
         </div>
 
         {showForm && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-3">
             <p className="text-sm font-semibold text-slate-900">{editingId ? "Edit resource" : "New resource"}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -291,7 +291,7 @@ export default function ResourcesPage() {
               <button
                 onClick={save}
                 disabled={saving}
-                className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
               >
                 {saving ? "Saving..." : editingId ? "Save changes" : "Create resource"}
               </button>
@@ -308,7 +308,7 @@ export default function ResourcesPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
             <thead>

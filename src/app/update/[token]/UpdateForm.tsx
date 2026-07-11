@@ -66,7 +66,7 @@ export default function UpdateForm({
         <label className="block text-xs font-medium text-slate-500 mb-1">Any blockers?</label>
         <textarea value={form.blockers} onChange={(e) => setForm((f) => ({ ...f, blockers: e.target.value }))} className={inputCls} rows={2} />
       </div>
-      <button type="submit" disabled={saving} className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+      <button type="submit" disabled={saving} className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
         {saving ? "Sending..." : "Send update"}
       </button>
     </form>

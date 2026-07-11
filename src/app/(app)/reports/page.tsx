@@ -54,7 +54,7 @@ export default function ReportsPage() {
             <button
               onClick={() => generate("STEERING_COMMITTEE")}
               disabled={generating === "STEERING_COMMITTEE"}
-              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50"
             >
               {generating === "STEERING_COMMITTEE" ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
               Steering pack now
@@ -63,7 +63,7 @@ export default function ReportsPage() {
         }
       />
       <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="lg:col-span-1 bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100">
             <p className="text-sm font-semibold text-slate-900">History</p>
           </div>
@@ -88,7 +88,7 @@ export default function ReportsPage() {
             )}
           </div>
         </div>
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           {active ? (
             <>
               <div className="flex items-center justify-between mb-4">
