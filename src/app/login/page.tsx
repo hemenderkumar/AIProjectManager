@@ -33,10 +33,10 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm bg-white rounded-xl border border-slate-200 p-6">
         <div className="flex items-center gap-2 mb-6">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">KP</div>
+          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">K</div>
           <div>
-            <p className="text-sm font-semibold text-slate-900 leading-tight">KPI Project Tracker</p>
-            <p className="text-xs text-slate-400 leading-tight">AI-driven PMO</p>
+            <p className="text-sm font-semibold text-slate-900 leading-tight">Keel</p>
+            <p className="text-xs text-slate-400 leading-tight">Idea to delivery, on one keel</p>
           </div>
         </div>
         <form onSubmit={submit} className="space-y-3">

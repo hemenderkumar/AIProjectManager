@@ -34,11 +34,11 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
       <div className="px-5 py-5 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">
-            KP
+            K
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-900 leading-tight">KPI Project Tracker</p>
-            <p className="text-xs text-slate-400 leading-tight">AI-driven PMO</p>
+            <p className="text-sm font-semibold text-slate-900 leading-tight">Keel</p>
+            <p className="text-xs text-slate-400 leading-tight">Idea to delivery, on one keel</p>
           </div>
         </div>
       </div>

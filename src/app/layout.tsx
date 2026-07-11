@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "KPI Project Tracker",
-  description: "AI-driven, KPI-driven project portfolio tracker",
+  title: "Keel",
+  description: "Keel — from idea to a priced, staffed delivery plan, in one place",
 };
 
 export default function RootLayout({

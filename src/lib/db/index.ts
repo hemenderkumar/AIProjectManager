@@ -34,11 +34,31 @@ if (!connectionString) {
   );
 }
 
+// Hosted providers (Supabase, Neon, Vercel Postgres, etc.) require SSL; a Postgres running
+// on your own machine or in a local Docker container doesn't have a cert configured at all.
+// Checking only the literal substring "localhost" missed the equally common 127.0.0.1,
+// ::1, and *.local forms, which made local/dev database setups fail with a confusing TLS
+// error. sslmode=disable in the URL is also honored as an explicit opt-out.
+function isLocalConnection(url: string): boolean {
+  try {
+    const { hostname, searchParams } = new URL(url);
+    if (searchParams.get("sslmode") === "disable") return true;
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1" ||
+      hostname.endsWith(".local")
+    );
+  } catch {
+    return false;
+  }
+}
+
 const client =
   global.__dbClient ??
   postgres(connectionString ?? "postgres://placeholder", {
     max: 1,
-    ssl: connectionString?.includes("localhost") ? false : "require",
+    ssl: connectionString && isLocalConnection(connectionString) ? false : "require",
     prepare: false,
   });
 

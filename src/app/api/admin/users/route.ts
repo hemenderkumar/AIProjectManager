@@ -12,6 +12,7 @@ export async function GET() {
     email: users.email,
     role: users.role,
     resourceId: users.resourceId,
+    organizationId: users.organizationId,
     createdAt: users.createdAt,
   }).from(users);
   return NextResponse.json(all);
@@ -25,6 +26,11 @@ export async function POST(req: NextRequest) {
   if (!body.name || !body.email || !body.password) {
     return NextResponse.json({ error: "name, email, and password are required" }, { status: 400 });
   }
+  // ADMIN and internal PM/CONTRIBUTOR/VIEWER staff have no organization (null). A SUPER_USER
+  // must belong to one, since their whole visibility scope is "everything for my org."
+  if (body.role === "SUPER_USER" && !body.organizationId) {
+    return NextResponse.json({ error: "organizationId is required for a SUPER_USER" }, { status: 400 });
+  }
   const passwordHash = await hashPassword(body.password);
   const [created] = await db
     .insert(users)
@@ -34,7 +40,8 @@ export async function POST(req: NextRequest) {
       passwordHash,
       role: body.role ?? "VIEWER",
       resourceId: body.resourceId ?? null,
+      organizationId: body.organizationId || null,
     })
-    .returning({ id: users.id, name: users.name, email: users.email, role: users.role });
+    .returning({ id: users.id, name: users.name, email: users.email, role: users.role, organizationId: users.organizationId });
   return NextResponse.json(created, { status: 201 });
 }

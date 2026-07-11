@@ -3,25 +3,55 @@ import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
 import { Plus, Trash2 } from "lucide-react";
 
-type User = { id: string; name: string; email: string; role: string };
+type User = { id: string; name: string; email: string; role: string; organizationId: string | null };
+type Organization = { id: string; name: string };
 type Settings = { weeklyReportCadence: string; steeringCadence: string; avatarVoiceGender: string };
+
+const ROLES = ["ADMIN", "SUPER_USER", "PM", "CONTRIBUTOR", "VIEWER"];
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "CONTRIBUTOR" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "CONTRIBUTOR", organizationId: "" });
+  const [newOrgName, setNewOrgName] = useState("");
+  const [creatingOrg, setCreatingOrg] = useState(false);
+  const [orgError, setOrgError] = useState<string | null>(null);
 
   async function load() {
-    const [u, s] = await Promise.all([
+    const [u, s, o] = await Promise.all([
       fetch("/api/admin/users").then((r) => r.json()),
       fetch("/api/admin/settings").then((r) => r.json()),
+      fetch("/api/admin/organizations").then((r) => r.json()),
     ]);
     setUsers(Array.isArray(u) ? u : []);
     setSettings(s);
+    setOrgs(Array.isArray(o) ? o : []);
+  }
+
+  async function createOrg() {
+    if (!newOrgName.trim()) return;
+    setCreatingOrg(true);
+    setOrgError(null);
+    const res = await fetch("/api/admin/organizations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newOrgName }),
+    });
+    setCreatingOrg(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setOrgError(data?.error ?? "Could not create organization.");
+      return;
+    }
+    const created = await res.json();
+    setNewOrgName("");
+    setOrgs((prev) => [created, ...prev]);
+    setForm((f) => ({ ...f, organizationId: created.id }));
   }
 
   useEffect(() => {
@@ -31,15 +61,24 @@ export default function AdminPage() {
 
   async function createUser() {
     if (!form.name || !form.email || !form.password) return;
+    if (form.role === "SUPER_USER" && !form.organizationId) {
+      alert("A SUPER_USER must be assigned to an organization.");
+      return;
+    }
     setSaving(true);
-    await fetch("/api/admin/users", {
+    const res = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, organizationId: form.organizationId || null }),
     });
     setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.error ?? "Could not create user.");
+      return;
+    }
     setShowForm(false);
-    setForm({ name: "", email: "", password: "", role: "CONTRIBUTOR" });
+    setForm({ name: "", email: "", password: "", role: "CONTRIBUTOR", organizationId: "" });
     load();
   }
 
@@ -48,6 +87,15 @@ export default function AdminPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
+    });
+    load();
+  }
+
+  async function updateOrg(id: string, organizationId: string) {
+    await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organizationId: organizationId || null }),
     });
     load();
   }
@@ -89,9 +137,37 @@ export default function AdminPage() {
                 <input placeholder="Email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} />
                 <input placeholder="Temporary password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className={inputCls} />
                 <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} className={inputCls}>
-                  {["ADMIN", "PM", "CONTRIBUTOR", "VIEWER"].map((r) => <option key={r} value={r}>{r}</option>)}
+                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
+                <select
+                  value={form.organizationId}
+                  onChange={(e) => setForm((f) => ({ ...f, organizationId: e.target.value }))}
+                  className={inputCls}
+                >
+                  <option value="">Internal staff (no organization)</option>
+                  {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                <div className="flex items-center gap-2">
+                  <input
+                    placeholder="New organization name"
+                    value={newOrgName}
+                    onChange={(e) => setNewOrgName(e.target.value)}
+                    className={inputCls}
+                  />
+                  <button
+                    type="button"
+                    onClick={createOrg}
+                    disabled={creatingOrg || !newOrgName.trim()}
+                    className="shrink-0 px-2.5 py-2 rounded-lg bg-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-300 disabled:opacity-50"
+                  >
+                    {creatingOrg ? "Adding..." : "+ Add org"}
+                  </button>
+                </div>
               </div>
+              {orgError && <p className="text-xs text-rose-600">{orgError}</p>}
+              {form.role === "SUPER_USER" && (
+                <p className="text-xs text-amber-600">A SUPER_USER must be assigned to an organization above.</p>
+              )}
               <button onClick={createUser} disabled={saving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {saving ? "Creating..." : "Create user"}
               </button>
@@ -104,6 +180,7 @@ export default function AdminPage() {
                 <th className="py-2 font-medium">Name</th>
                 <th className="py-2 font-medium">Email</th>
                 <th className="py-2 font-medium">Role</th>
+                <th className="py-2 font-medium">Organization</th>
                 <th className="py-2 font-medium"></th>
               </tr>
             </thead>
@@ -118,7 +195,17 @@ export default function AdminPage() {
                       onChange={(e) => updateRole(u.id, e.target.value)}
                       className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
                     >
-                      {["ADMIN", "PM", "CONTRIBUTOR", "VIEWER"].map((r) => <option key={r} value={r}>{r}</option>)}
+                      {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </td>
+                  <td className="py-2.5">
+                    <select
+                      value={u.organizationId ?? ""}
+                      onChange={(e) => updateOrg(u.id, e.target.value)}
+                      className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
+                    >
+                      <option value="">Internal staff</option>
+                      {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                     </select>
                   </td>
                   <td className="py-2.5 text-right">
@@ -129,7 +216,7 @@ export default function AdminPage() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={4} className="py-6 text-center text-slate-400">No users yet.</td></tr>
+                <tr><td colSpan={5} className="py-6 text-center text-slate-400">No users yet.</td></tr>
               )}
             </tbody>
           </table>

@@ -1,8 +1,8 @@
-# KPI Project Tracker
+# Keel
 
-An AI-driven, KPI-driven project portfolio tracker that acts like an AI project manager —
-not just a place you go update, but an agent that plans work, assigns tasks, chases people
-for status, and briefs you (in text and in voice) whenever you ask.
+An AI-driven project portfolio tracker that acts like an AI project manager — not just a
+place you go update, but an agent that plans work, assigns tasks, chases people for status,
+and briefs you (in text and in voice) whenever you ask.
 
 ## What's inside
 
@@ -63,7 +63,7 @@ Admin tab, or re-seed with your own values, before using this for anything real.
 cd kpi-tracker
 git init
 git add .
-git commit -m "Initial commit: KPI project tracker"
+git commit -m "Initial commit: Keel"
 git branch -M main
 git remote add origin https://github.com/<your-username>/<your-repo>.git
 git push -u origin main

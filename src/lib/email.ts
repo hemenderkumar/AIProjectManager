@@ -1,6 +1,6 @@
 export async function sendEmail(to: string, subject: string, text: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || "KPI Project Tracker <onboarding@resend.dev>";
+  const from = process.env.EMAIL_FROM || "Keel <onboarding@resend.dev>";
   if (!apiKey) return false;
 
   try {
