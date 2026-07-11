@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   Home,
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   Lightbulb,
   Rocket,
   LifeBuoy,
+  Building2,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
@@ -32,13 +34,11 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
   return (
     <aside className="w-60 shrink-0 border-r border-slate-200 bg-white h-screen sticky top-0 flex flex-col">
       <div className="px-5 py-5 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">
-            K
-          </div>
+        <div className="flex items-center gap-2.5">
+          <Image src="/keel-mark.svg" alt="Keel" width={32} height={32} />
           <div>
             <p className="text-sm font-semibold text-slate-900 leading-tight">Keel</p>
-            <p className="text-xs text-slate-400 leading-tight">Idea to delivery, on one keel</p>
+            <p className="text-xs text-slate-400 leading-tight">Guiding project success</p>
           </div>
         </div>
       </div>
@@ -86,6 +86,12 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
             <Link href="/resources" className={navLinkCls}>
               <Users size={17} />
               Resources
+            </Link>
+          )}
+          {user?.role === "SUPER_USER" && (
+            <Link href="/organization" className={navLinkCls}>
+              <Building2 size={17} />
+              My Organization
             </Link>
           )}
           {user?.role === "ADMIN" && (

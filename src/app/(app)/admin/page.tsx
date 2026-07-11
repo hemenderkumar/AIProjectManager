@@ -1,10 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Download, AlertTriangle, ScrollText } from "lucide-react";
 
 type User = { id: string; name: string; email: string; role: string; organizationId: string | null };
-type Organization = { id: string; name: string };
+type Organization = {
+  id: string;
+  name: string;
+  deletionRequestedAt: string | null;
+  deletionRequestedBy: string | null;
+};
 type Settings = { weeklyReportCadence: string; steeringCadence: string; avatarVoiceGender: string };
 
 const ROLES = ["ADMIN", "SUPER_USER", "PM", "CONTRIBUTOR", "VIEWER"];
@@ -21,6 +27,7 @@ export default function AdminPage() {
   const [newOrgName, setNewOrgName] = useState("");
   const [creatingOrg, setCreatingOrg] = useState(false);
   const [orgError, setOrgError] = useState<string | null>(null);
+  const [orgActionId, setOrgActionId] = useState<string | null>(null);
 
   async function load() {
     const [u, s, o] = await Promise.all([
@@ -105,6 +112,44 @@ export default function AdminPage() {
     load();
   }
 
+  async function exportOrg(id: string) {
+    setOrgActionId(id);
+    try {
+      const res = await fetch(`/api/admin/organizations/${id}/export`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const org = orgs.find((o) => o.id === id);
+      a.download = `${(org?.name ?? "organization").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-export.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setOrgActionId(null);
+    }
+  }
+
+  async function confirmDeletion(id: string) {
+    if (!confirm("Permanently delete this organization and all of its projects, tasks, and users? This cannot be undone.")) return;
+    setOrgActionId(id);
+    const res = await fetch(`/api/admin/organizations/${id}/confirm-deletion`, { method: "POST" });
+    setOrgActionId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.error ?? "Could not delete organization.");
+      return;
+    }
+    load();
+  }
+
+  async function dismissDeletion(id: string) {
+    setOrgActionId(id);
+    await fetch(`/api/admin/organizations/${id}/dismiss-deletion`, { method: "POST" });
+    setOrgActionId(null);
+    load();
+  }
+
   async function updateSettings(patch: Partial<Settings>) {
     const res = await fetch("/api/admin/settings", {
       method: "PATCH",
@@ -116,8 +161,76 @@ export default function AdminPage() {
 
   return (
     <div>
-      <Topbar title="Admin" subtitle="Manage users, roles, and automation settings" />
+      <Topbar
+        title="Admin"
+        subtitle="Manage users, roles, and automation settings"
+        action={
+          <Link href="/admin/audit-log" className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+            <ScrollText size={14} /> Audit Log
+          </Link>
+        }
+      />
       <div className="p-8 max-w-3xl space-y-6">
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <p className="text-sm font-semibold text-slate-900 mb-4">Organizations</p>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                <th className="py-2 font-medium">Name</th>
+                <th className="py-2 font-medium">Status</th>
+                <th className="py-2 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {orgs.map((o) => (
+                <tr key={o.id} className="border-b border-slate-50 last:border-0">
+                  <td className="py-2.5 font-medium text-slate-800">{o.name}</td>
+                  <td className="py-2.5">
+                    {o.deletionRequestedAt ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                        <AlertTriangle size={12} />
+                        Deletion requested by {o.deletionRequestedBy ?? "unknown"} on {new Date(o.deletionRequestedAt).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">Active</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 text-right space-x-3">
+                    <button
+                      onClick={() => exportOrg(o.id)}
+                      disabled={orgActionId === o.id}
+                      className="text-xs font-medium text-slate-500 hover:text-indigo-600 disabled:opacity-50 inline-flex items-center gap-1"
+                    >
+                      <Download size={13} /> Export
+                    </button>
+                    {o.deletionRequestedAt && (
+                      <>
+                        <button
+                          onClick={() => dismissDeletion(o.id)}
+                          disabled={orgActionId === o.id}
+                          className="text-xs font-medium text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                        >
+                          Dismiss
+                        </button>
+                        <button
+                          onClick={() => confirmDeletion(o.id)}
+                          disabled={orgActionId === o.id}
+                          className="text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                        >
+                          Confirm delete
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {orgs.length === 0 && (
+                <tr><td colSpan={3} className="py-6 text-center text-slate-400">No organizations yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-center justify-between mb-4">

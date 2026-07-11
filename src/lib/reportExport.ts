@@ -1,6 +1,5 @@
-import PDFDocument from "pdfkit";
-import PptxGenJS from "pptxgenjs";
 import type { PlannedVsActual } from "./reportData";
+import { BRAND, BRAND_HEX, createKeelPdf, finalizeKeelPdf, sectionTitle, coverMasthead, setupKeelPptx, titleSlide, keelSlide } from "./brand";
 
 type ReportInput = {
   projectName: string;
@@ -45,38 +44,24 @@ function truncate(text: string, maxChars: number): string {
 
 export function generateReportPdf(input: ReportInput): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 56, size: "LETTER" });
+    const doc = createKeelPdf({ margin: 56 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    doc.font("Helvetica-Bold").fontSize(20).fillColor("#0f172a").text("Executive Status Report");
-    doc.moveDown(0.15);
-    doc.font("Helvetica-Bold").fontSize(15).fillColor("#334155").text(input.projectName);
-    doc.moveDown(0.4);
-    doc
-      .font("Helvetica")
-      .fontSize(9)
-      .fillColor("#94a3b8")
-      .text(`Generated ${input.generatedAt.toLocaleString("en-US")}`);
-    doc.moveDown(1);
-    doc
-      .moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-      .strokeColor("#e2e8f0")
-      .stroke();
+    coverMasthead(doc, "Executive Status Report", input.projectName);
+    doc.font("Helvetica").fontSize(9).fillColor(BRAND.muted).text(`Generated ${input.generatedAt.toLocaleString("en-US")}`);
     doc.moveDown(1);
 
-    // Planned vs Actual chart
-    doc.font("Helvetica-Bold").fontSize(12).fillColor("#1e293b").text("Planned vs Actual");
-    doc.moveDown(0.6);
+    sectionTitle(doc, "Planned vs Actual");
+    doc.moveDown(0.3);
     drawPlannedVsActualChart(doc, input.chartData);
     doc.moveDown(1.2);
     doc
       .moveTo(doc.page.margins.left, doc.y)
       .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-      .strokeColor("#e2e8f0")
+      .strokeColor(BRAND.border)
       .stroke();
     doc.moveDown(1);
 
@@ -84,15 +69,15 @@ export function generateReportPdf(input: ReportInput): Promise<Buffer> {
     for (const s of sections) {
       if (doc.y > doc.page.height - doc.page.margins.bottom - 80) doc.addPage();
       if (s.heading) {
-        doc.font("Helvetica-Bold").fontSize(12).fillColor("#1e293b").text(s.heading);
-        doc.moveDown(0.25);
+        sectionTitle(doc, s.heading);
       }
       if (s.body) {
-        doc.font("Helvetica").fontSize(10.5).fillColor("#334155").text(s.body, { align: "left" });
+        doc.font("Helvetica").fontSize(10.5).fillColor(BRAND.slate).text(s.body, { align: "left" });
       }
       doc.moveDown(0.9);
     }
 
+    finalizeKeelPdf(doc, input.generatedAt);
     doc.end();
   });
 }
@@ -113,24 +98,24 @@ function drawPlannedVsActualChart(doc: PDFKit.PDFDocument, data: PlannedVsActual
     const max = Math.max(row.planned, row.actual, 1);
     const startY = doc.y;
 
-    doc.font("Helvetica-Bold").fontSize(9.5).fillColor("#334155").text(row.label, doc.page.margins.left, startY + 6, { width: 82 });
+    doc.font("Helvetica-Bold").fontSize(9.5).fillColor(BRAND.slate).text(row.label, doc.page.margins.left, startY + 6, { width: 82 });
 
     const plannedWidth = Math.max(2, (row.planned / max) * chartWidth);
-    doc.rect(chartLeft, startY, plannedWidth, barHeight).fill("#c7d2fe");
+    doc.rect(chartLeft, startY, plannedWidth, barHeight).fill(BRAND.indigoLight);
     doc
       .font("Helvetica")
       .fontSize(8)
-      .fillColor("#4338ca")
+      .fillColor(BRAND.indigoDark)
       .text(`Planned: ${row.format(row.planned)}`, chartLeft + plannedWidth + 6, startY + 1, { width: 150 });
 
     const actualY = startY + barHeight + 4;
     const actualWidth = Math.max(2, (row.actual / max) * chartWidth);
     const overBudgetLike = row.actual > row.planned;
-    doc.rect(chartLeft, actualY, actualWidth, barHeight).fill(overBudgetLike ? "#fca5a5" : "#6366f1");
+    doc.rect(chartLeft, actualY, actualWidth, barHeight).fill(overBudgetLike ? "#fca5a5" : BRAND.indigo);
     doc
       .font("Helvetica")
       .fontSize(8)
-      .fillColor(overBudgetLike ? "#b91c1c" : "#312e81")
+      .fillColor(overBudgetLike ? "#b91c1c" : BRAND.indigoDark)
       .text(`Actual: ${row.format(row.actual)}`, chartLeft + actualWidth + 6, actualY + 1, { width: 150 });
 
     doc.y = startY + rowGap;
@@ -138,25 +123,13 @@ function drawPlannedVsActualChart(doc: PDFKit.PDFDocument, data: PlannedVsActual
 }
 
 export async function generateReportPptx(input: ReportInput): Promise<Buffer> {
-  const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: "WIDE", width: 13.33, height: 7.5 });
-  pptx.layout = "WIDE";
+  const pptx = setupKeelPptx();
 
-  const NAVY = "0F172A";
-  const SLATE = "334155";
-  const INDIGO = "4F46E5";
-  const LIGHT = "E2E8F0";
-
-  // Title slide
-  const title = pptx.addSlide();
-  title.background = { color: "FFFFFF" };
-  title.addText("Executive Status Report", { x: 0.6, y: 2.6, w: 12, h: 0.9, fontSize: 32, bold: true, color: NAVY });
-  title.addText(input.projectName, { x: 0.6, y: 3.5, w: 12, h: 0.6, fontSize: 20, color: SLATE });
-  title.addText(`Generated ${input.generatedAt.toLocaleDateString("en-US")}`, { x: 0.6, y: 4.1, w: 12, h: 0.4, fontSize: 12, color: "94A3B8" });
+  titleSlide(pptx, "Executive Status Report", input.projectName, input.generatedAt);
 
   // Planned vs Actual chart slide (native chart)
-  const chartSlide = pptx.addSlide();
-  chartSlide.addText("Planned vs Actual", { x: 0.5, y: 0.35, w: 12, h: 0.6, fontSize: 24, bold: true, color: NAVY });
+  const chartSlide = keelSlide(pptx);
+  chartSlide.addText("Planned vs Actual", { x: 0.5, y: 0.35, w: 12, h: 0.6, fontSize: 24, bold: true, color: BRAND_HEX.navy });
 
   const categories = ["Budget ($)", "Schedule (%)", "Effort (hrs)"];
   const plannedSeries = [input.chartData.budget.planned, input.chartData.schedule.plannedPercent, input.chartData.effort.plannedHours];
@@ -172,33 +145,33 @@ export async function generateReportPptx(input: ReportInput): Promise<Buffer> {
       x: 0.6,
       y: 1.2,
       w: 12,
-      h: 5.8,
+      h: 5.6,
       barDir: "col",
-      chartColors: [INDIGO, "F97316"],
+      chartColors: [BRAND_HEX.indigo, "F97316"],
       showLegend: true,
       legendPos: "b",
       showValue: true,
-      dataLabelColor: "334155",
-      catAxisLabelColor: SLATE,
-      valAxisLabelColor: SLATE,
+      dataLabelColor: BRAND_HEX.slate,
+      catAxisLabelColor: BRAND_HEX.slate,
+      valAxisLabelColor: BRAND_HEX.slate,
     }
   );
 
   // Narrative slides — one per report section, chunked so text isn't cramped
   const sections = splitSections(input.reportText);
   for (const s of sections) {
-    const slide = pptx.addSlide();
+    const slide = keelSlide(pptx);
     if (s.heading) {
-      slide.addText(s.heading, { x: 0.5, y: 0.35, w: 12, h: 0.6, fontSize: 22, bold: true, color: NAVY });
+      slide.addText(s.heading, { x: 0.5, y: 0.35, w: 12, h: 0.6, fontSize: 22, bold: true, color: BRAND_HEX.navy });
     }
-    slide.addShape(pptx.ShapeType.line, { x: 0.5, y: 1.0, w: 12.3, h: 0, line: { color: LIGHT, width: 1 } });
+    slide.addShape(pptx.ShapeType.line, { x: 0.5, y: 1.0, w: 12.3, h: 0, line: { color: BRAND_HEX.border, width: 1 } });
     slide.addText(s.body || "—", {
       x: 0.5,
       y: 1.2,
       w: 12.3,
-      h: 5.8,
+      h: 5.6,
       fontSize: 14,
-      color: SLATE,
+      color: BRAND_HEX.slate,
       valign: "top",
       wrap: true,
     });
@@ -213,29 +186,16 @@ export async function generateReportPptx(input: ReportInput): Promise<Buffer> {
 // Recommended Actions), each truncated so nothing overflows the page.
 export function generateReportOnePagerPdf(input: ReportInput): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 40, size: "LETTER" });
+    const doc = createKeelPdf({ margin: 44 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    doc.font("Helvetica-Bold").fontSize(18).fillColor("#0f172a").text("Executive Status Report — 1-Pager");
-    doc.font("Helvetica-Bold").fontSize(13).fillColor("#334155").text(input.projectName);
-    doc
-      .font("Helvetica")
-      .fontSize(8)
-      .fillColor("#94a3b8")
-      .text(`Generated ${input.generatedAt.toLocaleString("en-US")}`);
-    doc.moveDown(0.6);
-    doc
-      .moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-      .strokeColor("#e2e8f0")
-      .stroke();
-    doc.moveDown(0.6);
+    coverMasthead(doc, "Executive Status Report — 1-Pager", input.projectName);
 
-    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Planned vs Actual");
-    doc.moveDown(0.4);
+    sectionTitle(doc, "Planned vs Actual", 11);
+    doc.moveDown(0.2);
     drawPlannedVsActualChart(doc, input.chartData);
     doc.moveDown(0.8);
 
@@ -243,41 +203,26 @@ export function generateReportOnePagerPdf(input: ReportInput): Promise<Buffer> {
     const execSummary = findSection(sections, "executive summary");
     const actions = findSection(sections, "recommended action");
 
-    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Executive Summary");
-    doc.moveDown(0.2);
-    doc
-      .font("Helvetica")
-      .fontSize(9.5)
-      .fillColor("#334155")
-      .text(execSummary ? truncate(execSummary, 500) : "—");
+    sectionTitle(doc, "Executive Summary", 11);
+    doc.font("Helvetica").fontSize(9.5).fillColor(BRAND.slate).text(execSummary ? truncate(execSummary, 500) : "—");
     doc.moveDown(0.7);
 
-    doc.font("Helvetica-Bold").fontSize(11).fillColor("#1e293b").text("Recommended Actions");
-    doc.moveDown(0.2);
-    doc
-      .font("Helvetica")
-      .fontSize(9.5)
-      .fillColor("#334155")
-      .text(actions ? truncate(actions, 500) : "—");
+    sectionTitle(doc, "Recommended Actions", 11);
+    doc.font("Helvetica").fontSize(9.5).fillColor(BRAND.slate).text(actions ? truncate(actions, 500) : "—");
 
+    finalizeKeelPdf(doc, input.generatedAt);
     doc.end();
   });
 }
 
 export async function generateReportOnePagerPptx(input: ReportInput): Promise<Buffer> {
-  const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: "WIDE", width: 13.33, height: 7.5 });
-  pptx.layout = "WIDE";
+  const pptx = setupKeelPptx();
 
-  const NAVY = "0F172A";
-  const SLATE = "334155";
-  const MUTED = "94A3B8";
-  const INDIGO = "4F46E5";
-
-  const slide = pptx.addSlide();
-  slide.addText("Executive Status Report — 1-Pager", { x: 0.5, y: 0.3, w: 12, h: 0.5, fontSize: 22, bold: true, color: NAVY });
-  slide.addText(input.projectName, { x: 0.5, y: 0.8, w: 12, h: 0.4, fontSize: 15, color: SLATE });
-  slide.addText(`Generated ${input.generatedAt.toLocaleDateString("en-US")}`, { x: 0.5, y: 1.2, w: 6, h: 0.3, fontSize: 9, color: MUTED });
+  const slide = keelSlide(pptx);
+  slide.addText(BRAND.name, { x: 0.5, y: 0.2, w: 6, h: 0.4, fontSize: 13, bold: true, color: BRAND_HEX.indigo, charSpacing: 1 });
+  slide.addText("Executive Status Report — 1-Pager", { x: 0.5, y: 0.55, w: 12, h: 0.5, fontSize: 22, bold: true, color: BRAND_HEX.navy });
+  slide.addText(input.projectName, { x: 0.5, y: 1.0, w: 12, h: 0.4, fontSize: 15, color: BRAND_HEX.slate });
+  slide.addText(`Generated ${input.generatedAt.toLocaleDateString("en-US")}`, { x: 0.5, y: 1.35, w: 6, h: 0.3, fontSize: 9, color: BRAND_HEX.muted });
 
   const categories = ["Budget ($)", "Schedule (%)", "Effort (hrs)"];
   const plannedSeries = [input.chartData.budget.planned, input.chartData.schedule.plannedPercent, input.chartData.effort.plannedHours];
@@ -290,11 +235,11 @@ export async function generateReportOnePagerPptx(input: ReportInput): Promise<Bu
     ],
     {
       x: 0.5,
-      y: 1.6,
+      y: 1.75,
       w: 6.2,
-      h: 5.4,
+      h: 5.1,
       barDir: "col",
-      chartColors: [INDIGO, "F97316"],
+      chartColors: [BRAND_HEX.indigo, "F97316"],
       showLegend: true,
       legendPos: "b",
       showValue: true,
@@ -305,11 +250,11 @@ export async function generateReportOnePagerPptx(input: ReportInput): Promise<Bu
   const execSummary = findSection(sections, "executive summary");
   const actions = findSection(sections, "recommended action");
 
-  slide.addText("Executive Summary", { x: 7.0, y: 1.6, w: 5.8, h: 0.4, fontSize: 14, bold: true, color: NAVY });
-  slide.addText(execSummary ? truncate(execSummary, 420) : "—", { x: 7.0, y: 2.0, w: 5.8, h: 2.4, fontSize: 11, color: SLATE, valign: "top" });
+  slide.addText("Executive Summary", { x: 7.0, y: 1.75, w: 5.8, h: 0.4, fontSize: 14, bold: true, color: BRAND_HEX.navy });
+  slide.addText(execSummary ? truncate(execSummary, 420) : "—", { x: 7.0, y: 2.15, w: 5.8, h: 2.3, fontSize: 11, color: BRAND_HEX.slate, valign: "top" });
 
-  slide.addText("Recommended Actions", { x: 7.0, y: 4.5, w: 5.8, h: 0.4, fontSize: 14, bold: true, color: NAVY });
-  slide.addText(actions ? truncate(actions, 420) : "—", { x: 7.0, y: 4.9, w: 5.8, h: 2.1, fontSize: 11, color: SLATE, valign: "top" });
+  slide.addText("Recommended Actions", { x: 7.0, y: 4.6, w: 5.8, h: 0.4, fontSize: 14, bold: true, color: BRAND_HEX.navy });
+  slide.addText(actions ? truncate(actions, 420) : "—", { x: 7.0, y: 5.0, w: 5.8, h: 2.0, fontSize: 11, color: BRAND_HEX.slate, valign: "top" });
 
   const result = await pptx.write({ outputType: "nodebuffer" });
   return result as Buffer;

@@ -4,7 +4,7 @@ import KpiCard from "@/components/KpiCard";
 import RagPie from "@/components/RagPie";
 import StageBar from "@/components/StageBar";
 import AiAskPanel from "@/components/AiAskPanel";
-import ExecutiveExportButtons from "@/components/ExecutiveExportButtons";
+import ExportButtons from "@/components/ExportButtons";
 import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getPortfolioSummary } from "@/lib/portfolio";
 import { getCurrentUser } from "@/lib/auth";
@@ -30,7 +30,14 @@ export default async function DashboardPage() {
       <Topbar
         title="Portfolio Dashboard"
         subtitle={`${summary.activeCount} active projects across the portfolio`}
-        action={<ExecutiveExportButtons />}
+        action={
+          <ExportButtons
+            endpoint="/api/reports/portfolio"
+            filenamePrefix="portfolio-executive-summary"
+            pdfLabel="1-Pager PDF"
+            pptxLabel="1-Pager PPTX"
+          />
+        }
       />
 
       <div className="p-8 space-y-6">

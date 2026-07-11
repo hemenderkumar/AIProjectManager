@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { resources } from "@/lib/db/schema";
 import { requireInternal } from "@/lib/tenancy";
+import { logAudit } from "@/lib/audit";
 
 const allowed = [
   "name",
@@ -23,6 +24,8 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
+  const [before] = await db.select({ costPerHour: resources.costPerHour, name: resources.name }).from(resources).where(eq(resources.id, id));
+
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) {
@@ -37,6 +40,14 @@ export async function PATCH(
     .returning();
 
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  if ("costPerHour" in body && before && before.costPerHour !== updated.costPerHour) {
+    await logAudit({
+      actor: _authUser, action: "resource.rate_changed", entityType: "resource", entityId: id,
+      detail: `${_authUser.name} changed ${updated.name}'s rate from $${before.costPerHour ?? 0}/hr to $${updated.costPerHour ?? 0}/hr.`,
+    });
+  }
+
   return NextResponse.json(updated);
 }
 

@@ -4,6 +4,7 @@ import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getAllProjectsWithMetrics } from "@/lib/portfolio";
 import { getCurrentUser } from "@/lib/auth";
 import ApproveIdeaButton from "@/components/ApproveIdeaButton";
+import ExportButtons from "@/components/ExportButtons";
 import { PlusCircle, Rocket, Lightbulb } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,11 @@ export default async function ExecutionPage() {
 
   return (
     <div>
-      <Topbar title="Project Execution" subtitle="Continue an approved idea, or start a brand-new project" />
+      <Topbar
+        title="Project Execution"
+        subtitle="Continue an approved idea, or start a brand-new project"
+        action={<ExportButtons endpoint="/api/reports/execution" filenamePrefix="execution" />}
+      />
       <div className="p-8 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white rounded-xl border border-slate-200 p-5">

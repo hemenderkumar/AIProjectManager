@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { rateCards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireInternal } from "@/lib/tenancy";
+import { logAudit } from "@/lib/audit";
 
 const allowed = ["role", "sourcingType", "hourlyRate", "notes"] as const;
 const numericFields = ["hourlyRate"] as const;
@@ -15,6 +16,8 @@ export async function PATCH(
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
   const body = await req.json();
+
+  const [before] = await db.select({ hourlyRate: rateCards.hourlyRate, role: rateCards.role }).from(rateCards).where(eq(rateCards.id, id));
 
   const update: Record<string, unknown> = {};
   for (const key of allowed) {
@@ -29,6 +32,14 @@ export async function PATCH(
 
   const [updated] = await db.update(rateCards).set(update).where(eq(rateCards.id, id)).returning();
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  if (before && before.hourlyRate !== updated.hourlyRate) {
+    await logAudit({
+      actor: _authUser, action: "rate_card.updated", entityType: "rate_card", entityId: id,
+      detail: `${_authUser.name} changed the ${updated.role} rate from $${before.hourlyRate}/hr to $${updated.hourlyRate}/hr.`,
+    });
+  }
+
   return NextResponse.json(updated);
 }
 

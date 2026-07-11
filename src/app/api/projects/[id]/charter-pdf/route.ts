@@ -1,35 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import PDFDocument from "pdfkit";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { formatDate } from "@/lib/format";
+import { BRAND, createKeelPdf, finalizeKeelPdf, coverMasthead, sectionTitle } from "@/lib/brand";
 
 type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
 
 function generateCharterPdf(detail: ProjectDetail): Promise<Buffer> {
   const project = detail.project;
+  const generatedAt = new Date();
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 56, size: "LETTER" });
+    const doc = createKeelPdf({ margin: 56 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
     const section = (label: string, value: string | null) => {
-      doc.font("Helvetica-Bold").fontSize(12).fillColor("#1e293b").text(label);
-      doc.moveDown(0.25);
+      sectionTitle(doc, label);
       doc
         .font("Helvetica")
         .fontSize(10.5)
-        .fillColor("#334155")
+        .fillColor(BRAND.slate)
         .text(value && value.trim() ? value : "—", { align: "left" });
       doc.moveDown(1);
     };
 
-    doc.font("Helvetica-Bold").fontSize(20).fillColor("#0f172a").text("Project Charter");
-    doc.moveDown(0.15);
-    doc.font("Helvetica-Bold").fontSize(15).fillColor("#334155").text(project.name);
-    doc.moveDown(0.5);
+    coverMasthead(doc, "Project Charter", project.name);
     doc
       .font("Helvetica")
       .fontSize(9.5)
@@ -125,21 +122,15 @@ function generateCharterPdf(detail: ProjectDetail): Promise<Buffer> {
     doc
       .font("Helvetica-Bold")
       .fontSize(10.5)
-      .fillColor("#1e293b")
+      .fillColor(BRAND.navy)
       .text(`Approved by: ${project.charterApprovedBy || "—"}`);
     doc
       .font("Helvetica")
       .fontSize(10.5)
-      .fillColor("#334155")
+      .fillColor(BRAND.slate)
       .text(`Approved on: ${formatDate(project.charterApprovedAt)}`);
 
-    doc.moveDown(2);
-    doc
-      .font("Helvetica")
-      .fontSize(8)
-      .fillColor("#94a3b8")
-      .text(`Generated ${new Date().toLocaleString("en-US")}`, { align: "left" });
-
+    finalizeKeelPdf(doc, generatedAt);
     doc.end();
   });
 }

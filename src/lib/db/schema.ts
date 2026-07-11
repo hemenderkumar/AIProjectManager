@@ -392,6 +392,13 @@ export const organizations = pgTable("organizations", {
   id: cuid(),
   name: text("name").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+
+  // Data export & deletion self-service (Request -> Admin confirms flow): a SUPER_USER
+  // requests deletion of their own organization's data; nothing is actually deleted until
+  // an ADMIN reviews and confirms (or dismisses) the request. Null/null means no pending
+  // request.
+  deletionRequestedAt: timestamp("deletion_requested_at"),
+  deletionRequestedBy: text("deletion_requested_by"), // snapshot of requester's name/email
 });
 
 export const users = pgTable("users", {

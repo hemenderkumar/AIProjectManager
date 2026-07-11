@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
+  const isInternal = !!user && user.organizationId == null;
 
   return (
     <div>
@@ -39,7 +40,7 @@ export default async function HomePage() {
         <div className="mt-8 max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-3">
           <QuickLink href="/dashboard" label="Portfolio Dashboard" />
           <QuickLink href="/projects" label="All Projects" />
-          <QuickLink href="/reports" label="Reports" />
+          {isInternal && <QuickLink href="/reports" label="Reports" />}
         </div>
       </div>
     </div>

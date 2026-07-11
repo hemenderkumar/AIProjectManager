@@ -5,6 +5,7 @@ import { getAllProjectsWithMetrics } from "@/lib/portfolio";
 import { getCurrentUser } from "@/lib/auth";
 import { PlusCircle, Lightbulb } from "lucide-react";
 import IdeaSuggestions from "@/components/IdeaSuggestions";
+import ExportButtons from "@/components/ExportButtons";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,16 @@ export default async function IdeationPage() {
         title="Ideation"
         subtitle="Idea generation, feasibility, estimates, charter, and approval — before a project moves into execution"
         action={
-          <Link
-            href="/projects/new?intent=idea"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
-          >
-            <PlusCircle size={16} />
-            New Idea
-          </Link>
+          <div className="flex items-center gap-2">
+            <ExportButtons endpoint="/api/reports/ideation" filenamePrefix="ideation" />
+            <Link
+              href="/projects/new?intent=idea"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              <PlusCircle size={16} />
+              New Idea
+            </Link>
+          </div>
         }
       />
       <div className="p-8 space-y-5">

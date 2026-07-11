@@ -4,6 +4,7 @@ import Topbar from "@/components/Topbar";
 import { Plus, Trash2, Search } from "lucide-react";
 import { SOURCING_TYPES, SOURCING_LABELS, type SourcingType } from "@/lib/deliveryModel";
 import RateCardSection from "@/components/RateCardSection";
+import ExportButtons from "@/components/ExportButtons";
 
 type Resource = {
   id: string;
@@ -162,12 +163,15 @@ export default function ResourcesPage() {
         title="Resources"
         subtitle="Your team roster — skills and experience feed directly into AI task matching and cost estimates"
         action={
-          <button
-            onClick={startCreate}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
-          >
-            <Plus size={16} /> Add Resource
-          </button>
+          <div className="flex items-center gap-2">
+            <ExportButtons endpoint="/api/reports/resources" filenamePrefix="resources" />
+            <button
+              onClick={startCreate}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              <Plus size={16} /> Add Resource
+            </button>
+          </div>
         }
       />
       <div className="p-8 space-y-4">

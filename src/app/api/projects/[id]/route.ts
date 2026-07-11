@@ -4,6 +4,7 @@ import { projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   _req: NextRequest,
@@ -73,6 +74,28 @@ export async function PATCH(
     .returning();
 
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  // Audit the sensitive approval gates specifically, not every routine field edit — these
+  // are the moments a decision was made, not just data entry.
+  if ("charterApprovedAt" in body && body.charterApprovedAt) {
+    await logAudit({
+      actor: _authUser, action: "charter.approved", entityType: "project", entityId: id,
+      organizationId: updated.organizationId, detail: `Charter approved by ${updated.charterApprovedBy ?? _authUser.name} for "${updated.name}".`,
+    });
+  }
+  if ("stageApprovedAt" in body && body.stageApprovedAt) {
+    await logAudit({
+      actor: _authUser, action: "stage.approved", entityType: "project", entityId: id,
+      organizationId: updated.organizationId, detail: `Stage approved by ${updated.stageApprovedBy ?? _authUser.name} for "${updated.name}" (now ${updated.stage}).`,
+    });
+  }
+  if ("technicalReviewStatus" in body && body.technicalReviewStatus && body.technicalReviewStatus !== "PENDING") {
+    await logAudit({
+      actor: _authUser, action: "technical_review.decided", entityType: "project", entityId: id,
+      organizationId: updated.organizationId, detail: `Technical review for "${updated.name}" set to ${updated.technicalReviewStatus} by ${updated.technicalReviewedBy ?? _authUser.name}.`,
+    });
+  }
+
   return NextResponse.json(updated);
 }
 
@@ -85,6 +108,7 @@ export async function DELETE(
   // invoice, etc. underneath it — require PM tier or above, not just any contributor.
   const _authUser = await requireProjectAccess("PM", id);
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const [existing] = await db.select({ name: projects.name, organizationId: projects.organizationId }).from(projects).where(eq(projects.id, id));
   try {
     await db.delete(projects).where(eq(projects.id, id));
   } catch {
@@ -93,5 +117,9 @@ export async function DELETE(
       { status: 409 }
     );
   }
+  await logAudit({
+    actor: _authUser, action: "project.deleted", entityType: "project", entityId: id,
+    organizationId: existing?.organizationId ?? null, detail: `${_authUser.name} deleted project "${existing?.name ?? id}".`,
+  });
   return NextResponse.json({ ok: true });
 }

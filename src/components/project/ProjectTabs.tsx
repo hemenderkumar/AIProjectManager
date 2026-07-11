@@ -91,7 +91,9 @@ export default function ProjectTabs({
       )}
       {active === "Charter" && <CharterTab detail={detail} />}
       {active === "Tasks" && <TasksTab detail={detail} allResources={allResources} autoPlan={autoPlan} />}
-      {active === "Resources" && <ResourcesTab detail={detail} allResources={allResources} />}
+      {active === "Resources" && (
+        <ResourcesTab detail={detail} allResources={allResources} isInternal={!!user && user.organizationId == null} />
+      )}
       {active === "Status Tracking" && <StatusTab detail={detail} />}
       {active === "Communications" && <CommsTab detail={detail} />}
       {active === "Risks" && <RisksTab detail={detail} />}

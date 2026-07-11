@@ -8,7 +8,15 @@ import TeamAccessCard from "./TeamAccessCard";
 
 type Resource = { id: string; name: string; role: string | null };
 
-export default function ResourcesTab({ detail, allResources }: { detail: ProjectDetail; allResources: Resource[] }) {
+export default function ResourcesTab({
+  detail,
+  allResources,
+  isInternal = true,
+}: {
+  detail: ProjectDetail;
+  allResources: Resource[];
+  isInternal?: boolean;
+}) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -60,12 +68,14 @@ export default function ResourcesTab({ detail, allResources }: { detail: Project
               {recalculating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
               Recalculate from tasks
             </button>
-            <button
-              onClick={() => setShowForm((s) => !s)}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-            >
-              <Plus size={14} /> Allocate Resource
-            </button>
+            {isInternal && (
+              <button
+                onClick={() => setShowForm((s) => !s)}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+              >
+                <Plus size={14} /> Allocate Resource
+              </button>
+            )}
           </div>
         }
       >
@@ -75,7 +85,12 @@ export default function ResourcesTab({ detail, allResources }: { detail: Project
           creates tasks or a task&apos;s assignee/hours change. Use &quot;Recalculate from tasks&quot; if
           numbers look stale, or set a manual figure below for someone not yet assigned tasks.
         </p>
-        {showForm && (
+        {!isInternal && (
+          <p className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 mb-3">
+            Staffing is managed by your Keel team — reach out to them to adjust who&apos;s allocated to this project.
+          </p>
+        )}
+        {isInternal && showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <Field label="Resource">

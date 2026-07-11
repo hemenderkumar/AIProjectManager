@@ -1,0 +1,14 @@
+<svg viewBox="150 60 300 300" xmlns="http://www.w3.org/2000/svg">
+  <g fill="#152A43">
+    <text x="250" y="85" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700">N</text>
+
+    <circle cx="250" cy="220" r="78" fill="none" stroke="#152A43" stroke-width="7"/>
+
+    <polygon points="250.0,120.0 256.9,203.4 291.0,179.0 266.6,213.1 350.0,220.0 266.6,226.9 291.0,261.0 256.9,236.6 250.0,320.0 243.1,236.6 209.0,261.0 233.4,226.9 150.0,220.0 233.4,213.1 209.0,179.0 243.1,203.4"/>
+
+    <line x1="295" y1="205" x2="359" y2="104" stroke="#152A43" stroke-width="24" stroke-linecap="butt"/>
+    <polygon points="380,70 381.4,117.7 337,90.7"/>
+
+    <line x1="305" y1="235" x2="385" y2="345" stroke="#152A43" stroke-width="24" stroke-linecap="butt"/>
+  </g>
+</svg>
