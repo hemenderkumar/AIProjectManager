@@ -24,10 +24,12 @@ export default function AdminPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "CONTRIBUTOR", organizationId: "" });
-  const [newOrgName, setNewOrgName] = useState("");
-  const [creatingOrg, setCreatingOrg] = useState(false);
-  const [orgError, setOrgError] = useState<string | null>(null);
   const [orgActionId, setOrgActionId] = useState<string | null>(null);
+
+  const [showCompanyForm, setShowCompanyForm] = useState(false);
+  const [companyForm, setCompanyForm] = useState({ name: "", ownerName: "", ownerEmail: "", ownerPassword: "" });
+  const [companySaving, setCompanySaving] = useState(false);
+  const [companyError, setCompanyError] = useState<string | null>(null);
 
   async function load() {
     const [u, s, o] = await Promise.all([
@@ -40,25 +42,39 @@ export default function AdminPage() {
     setOrgs(Array.isArray(o) ? o : []);
   }
 
-  async function createOrg() {
-    if (!newOrgName.trim()) return;
-    setCreatingOrg(true);
-    setOrgError(null);
+  async function createCompany() {
+    if (!companyForm.name.trim() || !companyForm.ownerName.trim() || !companyForm.ownerEmail.trim() || !companyForm.ownerPassword.trim()) {
+      setCompanyError("Company name and owner name/email/password are all required.");
+      return;
+    }
+    setCompanySaving(true);
+    setCompanyError(null);
     const res = await fetch("/api/admin/organizations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newOrgName }),
+      body: JSON.stringify({
+        name: companyForm.name,
+        ownerName: companyForm.ownerName,
+        ownerEmail: companyForm.ownerEmail,
+        ownerPassword: companyForm.ownerPassword,
+      }),
     });
-    setCreatingOrg(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setOrgError(data?.error ?? "Could not create organization.");
+    setCompanySaving(false);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok && res.status !== 207) {
+      setCompanyError(data?.error ?? "Could not create the company.");
       return;
     }
-    const created = await res.json();
-    setNewOrgName("");
-    setOrgs((prev) => [created, ...prev]);
-    setForm((f) => ({ ...f, organizationId: created.id }));
+    if (data.organization) setOrgs((prev) => [data.organization, ...prev]);
+    if (data.error) {
+      // Partial success (HTTP 207): the company was created but the owner account wasn't —
+      // surface that instead of pretending everything worked.
+      setCompanyError(data.error);
+    } else {
+      setShowCompanyForm(false);
+      setCompanyForm({ name: "", ownerName: "", ownerEmail: "", ownerPassword: "" });
+    }
+    load();
   }
 
   useEffect(() => {
@@ -173,7 +189,61 @@ export default function AdminPage() {
       <div className="p-8 max-w-3xl space-y-6">
 
         <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <p className="text-sm font-semibold text-slate-900 mb-4">Organizations</p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold text-slate-900">Organizations</p>
+            <button
+              onClick={() => setShowCompanyForm((s) => !s)}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            >
+              <Plus size={14} /> New Company
+            </button>
+          </div>
+
+          {showCompanyForm && (
+            <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+              <p className="text-xs text-slate-500">
+                Creates the client company and its first account owner (SUPER_USER) together —
+                the owner logs in to manage their own team, divisions, stakeholders, and vendor
+                evaluations.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  placeholder="Company name"
+                  value={companyForm.name}
+                  onChange={(e) => setCompanyForm((f) => ({ ...f, name: e.target.value }))}
+                  className={`${inputCls} col-span-2`}
+                />
+                <input
+                  placeholder="Owner full name"
+                  value={companyForm.ownerName}
+                  onChange={(e) => setCompanyForm((f) => ({ ...f, ownerName: e.target.value }))}
+                  className={inputCls}
+                />
+                <input
+                  placeholder="Owner email"
+                  type="email"
+                  value={companyForm.ownerEmail}
+                  onChange={(e) => setCompanyForm((f) => ({ ...f, ownerEmail: e.target.value }))}
+                  className={inputCls}
+                />
+                <input
+                  placeholder="Owner temporary password"
+                  value={companyForm.ownerPassword}
+                  onChange={(e) => setCompanyForm((f) => ({ ...f, ownerPassword: e.target.value }))}
+                  className={`${inputCls} col-span-2`}
+                />
+              </div>
+              {companyError && <p className="text-xs text-rose-600">{companyError}</p>}
+              <button
+                onClick={createCompany}
+                disabled={companySaving}
+                className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {companySaving ? "Creating..." : "Create Company & Owner"}
+              </button>
+            </div>
+          )}
+
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
@@ -260,24 +330,7 @@ export default function AdminPage() {
                   <option value="">Internal staff (no organization)</option>
                   {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
-                <div className="flex items-center gap-2">
-                  <input
-                    placeholder="New organization name"
-                    value={newOrgName}
-                    onChange={(e) => setNewOrgName(e.target.value)}
-                    className={inputCls}
-                  />
-                  <button
-                    type="button"
-                    onClick={createOrg}
-                    disabled={creatingOrg || !newOrgName.trim()}
-                    className="shrink-0 px-2.5 py-2 rounded-lg bg-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-300 disabled:opacity-50"
-                  >
-                    {creatingOrg ? "Adding..." : "+ Add org"}
-                  </button>
-                </div>
               </div>
-              {orgError && <p className="text-xs text-rose-600">{orgError}</p>}
               {form.role === "SUPER_USER" && (
                 <p className="text-xs text-amber-600">A SUPER_USER must be assigned to an organization above.</p>
               )}
