@@ -95,7 +95,7 @@ export default function Sidebar({ user }: { user: SessionUser | null }) {
               My Organization
             </Link>
           )}
-          {user?.role === "SUPER_USER" && (
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
             <Link href="/vendor-evaluation" className={navLinkCls}>
               <FileSearch size={17} />
               Vendor Evaluation

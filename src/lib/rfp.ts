@@ -1,19 +1,29 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rfps, rfpCriteria, rfpVendors, rfpVendorScores, rfpRecommendations, projects } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { askClaude, askClaudeJSON } from "@/lib/ai";
 import { requireRole } from "@/lib/auth";
 
-// Shared guard used by every /api/rfps/[id]/** route: fetch the RFP AND confirm it belongs
-// to the caller's own organization in one place, so no sub-route can accidentally skip the
-// tenancy check. Vendor Evaluation is SUPER_USER-only — commercially sensitive vendor
-// proposals aren't opened up to other org roles the way the stakeholder directory is.
+// Shared guard used by every /api/rfps/[id]/** route: fetch the RFP and confirm the caller
+// is allowed to touch it. A SUPER_USER (client company owner) is confined to their own
+// company's RFPs. An ADMIN (Keel staff) can act on ANY company's RFP — same "internal staff
+// cross company lines" convention used for project access — since Vendor Evaluation is meant
+// to be usable from the Admin side too, not just by a client logging in as their own owner.
 export async function requireOwnedRfp(rfpId: string) {
-  const user = await requireRole("SUPER_USER");
-  if (!user || !user.organizationId) return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) } as const;
-  const [rfp] = await db.select().from(rfps).where(and(eq(rfps.id, rfpId), eq(rfps.organizationId, user.organizationId)));
+  const user = await requireRole("SUPER_USER"); // roleAtLeast also passes ADMIN through
+  if (!user) return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) } as const;
+  if (user.role !== "ADMIN" && !user.organizationId) {
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) } as const;
+  }
+
+  const [rfp] = await db.select().from(rfps).where(eq(rfps.id, rfpId));
   if (!rfp) return { error: NextResponse.json({ error: "Not found" }, { status: 404 }) } as const;
+  if (user.role !== "ADMIN" && rfp.organizationId !== user.organizationId) {
+    // 404, not 403 — don't confirm to a SUPER_USER that an RFP with this id exists at all
+    // outside their own company.
+    return { error: NextResponse.json({ error: "Not found" }, { status: 404 }) } as const;
+  }
   return { user, rfp } as const;
 }
 

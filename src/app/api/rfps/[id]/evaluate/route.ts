@@ -13,7 +13,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   await logAudit({
     actor: user, action: "rfp.evaluated", entityType: "rfp", entityId: id,
-    organizationId: user.organizationId, detail: `${user.name} ran AI vendor evaluation for RFP "${rfp.title}".`,
+    organizationId: rfp.organizationId, detail: `${user.name} ran AI vendor evaluation for RFP "${rfp.title}".`,
   });
 
   return NextResponse.json({ ok: true });

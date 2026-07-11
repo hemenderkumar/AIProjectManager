@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   await logAudit({
     actor: user, action: "rfp.vendor_invited", entityType: "rfp", entityId: id,
-    organizationId: user.organizationId, detail: `${user.name} invited ${created.name} to RFP "${rfp.title}".`,
+    organizationId: rfp.organizationId, detail: `${user.name} invited ${created.name} to RFP "${rfp.title}".`,
   });
 
   return NextResponse.json({ ...created, link, emailed }, { status: 201 });

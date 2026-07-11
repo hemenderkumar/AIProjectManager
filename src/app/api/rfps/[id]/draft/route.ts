@@ -34,7 +34,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   await logAudit({
     actor: user, action: "rfp.drafted", entityType: "rfp", entityId: id,
-    organizationId: user.organizationId, detail: `${user.name} generated an AI draft for RFP "${updated.title}".`,
+    organizationId: rfp.organizationId, detail: `${user.name} generated an AI draft for RFP "${updated.title}".`,
   });
 
   return NextResponse.json(updated);

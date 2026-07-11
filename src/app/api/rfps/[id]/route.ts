@@ -8,7 +8,8 @@ import { logAudit } from "@/lib/audit";
 // Full detail payload for the RFP workspace UI: the RFP itself, its scoring rubric, every
 // invited vendor with their own per-criterion scores nested in, and the current overall
 // recommendation (if evaluation has run). Never includes vendor tokens in bulk anywhere else
-// but here — this route is SUPER_USER-only (requireOwnedRfp), so that's safe.
+// but here — this route is only reachable by the owning SUPER_USER or an ADMIN
+// (requireOwnedRfp), so that's safe.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const guard = await requireOwnedRfp(id);
@@ -61,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (update.status === "PUBLISHED" && rfp.status !== "PUBLISHED") {
     await logAudit({
       actor: user, action: "rfp.published", entityType: "rfp", entityId: id,
-      organizationId: user.organizationId, detail: `${user.name} published RFP "${updated.title}".`,
+      organizationId: rfp.organizationId, detail: `${user.name} published RFP "${updated.title}".`,
     });
   }
 
@@ -77,7 +78,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   await db.delete(rfps).where(eq(rfps.id, id));
   await logAudit({
     actor: user, action: "rfp.deleted", entityType: "rfp", entityId: id,
-    organizationId: user.organizationId, detail: `${user.name} deleted RFP "${rfp.title}".`,
+    organizationId: rfp.organizationId, detail: `${user.name} deleted RFP "${rfp.title}".`,
   });
   return NextResponse.json({ ok: true });
 }

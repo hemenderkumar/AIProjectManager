@@ -17,7 +17,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (target) {
     await logAudit({
       actor: user, action: "rfp.vendor_removed", entityType: "rfp", entityId: id,
-      organizationId: user.organizationId, detail: `${user.name} removed vendor ${target.name} from RFP "${rfp.title}".`,
+      organizationId: rfp.organizationId, detail: `${user.name} removed vendor ${target.name} from RFP "${rfp.title}".`,
     });
   }
 
