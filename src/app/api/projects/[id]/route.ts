@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projects, stakeholders } from "@/lib/db/schema";
+import { projects, stakeholders, organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
@@ -82,6 +82,32 @@ export async function PATCH(
     }
   }
 
+  // Mapping a project to a company (or moving it between companies / back to internal-only)
+  // is deliberately not in the general `allowed` list — it's a tenancy decision, not routine
+  // field editing, so only a Keel administrator can make it, regardless of what role the
+  // caller otherwise has on this project.
+  let orgChanged = false;
+  if ("organizationId" in body) {
+    if (_authUser.role !== "ADMIN") {
+      return NextResponse.json({ error: "Only a Keel administrator can map a project to a company." }, { status: 403 });
+    }
+    const [existing] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, id));
+    const newOrgId: string | null = body.organizationId || null;
+    if (newOrgId) {
+      const [org] = await db.select({ id: organizations.id, name: organizations.name }).from(organizations).where(eq(organizations.id, newOrgId));
+      if (!org) return NextResponse.json({ error: "That company does not exist." }, { status: 400 });
+    }
+    if (newOrgId !== (existing?.organizationId ?? null)) {
+      orgChanged = true;
+      update.organizationId = newOrgId;
+      // The old stakeholder directory belongs to a different (or no) company — carrying a
+      // stale sponsorStakeholderId forward would point at a stakeholder the new company (or
+      // nobody, for internal-only) can even see. The plain-text `sponsor` name is left as-is
+      // since it's just a label at that point.
+      update.sponsorStakeholderId = null;
+    }
+  }
+
   const [updated] = await db
     .update(projects)
     .set(update)
@@ -89,6 +115,16 @@ export async function PATCH(
     .returning();
 
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  if (orgChanged) {
+    const [org] = updated.organizationId
+      ? await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, updated.organizationId))
+      : [null];
+    await logAudit({
+      actor: _authUser, action: "project.company_mapped", entityType: "project", entityId: id,
+      organizationId: updated.organizationId, detail: `${_authUser.name} mapped project "${updated.name}" to ${org ? `company "${org.name}"` : "internal-only (no company)"}.`,
+    });
+  }
 
   // Audit the sensitive approval gates specifically, not every routine field edit — these
   // are the moments a decision was made, not just data entry.

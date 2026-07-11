@@ -9,6 +9,7 @@ import { Sparkles, Loader2, CheckCircle2, Lock, Trash2 } from "lucide-react";
 import IdeationWorkspace from "./IdeationWorkspace";
 
 type Stakeholder = { id: string; name: string; title: string | null; divisionId: string | null };
+type OrgOption = { id: string; name: string };
 
 // Duplicated (not imported) on purpose: "@/lib/auth" pulls in next/headers, which breaks
 // the build if a value (non-type) import from it ends up in a "use client" component's
@@ -85,6 +86,20 @@ export default function OverviewTab({
       .catch(() => setStakeholders([]));
   }, [p.id]);
 
+  // Mapping a project to a company is an ADMIN-only tenancy decision (see the PATCH route) —
+  // only fetch the company list, and only send organizationId in the save payload, when this
+  // user is actually an ADMIN. Every other role's save() call never touches this field.
+  const isAdmin = user?.role === "ADMIN";
+  const [orgOptions, setOrgOptions] = useState<OrgOption[]>([]);
+  const [companyOrgId, setCompanyOrgId] = useState(p.organizationId ?? "");
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/admin/organizations")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => setOrgOptions(Array.isArray(rows) ? rows : []))
+      .catch(() => setOrgOptions([]));
+  }, [isAdmin]);
+
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -94,7 +109,7 @@ export default function OverviewTab({
     await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(isAdmin ? { ...form, organizationId: companyOrgId || null } : form),
     });
     setSaving(false);
     router.refresh();
@@ -177,6 +192,16 @@ export default function OverviewTab({
           <Field label="Project Name">
             <input value={form.name} onChange={(e) => update("name", e.target.value)} className={inputCls} />
           </Field>
+          {isAdmin && (
+            <Field label="Company">
+              <select value={companyOrgId} onChange={(e) => setCompanyOrgId(e.target.value)} className={inputCls}>
+                <option value="">— Internal only (no company) —</option>
+                {orgOptions.map((o) => (
+                  <option key={o.id} value={o.id}>{o.name}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="Stage">
             <select value={form.stage} onChange={(e) => update("stage", e.target.value as typeof form.stage)} className={inputCls}>
               {["INCEPTION", "IDEATION", "CHARTER", "EXECUTION", "CLOSING", "CLOSED"].map((s) => (
