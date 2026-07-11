@@ -2,7 +2,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Topbar from "@/components/Topbar";
-import { Sparkles, Loader2, Plus, Trash2, Copy, CheckCircle2, Trophy, Send, Download } from "lucide-react";
+import { Sparkles, Loader2, Plus, Trash2, Copy, CheckCircle2, Trophy, Send } from "lucide-react";
+import DownloadPdfLink from "@/components/DownloadPdfLink";
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
 
@@ -248,13 +249,7 @@ export default function RfpDetailPage() {
             <p className="text-sm font-semibold text-slate-900">RFP Document</p>
             <div className="flex items-center gap-2">
               {rfp.content && (
-                <a
-                  href={`/api/rfps/${id}/pdf`}
-                  download
-                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-                >
-                  <Download size={13} /> Download PDF
-                </a>
+                <DownloadPdfLink href={`/api/rfps/${id}/pdf`} filename={`${rfp.title || "rfp"}.pdf`} />
               )}
               <button
                 onClick={draftWithAi}

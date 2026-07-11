@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
-import { Sparkles, Loader2, Download } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import MermaidDiagram from "@/components/MermaidDiagram";
+import DownloadPdfLink from "@/components/DownloadPdfLink";
 
 export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -159,13 +160,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         title="Project Charter"
         action={
           <div className="flex items-center gap-2">
-            <a
-              href={`/api/projects/${p.id}/charter-pdf`}
-              download
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-            >
-              <Download size={14} /> Download PDF
-            </a>
+            <DownloadPdfLink href={`/api/projects/${p.id}/charter-pdf`} filename={`${p.name || "charter"}.pdf`} />
             <button
               onClick={generateDraft}
               disabled={generating}
