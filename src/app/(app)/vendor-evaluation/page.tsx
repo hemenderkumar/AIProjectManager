@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Topbar from "@/components/Topbar";
-import { Plus, Loader2, FileText } from "lucide-react";
+import { Plus, Loader2, FileText, Sparkles } from "lucide-react";
 
 type Rfp = { id: string; title: string; status: string; projectId: string | null; createdAt: string; updatedAt: string };
 type ProjectOption = { id: string; name: string; organizationId: string | null };
@@ -44,6 +44,7 @@ function VendorEvaluationInner() {
     title: "", projectId: "", background: "", scope: "", requirements: "", timeline: "", budgetRange: "",
   });
   const [saving, setSaving] = useState(false);
+  const [draftingNew, setDraftingNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isAdmin = me?.role === "ADMIN";
@@ -103,29 +104,60 @@ function VendorEvaluationInner() {
   // otherwise the RFP would silently fail to link (the API drops a mismatched projectId).
   const projectOptions = allProjects.filter((p) => p.organizationId === (activeOrgId || null));
 
+  // Shared creation step used by both the plain "Create RFP" button and the
+  // "Create & Draft with AI" button below — the AI draft always operates on an
+  // already-created RFP row (it needs somewhere to store the drafted content), so
+  // "drafting from the form" really means: create it, then immediately trigger the
+  // same draft endpoint the RFP's own page uses, before navigating there.
+  async function createRfpRow(): Promise<{ id: string } | null> {
+    const res = await fetch("/api/rfps", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        projectId: form.projectId || undefined,
+        organizationId: isAdmin ? activeOrgId : undefined,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data?.error ?? "Couldn't create the RFP.");
+      return null;
+    }
+    return data;
+  }
+
   async function createRfp(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/rfps", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          projectId: form.projectId || undefined,
-          organizationId: isAdmin ? activeOrgId : undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data?.error ?? "Couldn't create the RFP.");
-        return;
-      }
-      router.push(`/vendor-evaluation/${data.id}`);
+      const created = await createRfpRow();
+      if (!created) return;
+      router.push(`/vendor-evaluation/${created.id}`);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function createAndDraftRfp() {
+    if (!form.title.trim()) {
+      setError("Give the RFP a title first.");
+      return;
+    }
+    setDraftingNew(true);
+    setError(null);
+    try {
+      const created = await createRfpRow();
+      if (!created) return;
+      // Best-effort: if the AI draft fails (e.g. no charter/pointers to work from), still
+      // land on the RFP's own page — it's created either way, and "Draft with AI" is right
+      // there to retry.
+      await fetch(`/api/rfps/${created.id}/draft`, { method: "POST" }).catch(() => {});
+      router.push(`/vendor-evaluation/${created.id}`);
+    } finally {
+      setDraftingNew(false);
     }
   }
 
@@ -206,14 +238,29 @@ function VendorEvaluationInner() {
               </label>
             </div>
             {error && <p className="text-xs text-rose-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-              {saving ? "Creating..." : "Create RFP"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={saving || draftingNew}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                {saving ? "Creating..." : "Create RFP"}
+              </button>
+              <button
+                type="button"
+                onClick={createAndDraftRfp}
+                disabled={saving || draftingNew}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 text-sm font-medium hover:bg-indigo-100 disabled:opacity-50"
+              >
+                {draftingNew ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                {draftingNew ? "Creating & drafting..." : "Create & Draft with AI"}
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">
+              &quot;Create &amp; Draft with AI&quot; creates the RFP and immediately generates its document from
+              the linked project&apos;s charter (or your pointers above) — you&apos;ll land on the RFP ready to review and edit.
+            </p>
           </form>
         )}
 
