@@ -5,6 +5,18 @@ import { logActivity } from "@/lib/activity";
 import LoginCard from "@/components/LoginCard";
 import { Rocket, Sparkles, FileSearch, FileBarChart } from "lucide-react";
 
+const PREVIEW_PROJECTS = [
+  { name: "Core Platform Migration", stage: "Execution", pct: 62, rag: "GREEN" as const },
+  { name: "Client Portal Revamp", stage: "Ideation", pct: 18, rag: "YELLOW" as const },
+  { name: "Data Warehouse Upgrade", stage: "Execution", pct: 41, rag: "RED" as const },
+];
+
+const PREVIEW_RAG_STYLES: Record<string, { bg: string; text: string; dot: string; bar: string }> = {
+  GREEN: { bg: "bg-emerald-100", text: "text-emerald-700", dot: "bg-emerald-500", bar: "bg-emerald-500" },
+  YELLOW: { bg: "bg-amber-100", text: "text-amber-700", dot: "bg-amber-500", bar: "bg-amber-500" },
+  RED: { bg: "bg-rose-100", text: "text-rose-700", dot: "bg-rose-500", bar: "bg-rose-500" },
+};
+
 // The single homepage at "/" -- for everyone, signed in or not. Logged-out visitors get
 // the pitch + an embedded login form; signed-in visitors get the same page with a
 // personalized hero and a single CTA into /home instead of the login form.
@@ -99,6 +111,43 @@ export default async function HomePage() {
         </section>
       )}
 
+      <section className="max-w-5xl mx-auto px-6 pb-16">
+        <div className="rounded-xl border border-slate-200 shadow-sm shadow-slate-200/60 overflow-hidden">
+          <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-900">Portfolio Dashboard</p>
+            <p className="text-xs text-slate-400">Sample data shown</p>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              <PreviewStat label="Active projects" value="12" />
+              <PreviewStat label="On track" value="8" accent="text-emerald-600" />
+              <PreviewStat label="At risk" value="4" accent="text-amber-600" />
+              <PreviewStat label="Budget variance" value="+3%" />
+            </div>
+            <div className="space-y-3">
+              {PREVIEW_PROJECTS.map((p) => {
+                const c = PREVIEW_RAG_STYLES[p.rag];
+                return (
+                  <div key={p.name} className="flex items-center gap-4 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-800 truncate">{p.name}</p>
+                      <p className="text-xs text-slate-400">{p.stage}</p>
+                    </div>
+                    <div className="hidden sm:block w-32 h-1.5 rounded-full bg-slate-100 overflow-hidden shrink-0">
+                      <div className={`h-full rounded-full ${c.bar}`} style={{ width: `${p.pct}%` }} />
+                    </div>
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${c.bg} ${c.text}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
+                      {p.rag}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-16 scroll-mt-16">
         <p className="text-xs font-medium tracking-widest uppercase text-indigo-600 mb-2">How it works</p>
         <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">From a first idea to a board-ready report, in four steps.</h2>
@@ -164,6 +213,15 @@ export default async function HomePage() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function PreviewStat({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="bg-slate-50 rounded-lg px-3 py-2.5">
+      <p className={`text-lg font-semibold ${accent ?? "text-slate-900"}`}>{value}</p>
+      <p className="text-[11px] text-slate-500">{label}</p>
     </div>
   );
 }
