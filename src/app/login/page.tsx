@@ -1,15 +1,11 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import LoginCard from "@/components/LoginCard";
 
-function LoginForm() {
-  const router = useRouter();
+function LoginScreen() {
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/activity/ping", {
@@ -19,71 +15,16 @@ function LoginForm() {
     }).catch(() => {});
   }, []);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    setLoading(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Login failed");
-      return;
-    }
-    router.push(params.get("next") || "/home");
-    router.refresh();
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
-        <div className="flex items-center gap-2.5 mb-6">
-          <Image src="/keel-mark.svg" alt="Keel" width={36} height={36} />
-          <div>
-            <p className="text-sm font-semibold text-slate-900 leading-tight">Keel</p>
-            <p className="text-xs text-slate-400 leading-tight">Guiding project success</p>
-          </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 gap-6">
+      <div className="flex items-center gap-2.5">
+        <Image src="/keel-mark.svg" alt="Keel" width={36} height={36} />
+        <div>
+          <p className="text-sm font-semibold text-slate-900 leading-tight">Keel</p>
+          <p className="text-xs text-slate-400 leading-tight">Guiding project success</p>
         </div>
-        <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="you@company.com"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              placeholder="••••••••"
-            />
-          </div>
-          {error && <p className="text-xs text-rose-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
-        <p className="text-xs text-slate-400 mt-4">
-          Seeded admin login: admin@example.com / changeme123 (set your own via .env.local, then re-seed)
-        </p>
       </div>
+      <LoginCard next={params.get("next") ?? undefined} />
     </div>
   );
 }
@@ -91,7 +32,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>
-      <LoginForm />
+      <LoginScreen />
     </Suspense>
   );
 }

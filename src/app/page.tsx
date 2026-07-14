@@ -3,7 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
-import { Rocket, Sparkles, FileSearch, FileBarChart, ArrowRight } from "lucide-react";
+import LoginCard from "@/components/LoginCard";
+import { Rocket, Sparkles, FileSearch, FileBarChart } from "lucide-react";
 
 // The public marketing homepage. Previously "/" just redirected straight into "/home",
 // which (for anyone not already signed in) meant the very first thing a visitor ever saw
@@ -25,39 +26,36 @@ export default async function MarketingHomePage() {
             <Image src="/keel-mark.svg" alt="Keel" width={30} height={30} />
             <span className="text-sm font-semibold text-slate-900">Keel</span>
           </div>
-          <Link
-            href="/login"
+          <a
+            href="#login"
             className="text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
           >
             Log in
-          </Link>
+          </a>
         </div>
       </header>
 
-      <section className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center">
-        <p className="inline-block text-xs font-semibold tracking-wide uppercase text-indigo-600 bg-indigo-50 rounded-full px-3 py-1 mb-5">
-          Built for boutique IT consultancies
-        </p>
-        <h1 className="text-4xl sm:text-5xl font-semibold text-slate-900 leading-tight mb-5">
-          One place to run every engagement, from idea to invoice.
-        </h1>
-        <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto mb-8">
-          Keel is an AI-driven project and portfolio tracker: it plans work, drafts charters and
-          RFPs, watches budgets and risk, briefs you out loud, and turns your whole portfolio into
-          board-ready reports — so your team spends less time updating trackers and more time
-          delivering.
-        </p>
-        <div className="flex items-center justify-center gap-3">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 text-sm font-medium px-5 py-3 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
-          >
-            Log in to your workspace <ArrowRight size={16} />
-          </Link>
+      <section className="max-w-5xl mx-auto px-6 pt-16 pb-14 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
+        <div>
+          <p className="inline-block text-xs font-semibold tracking-wide uppercase text-indigo-600 bg-indigo-50 rounded-full px-3 py-1 mb-5">
+            Built for boutique IT consultancies
+          </p>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 leading-tight mb-5">
+            One place to run every engagement, from idea to invoice.
+          </h1>
+          <p className="text-base text-slate-600 mb-2">
+            Keel is an AI-driven project and portfolio tracker: it plans work, drafts charters and
+            RFPs, watches budgets and risk, briefs you out loud, and turns your whole portfolio into
+            board-ready reports — so your team spends less time updating trackers and more time
+            delivering.
+          </p>
+          <p className="text-xs text-slate-400">
+            Keel is invite-only — your Keel administrator sets up your account and organization.
+          </p>
         </div>
-        <p className="text-xs text-slate-400 mt-4">
-          Keel is invite-only — your Keel administrator sets up your account and organization.
-        </p>
+        <div className="flex justify-center lg:justify-end">
+          <LoginCard id="login" />
+        </div>
       </section>
 
       <section className="max-w-5xl mx-auto px-6 pb-20">

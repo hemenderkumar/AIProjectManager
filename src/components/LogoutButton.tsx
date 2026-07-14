@@ -6,7 +6,9 @@ export default function LogoutButton() {
   const router = useRouter();
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    // Land on the marketing homepage, not straight back at the login form — same reasoning
+    // as the homepage itself: don't skip past context just to get to a credentials box.
+    router.push("/");
     router.refresh();
   }
   return (
