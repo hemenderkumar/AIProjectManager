@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
@@ -12,24 +11,26 @@ import {
   Lightbulb,
   ClipboardList,
   LineChart,
+  LayoutDashboard,
 } from "lucide-react";
 
-// The public marketing homepage. Previously "/" just redirected straight into "/home",
-// which (for anyone not already signed in) meant the very first thing a visitor ever saw
-// was a bare login form with zero context about what the product even is. Signed-in
-// visitors still skip straight past this to their real landing page.
+// The single homepage at "/" -- for everyone, signed in or not. It used to redirect
+// signed-in visitors straight to "/home", which meant "/" only ever existed for people
+// who'd never logged in. Now it's the one home page: logged-out visitors get the pitch
+// + an embedded login form; signed-in visitors get the same page with a "Go to the
+// Tracker" card in that slot instead, linking into /home (the app's own welcome page,
+// which has its own "Go to the Tracker" banner into the dashboard).
 //
 // Styled as a real product site rather than reusing the app's flat white/slate card look:
 // a solid sticky nav with in-page links (so it feels navigable, not just a single scroll),
 // a dark navy hero band (brand navy #152A43 from the logo), a numbered "how it works"
 // section, and a features section -- modeled after a standard SaaS marketing layout.
-export default async function MarketingHomePage() {
+export default async function HomePage() {
   const user = await getCurrentUser();
-  if (user) {
-    redirect("/home");
-  }
 
-  await logActivity({ type: "PUBLIC_VISIT", path: "/" });
+  if (!user) {
+    await logActivity({ type: "PUBLIC_VISIT", path: "/" });
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -46,12 +47,21 @@ export default async function MarketingHomePage() {
             <a href="#features" className="hover:text-white transition-colors">What you get</a>
             <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
           </nav>
-          <a
-            href="#login"
-            className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-[#152A43] transition-colors hover:bg-indigo-50"
-          >
-            Log in
-          </a>
+          {user ? (
+            <Link
+              href="/home"
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-[#152A43] transition-colors hover:bg-indigo-50"
+            >
+              Go to Tracker
+            </Link>
+          ) : (
+            <a
+              href="#login"
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-[#152A43] transition-colors hover:bg-indigo-50"
+            >
+              Log in
+            </a>
+          )}
         </div>
       </header>
 
@@ -77,16 +87,40 @@ export default async function MarketingHomePage() {
               >
                 See how it works
               </a>
-              <a href="#login" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
-                Log in →
-              </a>
+              {user ? (
+                <Link href="/home" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
+                  Go to Tracker →
+                </Link>
+              ) : (
+                <a href="#login" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
+                  Log in →
+                </a>
+              )}
             </div>
-            <p className="text-xs text-indigo-200/60">
-              Keel is invite-only — your Keel administrator sets up your account and organization.
-            </p>
+            {!user && (
+              <p className="text-xs text-indigo-200/60">
+                Keel is invite-only — your Keel administrator sets up your account and organization.
+              </p>
+            )}
           </div>
           <div className="flex justify-center lg:justify-end">
-            <LoginCard id="login" />
+            {user ? (
+              <Link
+                href="/home"
+                id="login"
+                className="group w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm p-6 flex items-center gap-4 hover:border-indigo-300 transition-colors"
+              >
+                <div className="h-11 w-11 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <LayoutDashboard size={22} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 mb-0.5">Go to the Tracker</p>
+                  <p className="text-xs text-slate-500">Welcome back, {user.name.split(" ")[0]} — head into your workspace.</p>
+                </div>
+              </Link>
+            ) : (
+              <LoginCard id="login" />
+            )}
           </div>
         </div>
       </section>
@@ -152,16 +186,29 @@ export default async function MarketingHomePage() {
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-14 text-center">
-        <h2 className="text-xl font-semibold text-slate-900 mb-3">Ready to run your next engagement in Keel?</h2>
+        <h2 className="text-xl font-semibold text-slate-900 mb-3">
+          {user ? "Ready to jump back in?" : "Ready to run your next engagement in Keel?"}
+        </h2>
         <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
-          Keel is invite-only. Your administrator sets up your account — once you&apos;re in, sign in below.
+          {user
+            ? "Head into your workspace to pick up where you left off."
+            : "Keel is invite-only. Your administrator sets up your account — once you're in, sign in below."}
         </p>
-        <a
-          href="#login"
-          className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg bg-[#152A43] text-white hover:bg-[#1c3a5e] transition-colors"
-        >
-          Log in to Keel
-        </a>
+        {user ? (
+          <Link
+            href="/home"
+            className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg bg-[#152A43] text-white hover:bg-[#1c3a5e] transition-colors"
+          >
+            Go to the Tracker
+          </Link>
+        ) : (
+          <a
+            href="#login"
+            className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg bg-[#152A43] text-white hover:bg-[#1c3a5e] transition-colors"
+          >
+            Log in to Keel
+          </a>
+        )}
       </section>
 
       <footer className="border-t border-slate-200 bg-slate-50">
