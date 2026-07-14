@@ -3,7 +3,7 @@ import { Fragment, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
-import { PriorityBadge } from "@/components/badges";
+import { PriorityBadge, ExecutionSourceBadge } from "@/components/badges";
 import { formatDate, formatDateInput } from "@/lib/format";
 import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid, List } from "lucide-react";
 import SprintBoard from "./SprintBoard";
@@ -622,7 +622,12 @@ export default function TasksTab({
                       {editedTasks.map((t, i) => (
                         <tr key={i} className="border-b border-slate-100 last:border-0">
                           <td className="py-1.5 text-slate-400">{phaseLabel(t.phase ?? "")}</td>
-                          <td className="py-1.5 text-slate-700">{t.title}</td>
+                          <td className="py-1.5 text-slate-700">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{t.title}</span>
+                              {t.executionSource === "AI" && <ExecutionSourceBadge source="AI" />}
+                            </div>
+                          </td>
                           <td className="py-1.5 text-slate-500">
                             {t.resolvedAssigneeName ?? t.suggestedRole ?? "—"}
                           </td>
@@ -993,9 +998,12 @@ export default function TasksTab({
                 </div>
                 <div className="space-y-1">
                   {phaseTasks.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between text-xs">
+                    <div key={t.id} className="flex items-center justify-between gap-2 text-xs">
                       <span className={t.status === "DONE" ? "text-slate-400 line-through" : "text-slate-700"}>{t.title}</span>
-                      <span className="text-slate-400">{t.status.replace("_", " ")}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {t.executionSource === "AI" && <ExecutionSourceBadge source="AI" />}
+                        <span className="text-slate-400">{t.status.replace("_", " ")}</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1027,8 +1035,11 @@ export default function TasksTab({
                 <Fragment key={t.id}>
                   <tr className="border-b border-slate-50 last:border-0">
                     <td className="py-2.5 font-medium text-slate-800">
-                      {t.title}
-                      {t.createdByAi && <span className="ml-1.5 text-[10px] text-indigo-500 align-middle">AI</span>}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{t.title}</span>
+                        {t.createdByAi && <span className="text-[10px] text-indigo-500 align-middle">AI</span>}
+                        {t.executionSource === "AI" && <ExecutionSourceBadge source="AI" />}
+                      </div>
                     </td>
                     <td className="py-2.5 text-slate-600">{resourceName(t.assigneeId)}</td>
                     <td className="py-2.5"><PriorityBadge priority={t.priority} /></td>

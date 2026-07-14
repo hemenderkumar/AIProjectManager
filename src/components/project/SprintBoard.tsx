@@ -6,6 +6,7 @@ import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDate, formatDateInput } from "@/lib/format";
 import { Plus, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { ExecutionSourceBadge } from "@/components/badges";
 
 type Resource = { id: string; name: string };
 
@@ -200,6 +201,7 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
           {backlogTasks.map((t) => (
             <div key={t.id} className="flex items-center justify-between gap-2 border border-slate-100 rounded-lg px-3 py-2 text-xs">
               <span className="text-slate-700 flex-1">{t.title}</span>
+              <ExecutionSourceBadge source={t.executionSource} />
               <span className="text-slate-400">{resourceName(t.assigneeId)}</span>
               <input
                 type="number"
@@ -231,6 +233,11 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
                   .map((t) => (
                     <div key={t.id} className="bg-white border border-slate-200 rounded-lg p-2">
                       <p className="text-xs text-slate-800 mb-1">{t.title}</p>
+                      {t.executionSource && (
+                        <div className="mb-1">
+                          <ExecutionSourceBadge source={t.executionSource} />
+                        </div>
+                      )}
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-slate-400">{resourceName(t.assigneeId)}</span>
                         {t.storyPoints != null && (
