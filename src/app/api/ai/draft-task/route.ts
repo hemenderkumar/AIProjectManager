@@ -10,6 +10,7 @@ type TaskDraft = {
   priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   estimateHours: number;
   dueInDays: number;
+  executionSource: "AI" | "INTERNAL" | "VENDOR";
 };
 
 // Turns a one-line ask ("need to set up the staging environment before the demo next week")
@@ -43,7 +44,11 @@ staging environment" not "Staging work"), "priority": "LOW"|"MEDIUM"|"HIGH"|"CRI
 urgency implied in the note (default MEDIUM if nothing suggests otherwise), "estimateHours": a reasonable
 rough effort estimate in hours for this single task (a plain number, e.g. 4), "dueInDays": a reasonable
 number of days from today this should be done by, reasoned from any deadline mentioned or implied (default
-7 if nothing is mentioned) }`;
+7 if nothing is mentioned), "executionSource": who should actually do this task -- "AI" if it's something
+an AI could do directly end-to-end (drafting text, generating a report, analyzing/summarizing data,
+answering questions), "VENDOR" if it clearly requires specialist external expertise, equipment, or a
+third-party product/license the internal team doesn't have, "INTERNAL" for everything else (the default
+for most hands-on delivery work the internal team does themselves) }`;
 
   const { data, error } = await askClaudeJSON<TaskDraft>(system, "Draft this task now.", 800);
 

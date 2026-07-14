@@ -14,7 +14,7 @@ export async function PATCH(
   if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
 
-  const allowed = ["title", "description", "status", "priority", "assigneeId", "startDate", "dueDate", "completedAt", "estimateHours", "actualHours", "phase", "sprintId", "storyPoints"];
+  const allowed = ["title", "description", "status", "priority", "assigneeId", "startDate", "dueDate", "completedAt", "estimateHours", "actualHours", "phase", "sprintId", "storyPoints", "executionSource"];
   const update: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {
     if (key in body) {

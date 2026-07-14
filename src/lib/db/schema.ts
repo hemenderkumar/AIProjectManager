@@ -50,6 +50,14 @@ export const taskStatusEnum = pgEnum("task_status", [
   "DONE",
 ]);
 
+// Who/what actually executes a task, suggested by AI at creation time (bulk project
+// planning or the single-task "Draft with AI") and always editable by a human: "AI" for
+// work Keel's AI can do directly (drafting, generating, analyzing), "INTERNAL" for work
+// the delivery team must do themselves, "VENDOR" for work that needs an external
+// vendor/contractor. Nullable -- existing tasks and anything created without a
+// suggestion simply have no classification yet, not a wrong default.
+export const taskExecutionSourceEnum = pgEnum("task_execution_source", ["AI", "INTERNAL", "VENDOR"]);
+
 export const commTypeEnum = pgEnum("comm_type", [
   "MEETING",
   "EMAIL",
@@ -326,6 +334,7 @@ export const tasks = pgTable("tasks", {
   requiredExperienceYears: real("required_experience_years"),
   isAgentTask: boolean("is_agent_task").notNull().default(false),
   createdByAi: boolean("created_by_ai").notNull().default(false),
+  executionSource: taskExecutionSourceEnum("execution_source"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 

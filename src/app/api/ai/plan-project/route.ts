@@ -73,6 +73,7 @@ interface PlanTask {
   dueInDays?: number;
   sprintName?: string;
   storyPoints?: number;
+  executionSource?: "AI" | "INTERNAL" | "VENDOR";
 }
 
 interface PlanMilestone {
@@ -360,6 +361,7 @@ export async function POST(req: NextRequest) {
               phase: t.phase ?? null,
               sprintId: t.sprintName ? sprintNameToId.get(t.sprintName) ?? null : null,
               storyPoints: t.storyPoints ?? null,
+              executionSource: t.executionSource ?? null,
             }))
           )
           .returning()
@@ -533,6 +535,14 @@ judge realistic requirements and to prefer matching existing team members whose 
 Team roster:
 ${resourceList || "No team members yet — suggest generic roles and realistic market rates for each."}
 
+For each task, ALSO include executionSource: who/what should actually do this task -- "AI" if it's
+something an AI could realistically do directly end-to-end with no human execution needed (drafting a
+document, generating a report, summarizing/analyzing data, answering questions) -- use this sparingly, most
+delivery work still needs a human; "VENDOR" if it clearly requires specialist external expertise, licensed
+equipment, or a third-party product/service the internal team wouldn't have in-house (e.g. a licensed
+electrician, a specialized security audit firm, a niche SaaS integration only its vendor can do); "INTERNAL"
+for everything else -- the default for most hands-on delivery work the internal team does themselves.
+
 Also list 2-4 follow-up actions YOU (the AI PM) will own — things like "check in with X on Y" or "prepare
 steering committee update" — not delivery work; these don't need a phase or role.
 
@@ -563,7 +573,7 @@ Output strict JSON matching this shape exactly:
 {
   "approach": { "summary": string, "details": { "<label>": "<value>", ... }, "rationale": string },
   "milestones": [{ "name": string, "phase": string, "dueInDays": number }],
-  "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "requiredSkills": string[], "requiredExperienceYears": number, "phase": string, "dueInDays": number, "sprintName": string, "storyPoints": number }],
+  "tasks": [{ "title": string, "description": string, "estimateHours": number, "priority": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL", "suggestedRole": string, "suggestedHourlyRate": number, "requiredSkills": string[], "requiredExperienceYears": number, "phase": string, "dueInDays": number, "sprintName": string, "storyPoints": number, "executionSource": "AI"|"INTERNAL"|"VENDOR" }],
   "agentFollowUps": [{ "title": string, "description": string, "dueInDays": number }],
   "materialCosts": [{ "name": string, "amount": number, "cadence": "one-time"|"monthly"|"annual", "notes": string }],
   "ongoingSupport": { "summary": string, "monthlyCost": number, "roles": [{ "role": string, "hoursPerWeek": number }] }

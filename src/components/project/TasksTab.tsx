@@ -25,6 +25,15 @@ type PlanTask = {
   resolvedAssigneeName?: string | null;
   sprintName?: string;
   storyPoints?: number;
+  executionSource?: "AI" | "INTERNAL" | "VENDOR";
+};
+
+// Who/what executes a task -- suggested by AI at creation time (single-task draft or the
+// bulk planner), always editable here. Color-coded so it reads at a glance in the task list.
+const EXECUTION_SOURCE_STYLES: Record<string, string> = {
+  AI: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  INTERNAL: "border-slate-200 bg-white text-slate-600",
+  VENDOR: "border-amber-200 bg-amber-50 text-amber-700",
 };
 
 const METHODOLOGY_LABELS: Record<string, string> = {
@@ -116,7 +125,7 @@ export default function TasksTab({
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: "", assigneeId: "", priority: "MEDIUM", dueDate: "", estimateHours: 0 });
+  const [form, setForm] = useState({ title: "", assigneeId: "", priority: "MEDIUM", dueDate: "", estimateHours: 0, executionSource: "" });
   const [taskDraftNote, setTaskDraftNote] = useState("");
   const [draftingTask, setDraftingTask] = useState(false);
   const [taskDraftError, setTaskDraftError] = useState<string | null>(null);
@@ -180,6 +189,7 @@ export default function TasksTab({
         priority: data.priority ?? f.priority,
         estimateHours: typeof data.estimateHours === "number" ? data.estimateHours : f.estimateHours,
         dueDate: dueDate ?? f.dueDate,
+        executionSource: ["AI", "INTERNAL", "VENDOR"].includes(data.executionSource) ? data.executionSource : f.executionSource,
       }));
     } finally {
       setDraftingTask(false);
@@ -195,7 +205,7 @@ export default function TasksTab({
       body: JSON.stringify({ ...form, assigneeId: form.assigneeId || null }),
     });
     setSaving(false);
-    setForm({ title: "", assigneeId: "", priority: "MEDIUM", dueDate: "", estimateHours: 0 });
+    setForm({ title: "", assigneeId: "", priority: "MEDIUM", dueDate: "", estimateHours: 0, executionSource: "" });
     setShowForm(false);
     router.refresh();
   }
@@ -205,6 +215,15 @@ export default function TasksTab({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
+    });
+    router.refresh();
+  }
+
+  async function updateExecutionSource(taskId: string, executionSource: string) {
+    await fetch(`/api/projects/${detail.project.id}/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ executionSource: executionSource || null }),
     });
     router.refresh();
   }
@@ -259,6 +278,10 @@ export default function TasksTab({
 
   function updateTaskHours(index: number, hours: number) {
     setEditedTasks((prev) => prev.map((t, i) => (i === index ? { ...t, estimateHours: hours } : t)));
+  }
+
+  function updatePlanTaskExecutionSource(index: number, executionSource: PlanTask["executionSource"]) {
+    setEditedTasks((prev) => prev.map((t, i) => (i === index ? { ...t, executionSource } : t)));
   }
 
   const editedTotalHours = editedTasks.reduce((sum, t) => sum + (t.estimateHours ?? 0), 0);
@@ -578,6 +601,7 @@ export default function TasksTab({
                         <th className="py-1.5 font-medium">Task</th>
                         <th className="py-1.5 font-medium">Role</th>
                         <th className="py-1.5 font-medium">Skills / Experience</th>
+                        <th className="py-1.5 font-medium">Who</th>
                         <th className="py-1.5 font-medium text-right">Hours</th>
                       </tr>
                     </thead>
@@ -601,6 +625,25 @@ export default function TasksTab({
                               )}
                               {!(t.requiredSkills ?? []).length && t.requiredExperienceYears == null && "—"}
                             </div>
+                          </td>
+                          <td className="py-1.5">
+                            <select
+                              value={t.executionSource ?? ""}
+                              onChange={(e) =>
+                                updatePlanTaskExecutionSource(
+                                  i,
+                                  (e.target.value || undefined) as PlanTask["executionSource"]
+                                )
+                              }
+                              className={`text-[11px] border rounded px-1 py-0.5 ${
+                                t.executionSource ? EXECUTION_SOURCE_STYLES[t.executionSource] : "border-slate-200 bg-white text-slate-500"
+                              }`}
+                            >
+                              <option value="">Not classified</option>
+                              <option value="AI">AI</option>
+                              <option value="INTERNAL">Internal</option>
+                              <option value="VENDOR">Vendor</option>
+                            </select>
                           </td>
                           <td className="py-1.5 text-right">
                             <input
@@ -900,6 +943,14 @@ export default function TasksTab({
               <Field label="Due date">
                 <input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className={inputCls} />
               </Field>
+              <Field label="Who does this?">
+                <select value={form.executionSource} onChange={(e) => setForm((f) => ({ ...f, executionSource: e.target.value }))} className={inputCls}>
+                  <option value="">Not classified</option>
+                  <option value="AI">AI can do this</option>
+                  <option value="INTERNAL">Internal team</option>
+                  <option value="VENDOR">External vendor</option>
+                </select>
+              </Field>
             </div>
             <PrimaryButton onClick={addTask} disabled={saving}>{saving ? "Adding..." : "Add Task"}</PrimaryButton>
           </div>
@@ -943,6 +994,7 @@ export default function TasksTab({
               <th className="py-2 font-medium">Priority</th>
               <th className="py-2 font-medium">Due</th>
               <th className="py-2 font-medium text-right">Hours</th>
+              <th className="py-2 font-medium">Who</th>
               <th className="py-2 font-medium">Status</th>
               <th className="py-2 font-medium"></th>
             </tr>
@@ -963,6 +1015,18 @@ export default function TasksTab({
                     <td className="py-2.5 text-slate-600">{formatDate(t.dueDate)}</td>
                     <td className={`py-2.5 text-right ${over ? "text-rose-600" : "text-slate-600"}`}>
                       {(t.actualHours ?? 0).toFixed(1)}/{(t.estimateHours ?? 0).toFixed(0)}h
+                    </td>
+                    <td className="py-2.5">
+                      <select
+                        value={t.executionSource ?? ""}
+                        onChange={(e) => updateExecutionSource(t.id, e.target.value)}
+                        className={`text-[11px] border rounded-md px-1.5 py-1 ${EXECUTION_SOURCE_STYLES[t.executionSource ?? ""] ?? "border-slate-200 bg-white text-slate-500"}`}
+                      >
+                        <option value="">Not classified</option>
+                        <option value="AI">AI</option>
+                        <option value="INTERNAL">Internal</option>
+                        <option value="VENDOR">Vendor</option>
+                      </select>
                     </td>
                     <td className="py-2.5">
                       <select

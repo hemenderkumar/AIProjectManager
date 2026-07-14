@@ -39,6 +39,7 @@ export async function POST(
       startDate: body.startDate ? new Date(body.startDate) : null,
       dueDate: body.dueDate ? new Date(body.dueDate) : null,
       estimateHours: body.estimateHours ?? 0,
+      executionSource: ["AI", "INTERNAL", "VENDOR"].includes(body.executionSource) ? body.executionSource : null,
     })
     .returning();
 
