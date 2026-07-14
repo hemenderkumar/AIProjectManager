@@ -3,6 +3,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Topbar from "@/components/Topbar";
 import CountryStateFields from "@/components/CountryStateFields";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type Stakeholder = { id: string; name: string; title: string | null };
 
@@ -150,6 +151,11 @@ function NewProjectForm() {
             {aiFilled && <span className="text-xs text-emerald-700 font-medium">Form updated below — review before creating.</span>}
             {aiError && <span className="text-xs text-red-600">{aiError}</span>}
           </div>
+          <AiWaitIndicator
+            active={aiLoading}
+            messages={["Reading what you described...", "Filling in the project fields..."]}
+            className="mt-3"
+          />
         </div>
       </div>
       <form onSubmit={submit} className="px-8 pb-8 max-w-3xl space-y-6">
