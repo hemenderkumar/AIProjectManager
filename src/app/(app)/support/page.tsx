@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { incidents, projects, rateCards } from "@/lib/db/schema";
 import { DEFAULT_ASSUMPTIONS } from "@/lib/supportEstimate";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessOptionalProject, filterProjectsForUser } from "@/lib/tenancy";
+import { canAccessOptionalProject, filterProjectsForUser, isInternalStaff } from "@/lib/tenancy";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +51,12 @@ export default async function SupportPage() {
         action={<ExportButtons endpoint="/api/reports/support" filenamePrefix="support-incidents" />}
       />
       <div className="p-8">
-        <SupportTabs incidents={serialized} projects={projectRows} defaultBlendedHourlyRate={defaultBlendedHourlyRate} />
+        <SupportTabs
+          incidents={serialized}
+          projects={projectRows}
+          defaultBlendedHourlyRate={defaultBlendedHourlyRate}
+          showPatterns={isInternalStaff(user)}
+        />
       </div>
     </div>
   );
