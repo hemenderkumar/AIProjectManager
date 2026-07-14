@@ -117,6 +117,9 @@ export default function TasksTab({
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: "", assigneeId: "", priority: "MEDIUM", dueDate: "", estimateHours: 0 });
+  const [taskDraftNote, setTaskDraftNote] = useState("");
+  const [draftingTask, setDraftingTask] = useState(false);
+  const [taskDraftError, setTaskDraftError] = useState<string | null>(null);
 
   const [showPlanner, setShowPlanner] = useState(autoPlan ?? false);
   const [goal, setGoal] = useState(
@@ -151,6 +154,37 @@ export default function TasksTab({
 
   const resourceName = (id: string | null) => allResources.find((r) => r.id === id)?.name ?? "Unassigned";
   const typeConfig = PROJECT_TYPES[projectType] ?? PROJECT_TYPES.TECHNOLOGY;
+
+  async function draftTaskWithAI() {
+    if (!taskDraftNote.trim()) return;
+    setDraftingTask(true);
+    setTaskDraftError(null);
+    try {
+      const res = await fetch("/api/ai/draft-task", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: detail.project.id, note: taskDraftNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTaskDraftError(data?.error ?? "Couldn't draft this task.");
+        return;
+      }
+      const dueDate =
+        typeof data.dueInDays === "number"
+          ? formatDateInput(new Date(Date.now() + data.dueInDays * 24 * 60 * 60 * 1000))
+          : undefined;
+      setForm((f) => ({
+        ...f,
+        title: data.title ?? f.title,
+        priority: data.priority ?? f.priority,
+        estimateHours: typeof data.estimateHours === "number" ? data.estimateHours : f.estimateHours,
+        dueDate: dueDate ?? f.dueDate,
+      }));
+    } finally {
+      setDraftingTask(false);
+    }
+  }
 
   async function addTask() {
     if (!form.title.trim()) return;
@@ -826,6 +860,26 @@ export default function TasksTab({
       >
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+            <div className="border border-indigo-100 bg-indigo-50/60 rounded-lg p-3 space-y-2">
+              <Field label="Describe the task (one line is fine) — AI drafts the fields below">
+                <textarea
+                  value={taskDraftNote}
+                  onChange={(e) => setTaskDraftNote(e.target.value)}
+                  className={inputCls}
+                  rows={2}
+                  placeholder="e.g. need to set up the staging environment before the demo next week"
+                />
+              </Field>
+              <button
+                onClick={draftTaskWithAI}
+                disabled={draftingTask || !taskDraftNote.trim()}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              >
+                {draftingTask ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {draftingTask ? "Drafting..." : "Draft with AI"}
+              </button>
+              {taskDraftError && <p className="text-xs text-rose-600">{taskDraftError}</p>}
+            </div>
             <Field label="Title">
               <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} />
             </Field>

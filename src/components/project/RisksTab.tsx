@@ -4,13 +4,43 @@ import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge } from "@/components/badges";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles, Loader2 } from "lucide-react";
 
 export default function RisksTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ description: "", impact: "MEDIUM", likelihood: "MEDIUM", mitigation: "", owner: "" });
+  const [draftNote, setDraftNote] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  async function draftWithAI() {
+    if (!draftNote.trim()) return;
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const res = await fetch("/api/ai/draft-risk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: detail.project.id, note: draftNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDraftError(data?.error ?? "Couldn't draft this risk.");
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        description: data.description ?? f.description,
+        impact: data.impact ?? f.impact,
+        likelihood: data.likelihood ?? f.likelihood,
+        mitigation: data.mitigation ?? f.mitigation,
+      }));
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function submit() {
     if (!form.description.trim()) return;
@@ -50,6 +80,26 @@ export default function RisksTab({ detail }: { detail: ProjectDetail }) {
       >
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+            <div className="border border-indigo-100 bg-indigo-50/60 rounded-lg p-3 space-y-2">
+              <Field label="Describe the concern (rough notes are fine) — AI drafts the fields below">
+                <textarea
+                  value={draftNote}
+                  onChange={(e) => setDraftNote(e.target.value)}
+                  className={inputCls}
+                  rows={2}
+                  placeholder="e.g. the integration vendor has missed two deadlines already, worried about go-live"
+                />
+              </Field>
+              <button
+                onClick={draftWithAI}
+                disabled={drafting || !draftNote.trim()}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              >
+                {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {drafting ? "Drafting..." : "Draft with AI"}
+              </button>
+              {draftError && <p className="text-xs text-rose-600">{draftError}</p>}
+            </div>
             <Field label="Description">
               <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputCls} rows={2} />
             </Field>

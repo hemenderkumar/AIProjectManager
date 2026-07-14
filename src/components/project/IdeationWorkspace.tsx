@@ -39,6 +39,8 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
   const [optionsError, setOptionsError] = useState<string | null>(null);
   const [manualOption, setManualOption] = useState({ name: "", description: "", pros: "", cons: "" });
   const [showManualOption, setShowManualOption] = useState(false);
+  const [draftingOption, setDraftingOption] = useState(false);
+  const [optionDraftError, setOptionDraftError] = useState<string | null>(null);
 
   const [recommending, setRecommending] = useState(false);
   const [recommendError, setRecommendError] = useState<string | null>(null);
@@ -115,6 +117,32 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
       router.refresh();
     } finally {
       setGeneratingOptions(false);
+    }
+  }
+
+  async function draftOptionWithAi() {
+    if (!manualOption.name.trim()) return;
+    setDraftingOption(true);
+    setOptionDraftError(null);
+    try {
+      const res = await fetch("/api/ai/draft-solution-option", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: p.id, name: manualOption.name, description: manualOption.description }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOptionDraftError(data?.error ?? "Couldn't draft this option.");
+        return;
+      }
+      setManualOption((o) => ({
+        ...o,
+        description: data.description ?? o.description,
+        pros: data.pros ?? o.pros,
+        cons: data.cons ?? o.cons,
+      }));
+    } finally {
+      setDraftingOption(false);
     }
   }
 
@@ -309,6 +337,15 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                   <input value={manualOption.description} onChange={(e) => setManualOption((o) => ({ ...o, description: e.target.value }))} className={inputCls} />
                 </Field>
               </div>
+              <button
+                onClick={draftOptionWithAi}
+                disabled={draftingOption || !manualOption.name.trim()}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium"
+              >
+                {draftingOption ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {draftingOption ? "Drafting..." : "Draft description + pros/cons with AI"}
+              </button>
+              {optionDraftError && <p className="text-xs text-rose-600">{optionDraftError}</p>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Field label="Pros">
                   <input value={manualOption.pros} onChange={(e) => setManualOption((o) => ({ ...o, pros: e.target.value }))} className={inputCls} />

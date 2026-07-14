@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateTime } from "@/lib/format";
-import { Plus, Mail, Users, Phone, Presentation, MessageSquare } from "lucide-react";
+import { Plus, Mail, Users, Phone, Presentation, MessageSquare, Sparkles, Loader2 } from "lucide-react";
 
 const TYPE_ICON: Record<string, React.ElementType> = {
   MEETING: Users,
@@ -20,6 +20,36 @@ export default function CommsTab({ detail }: { detail: ProjectDetail }) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ type: "MEETING", summary: "", participants: "", actionItems: "" });
+  const [rawNotes, setRawNotes] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  async function draftWithAI() {
+    if (!rawNotes.trim()) return;
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const res = await fetch("/api/ai/draft-communication", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: detail.project.id, note: rawNotes }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDraftError(data?.error ?? "Couldn't draft this from your notes.");
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        type: data.type ?? f.type,
+        summary: data.summary ?? f.summary,
+        participants: data.participants ?? f.participants,
+        actionItems: data.actionItems ?? f.actionItems,
+      }));
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function submit() {
     if (!form.summary.trim()) return;
@@ -50,6 +80,26 @@ export default function CommsTab({ detail }: { detail: ProjectDetail }) {
       >
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+            <div className="border border-indigo-100 bg-indigo-50/60 rounded-lg p-3 space-y-2">
+              <Field label="Paste raw notes (meeting notes, an email, chat log) — AI drafts the fields below">
+                <textarea
+                  value={rawNotes}
+                  onChange={(e) => setRawNotes(e.target.value)}
+                  className={inputCls}
+                  rows={3}
+                  placeholder="e.g. quick call with Sarah and the vendor team about the delayed API spec, they'll send it Friday, need to update the timeline after that"
+                />
+              </Field>
+              <button
+                onClick={draftWithAI}
+                disabled={drafting || !rawNotes.trim()}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              >
+                {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {drafting ? "Drafting..." : "Draft with AI"}
+              </button>
+              {draftError && <p className="text-xs text-rose-600">{draftError}</p>}
+            </div>
             <Field label="Type">
               <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))} className={inputCls}>
                 {["MEETING", "EMAIL", "SLACK", "CALL", "WORKSHOP", "OTHER"].map((t) => <option key={t} value={t}>{t}</option>)}
