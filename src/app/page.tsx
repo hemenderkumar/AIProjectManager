@@ -34,30 +34,28 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-20 bg-[#152A43] border-b border-white/10">
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="bg-white rounded-md p-1">
-              <Image src="/keel-mark.svg" alt="Keel" width={22} height={22} />
-            </div>
-            <span className="text-sm font-semibold text-white">Keel</span>
+            <Image src="/keel-mark.svg" alt="Keel" width={24} height={24} />
+            <span className="text-sm font-semibold text-slate-900">Keel</span>
           </div>
-          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-indigo-100/80">
-            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
-            <a href="#features" className="hover:text-white transition-colors">What you get</a>
-            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-500">
+            <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How it works</a>
+            <a href="#features" className="hover:text-slate-900 transition-colors">What you get</a>
+            <Link href="/privacy" className="hover:text-slate-900 transition-colors">Privacy</Link>
           </nav>
           {user ? (
             <Link
               href="/home"
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-[#152A43] transition-colors hover:bg-indigo-50"
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
             >
               Go to Tracker
             </Link>
           ) : (
             <a
               href="#login"
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-[#152A43] transition-colors hover:bg-indigo-50"
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
             >
               Log in
             </a>
@@ -65,16 +63,16 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <section className="bg-gradient-to-br from-[#152A43] via-[#1c3a5e] to-indigo-800 pt-16 pb-16">
+      <section className="bg-gradient-to-b from-indigo-50/70 via-slate-50/60 to-white pt-16 pb-16">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
           <div>
-            <p className="inline-block text-xs font-semibold tracking-wide uppercase text-indigo-100 bg-white/10 rounded-full px-3 py-1 mb-5">
+            <p className="inline-block text-xs font-semibold tracking-wide uppercase text-indigo-600 bg-indigo-50 rounded-full px-3 py-1 mb-5">
               Built for boutique IT consultancies
             </p>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-tight mb-5">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-slate-900 leading-tight mb-5">
               One place to run every engagement, from idea to invoice.
             </h1>
-            <p className="text-base text-indigo-100/90 mb-6 max-w-lg">
+            <p className="text-base text-slate-600 mb-6 max-w-lg">
               Keel is an AI-driven project and portfolio tracker: it plans work, drafts charters and
               RFPs, watches budgets and risk, briefs you out loud, and turns your whole portfolio into
               board-ready reports — so your team spends less time updating trackers and more time
@@ -83,22 +81,22 @@ export default async function HomePage() {
             <div className="flex items-center gap-4 mb-4">
               <a
                 href="#how-it-works"
-                className="text-sm font-medium px-5 py-2.5 rounded-lg bg-white text-[#152A43] hover:bg-indigo-50 transition-colors"
+                className="text-sm font-medium px-5 py-2.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 transition-colors"
               >
                 See how it works
               </a>
               {user ? (
-                <Link href="/home" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
+                <Link href="/home" className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
                   Go to Tracker →
                 </Link>
               ) : (
-                <a href="#login" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
+                <a href="#login" className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors">
                   Log in →
                 </a>
               )}
             </div>
             {!user && (
-              <p className="text-xs text-indigo-200/60">
+              <p className="text-xs text-slate-400">
                 Keel is invite-only — your Keel administrator sets up your account and organization.
               </p>
             )}
@@ -108,7 +106,7 @@ export default async function HomePage() {
               <Link
                 href="/home"
                 id="login"
-                className="group w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm p-6 flex items-center gap-4 hover:border-indigo-300 transition-colors"
+                className="group w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6 flex items-center gap-4 hover:border-indigo-300 transition-colors"
               >
                 <div className="h-11 w-11 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                   <LayoutDashboard size={22} />
@@ -197,14 +195,14 @@ export default async function HomePage() {
         {user ? (
           <Link
             href="/home"
-            className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg bg-[#152A43] text-white hover:bg-[#1c3a5e] transition-colors"
+            className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 transition-colors"
           >
             Go to the Tracker
           </Link>
         ) : (
           <a
             href="#login"
-            className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg bg-[#152A43] text-white hover:bg-[#1c3a5e] transition-colors"
+            className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 transition-colors"
           >
             Log in to Keel
           </a>
