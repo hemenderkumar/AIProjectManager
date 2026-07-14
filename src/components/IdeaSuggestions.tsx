@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Loader2, ArrowRight, X } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type IdeaSuggestion = {
   name: string;
@@ -90,6 +91,7 @@ export default function IdeaSuggestions() {
         </button>
       </div>
 
+      <AiWaitIndicator active={loading} messages={["Scanning your portfolio...", "Drafting new ideas..."]} />
       {error && <p className="text-xs text-rose-600">{error}</p>}
 
       {ideas && ideas.length > 0 && (

@@ -7,6 +7,7 @@ import { PriorityBadge } from "@/components/badges";
 import { formatDate, formatDateInput } from "@/lib/format";
 import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid, List } from "lucide-react";
 import SprintBoard from "./SprintBoard";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type Resource = { id: string; name: string };
 
@@ -482,10 +483,22 @@ export default function TasksTab({
             </Field>
             {planError && <p className="text-xs text-rose-600">{planError}</p>}
             {!preview && (
-              <PrimaryButton onClick={generatePlan} disabled={planning} className="flex items-center gap-1.5">
-                {planning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                {planning ? "Estimating..." : "Generate plan"}
-              </PrimaryButton>
+              <div className="space-y-2">
+                <PrimaryButton onClick={generatePlan} disabled={planning} className="flex items-center gap-1.5">
+                  {planning ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  {planning ? "Estimating..." : "Generate plan"}
+                </PrimaryButton>
+                <AiWaitIndicator
+                  active={planning}
+                  messages={[
+                    "Reading the goal and picking an approach...",
+                    "Breaking the work into phases and tasks...",
+                    "Estimating effort and matching your team...",
+                    "Working out cost, schedule, and staffing gaps...",
+                    "Almost done — putting the plan together...",
+                  ]}
+                />
+              </div>
             )}
 
             {preview && (
@@ -824,7 +837,8 @@ export default function TasksTab({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex flex-col gap-2 pt-1">
+                <div className="flex items-center gap-2">
                   <PrimaryButton onClick={confirmPlan} disabled={confirming} className="flex items-center gap-1.5">
                     {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                     {confirming ? "Creating..." : "Approve & create plan"}
@@ -836,11 +850,16 @@ export default function TasksTab({
                     <X size={14} /> Discard
                   </button>
                 </div>
+                <AiWaitIndicator
+                  active={confirming}
+                  messages={["Creating tasks, milestones, and sprints...", "Saving the budget and staffing plan...", "Almost done..."]}
+                />
                 <p className="text-[10px] text-slate-400">
                   Cost estimates use your team&apos;s actual hourly rates where a role is matched, and a
                   market-rate guess for roles you haven&apos;t staffed yet — treat this as a planning estimate,
                   not a quote.
                 </p>
+                </div>
               </div>
             )}
           </div>
@@ -921,6 +940,7 @@ export default function TasksTab({
                 {draftingTask ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {draftingTask ? "Drafting..." : "Draft with AI"}
               </button>
+              <AiWaitIndicator active={draftingTask} messages={["Reading your note...", "Filling in the fields..."]} />
               {taskDraftError && <p className="text-xs text-rose-600">{taskDraftError}</p>}
             </div>
             <Field label="Title">

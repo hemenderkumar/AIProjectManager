@@ -5,6 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Field, inputCls } from "./ui";
 import { formatDateTime, formatDateInput } from "@/lib/format";
 import { Sparkles, Loader2, Plus, Trash2, CheckCircle2, Lightbulb, AlertTriangle, Cpu, ShieldCheck } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
 
 const IDEATION_STATUS_LABELS: Record<string, string> = {
@@ -254,6 +255,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
             Brainstorm with AI
           </button>
         </div>
+        <AiWaitIndicator active={brainstorming} messages={["Thinking through angles...", "Drafting brainstorm notes..."]} className="mb-2" />
         {brainstormError && <p className="text-xs text-rose-600 mb-2">{brainstormError}</p>}
 
         <div className="flex items-start gap-2 mb-3">
@@ -322,6 +324,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
               </button>
             </div>
           </div>
+          <AiWaitIndicator active={generatingOptions} messages={["Weighing different approaches...", "Writing up pros and cons..."]} className="mb-2" />
           {optionsError && <p className="text-xs text-rose-600 mb-2">{optionsError}</p>}
           <p className="text-[11px] text-slate-400 mb-2">
             Compare a few genuinely different approaches before committing to the proposed solution above.
@@ -345,6 +348,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                 {draftingOption ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {draftingOption ? "Drafting..." : "Draft description + pros/cons with AI"}
               </button>
+              <AiWaitIndicator active={draftingOption} messages={["Reading the problem statement...", "Weighing pros and cons..."]} />
               {optionDraftError && <p className="text-xs text-rose-600">{optionDraftError}</p>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Field label="Pros">
@@ -426,6 +430,11 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
           solution options, and feasibility notes above. An enterprise architect reviews it before this
           moves to the charter.
         </p>
+        <AiWaitIndicator
+          active={recommending}
+          messages={["Reviewing the problem and options...", "Working out a technical approach...", "Drafting the architecture diagram..."]}
+          className="mb-2"
+        />
         {recommendError && <p className="text-xs text-rose-600 mb-2">{recommendError}</p>}
 
         {p.recommendedTechnology ? (

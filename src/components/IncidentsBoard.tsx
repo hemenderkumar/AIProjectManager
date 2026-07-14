@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { PriorityBadge } from "@/components/badges";
 import { formatDate } from "@/lib/format";
 import { Plus, Sparkles, Loader2, Trash2, X } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type Incident = {
   id: string;
@@ -172,6 +173,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
                 {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {drafting ? "Drafting..." : "Draft with AI"}
               </button>
+              <AiWaitIndicator active={drafting} messages={["Reading your note...", "Judging severity..."]} />
               {draftError && <p className="text-xs text-rose-600">{draftError}</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

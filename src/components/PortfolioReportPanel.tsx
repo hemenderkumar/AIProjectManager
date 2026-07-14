@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Sparkles, Loader2, Copy, Check } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 export default function PortfolioReportPanel() {
   const [loading, setLoading] = useState(false);
@@ -51,6 +52,11 @@ export default function PortfolioReportPanel() {
           </button>
         )}
       </div>
+      <AiWaitIndicator
+        active={loading}
+        messages={["Reading every active project...", "Assessing health, risk, and budget...", "Drafting recommended actions..."]}
+        className="mt-3"
+      />
       {report && (
         <div className="mt-4 text-sm text-slate-700 bg-slate-50 rounded-lg p-3 whitespace-pre-wrap border border-slate-100 max-h-96 overflow-y-auto scrollbar-thin">
           {report}

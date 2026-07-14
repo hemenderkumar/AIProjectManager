@@ -5,6 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge } from "@/components/badges";
 import { Plus, Sparkles, Loader2 } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 export default function RisksTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -98,6 +99,7 @@ export default function RisksTab({ detail }: { detail: ProjectDetail }) {
                 {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {drafting ? "Drafting..." : "Draft with AI"}
               </button>
+              <AiWaitIndicator active={drafting} messages={["Reading your note...", "Assessing impact and likelihood..."]} />
               {draftError && <p className="text-xs text-rose-600">{draftError}</p>}
             </div>
             <Field label="Description">

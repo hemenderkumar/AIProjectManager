@@ -42,3 +42,15 @@ body {
   background: #cbd5e1;
   border-radius: 9999px;
 }
+
+/* Indeterminate progress bar used by AiWaitIndicator -- a sliding bar rather than a fixed
+   percentage, since we genuinely don't know how long an AI call will take. Gives visual
+   proof of life instead of a static spinner. */
+@keyframes ai-wait-slide {
+  0% { left: -40%; width: 40%; }
+  50% { left: 30%; width: 45%; }
+  100% { left: 100%; width: 40%; }
+}
+.animate-ai-wait-slide {
+  animation: ai-wait-slide 1.4s ease-in-out infinite;
+}

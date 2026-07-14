@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Topbar from "@/components/Topbar";
 import { Sparkles, Loader2, Plus, Trash2, Copy, CheckCircle2, Trophy, Send } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 import DownloadPdfLink from "@/components/DownloadPdfLink";
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
@@ -261,6 +262,7 @@ export default function RfpDetailPage() {
               </button>
             </div>
           </div>
+          <AiWaitIndicator active={drafting} messages={["Reading the project context...", "Drafting the RFP document..."]} />
           {project?.hasCharter && (
             <p className="text-xs text-emerald-700">This project has a completed charter — AI will draft from it directly.</p>
           )}
@@ -395,6 +397,7 @@ export default function RfpDetailPage() {
               {evaluating ? "Evaluating..." : hasScores ? "Re-run Evaluation" : "Evaluate Vendors"}
             </button>
           </div>
+          <AiWaitIndicator active={evaluating} messages={["Reading vendor responses...", "Scoring against your rubric...", "Drafting a recommendation..."]} />
           {evalError && <p className="text-xs text-rose-600">{evalError}</p>}
 
           {hasScores && criteria.length > 0 && submittedVendors.length > 0 && (

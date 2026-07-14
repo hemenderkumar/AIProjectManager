@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Loader2, ArrowRight, RefreshCw } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type IncidentPattern = {
   name: string;
@@ -90,6 +91,10 @@ export default function IncidentPatterns() {
         </button>
       </div>
 
+      <AiWaitIndicator
+        active={loading}
+        messages={["Reading every logged incident...", "Grouping recurring root causes...", "Drafting proposed fixes..."]}
+      />
       {error && <p className="text-xs text-rose-600">{error}</p>}
 
       {patterns && patterns.length === 0 && (

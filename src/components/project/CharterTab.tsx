@@ -5,6 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import { Sparkles, Loader2 } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
 import DownloadPdfLink from "@/components/DownloadPdfLink";
 
@@ -173,6 +174,10 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         }
       >
         <div className="space-y-4">
+          <AiWaitIndicator
+            active={generating}
+            messages={["Reading the project context...", "Drafting scope and requirements...", "Working out costs and internal needs..."]}
+          />
           <Field label="Business case">
             <textarea value={form.businessCase} onChange={(e) => update("businessCase", e.target.value)} className={inputCls} rows={2} />
           </Field>
@@ -249,6 +254,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
                 {p.architectureDiagram ? "Regenerate" : "Generate"}
               </button>
             </div>
+            <AiWaitIndicator active={regeneratingDiagram} messages={["Reading the architecture description...", "Drawing the diagram..."]} className="mb-2" />
             {p.architectureDiagram ? (
               <MermaidDiagram chart={p.architectureDiagram} />
             ) : (

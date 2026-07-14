@@ -5,6 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateTime } from "@/lib/format";
 import { Plus, Mail, Users, Phone, Presentation, MessageSquare, Sparkles, Loader2 } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 const TYPE_ICON: Record<string, React.ElementType> = {
   MEETING: Users,
@@ -98,6 +99,7 @@ export default function CommsTab({ detail }: { detail: ProjectDetail }) {
                 {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {drafting ? "Drafting..." : "Draft with AI"}
               </button>
+              <AiWaitIndicator active={drafting} messages={["Reading your notes...", "Pulling out action items..."]} />
               {draftError && <p className="text-xs text-rose-600">{draftError}</p>}
             </div>
             <Field label="Type">
