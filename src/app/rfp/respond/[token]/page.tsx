@@ -3,6 +3,7 @@ import { rfpVendors, rfps } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import RespondForm from "./RespondForm";
 import DownloadPdfLink from "@/components/DownloadPdfLink";
+import { logActivity } from "@/lib/activity";
 
 // Public, no-login vendor response page. The token is the vendor's sole credential — this
 // query resolves ONLY that vendor's own row, and only the RFP fields vendors are meant to
@@ -31,9 +32,16 @@ export default async function RfpRespondPage({ params }: { params: Promise<{ tok
     );
   }
 
-  // Best-effort view tracking — doesn't block rendering if it fails.
+  // Best-effort view tracking — doesn't block rendering if it fails. Only logged on the
+  // first open (the INVITED -> VIEWED transition) so refreshing the page repeatedly
+  // doesn't inflate the "link opened" count.
   if (vendor.status === "INVITED") {
     await db.update(rfpVendors).set({ status: "VIEWED", viewedAt: new Date() }).where(eq(rfpVendors.id, vendor.id));
+    await logActivity({
+      type: "PUBLIC_VISIT",
+      path: `/rfp/respond/${token}`,
+      detail: `${vendor.contactName || vendor.name} opened the RFP "${rfp.title}"`,
+    });
   }
 
   if (vendor.status === "SUBMITTED") {

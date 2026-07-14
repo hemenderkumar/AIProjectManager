@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2, Download, AlertTriangle, ScrollText } from "lucide-react";
+import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity } from "lucide-react";
 
 type User = { id: string; name: string; email: string; role: string; organizationId: string | null };
 type Organization = {
@@ -181,9 +181,14 @@ export default function AdminPage() {
         title="Admin"
         subtitle="Manage users, roles, and automation settings"
         action={
-          <Link href="/admin/audit-log" className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
-            <ScrollText size={14} /> Audit Log
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/activity" className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+              <Activity size={14} /> User Activity
+            </Link>
+            <Link href="/admin/audit-log" className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+              <ScrollText size={14} /> Audit Log
+            </Link>
+          </div>
         }
       />
       <div className="p-8 max-w-3xl space-y-6">

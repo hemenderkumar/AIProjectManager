@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { verifyPassword, createSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
@@ -27,6 +28,14 @@ export async function POST(req: NextRequest) {
     role: user.role,
     organizationId: user.organizationId,
   });
+
+  // Best-effort — never block a successful login on this.
+  await db
+    .update(users)
+    .set({ lastLoginAt: new Date(), loginCount: sql`${users.loginCount} + 1` })
+    .where(eq(users.id, user.id))
+    .catch(() => {});
+  await logActivity({ type: "LOGIN", userId: user.id, userName: user.name, path: "/login" });
 
   const res = NextResponse.json({ ok: true, user: { id: user.id, name: user.name, role: user.role } });
   res.cookies.set(SESSION_COOKIE_NAME, token, {

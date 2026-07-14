@@ -469,6 +469,8 @@ export const users = pgTable("users", {
   // owner from the My Organization team list. Null for internal staff (divisions are a
   // client-organization concept) and for client users not yet assigned one.
   divisionId: text("division_id").references(() => divisions.id, { onDelete: "set null" }),
+  lastLoginAt: timestamp("last_login_at"),
+  loginCount: integer("login_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -660,6 +662,20 @@ export const auditLog = pgTable("audit_log", {
   entityId: text("entity_id"),
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   detail: text("detail"), // free-text description of what changed
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Lightweight record of "someone showed up" events — logins, and visits to public/no-login
+// links (the marketing homepage, the login page, a vendor's RFP response link). Separate
+// from auditLog on purpose: auditLog is for tracing who made a sensitive business decision;
+// this is just traffic/usage counting and would otherwise drown that out.
+export const activityEvents = pgTable("activity_events", {
+  id: cuid(),
+  type: text("type").notNull(), // "LOGIN" | "PUBLIC_VISIT"
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  userName: text("user_name"), // snapshot in case the user is later deleted
+  path: text("path"), // e.g. "/", "/login", "/rfp/respond/<token>"
+  detail: text("detail"), // e.g. an RFP title or vendor name for a public visit
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
