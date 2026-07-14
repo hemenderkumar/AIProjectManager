@@ -421,12 +421,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Confirming a full task/budget/schedule plan is functionally the same commitment as
+    // clicking "Approve & Start Execution" on an idea (see ApproveIdeaButton) -- but a project
+    // created independently (not attached to an idea) never goes through that button, so
+    // without this the project's stage was silently left at whatever it started as
+    // (INCEPTION or IDEATION) forever, even after a real plan existed. Bug report: a project
+    // planned this way looked permanently "stuck" at the Ideation stage everywhere the stage
+    // badge shows up (dashboard, projects list, overview), despite having tasks/budget/schedule.
+    const [projectRow] = await db.select({ stage: projects.stage }).from(projects).where(eq(projects.id, projectId));
+    const shouldAdvanceStage = projectRow?.stage === "INCEPTION" || projectRow?.stage === "IDEATION";
+
     if (
       startDate ||
       targetEndDate ||
       budgetPlanned !== undefined ||
       contingencyPercent !== undefined ||
-      ongoingSupport
+      ongoingSupport ||
+      shouldAdvanceStage
     ) {
       await db
         .update(projects)
@@ -441,6 +452,7 @@ export async function POST(req: NextRequest) {
                 ongoingSupportPlan: ongoingSupport.summary ?? null,
               }
             : {}),
+          ...(shouldAdvanceStage ? { stage: "EXECUTION" as const } : {}),
           updatedAt: new Date(),
         })
         .where(eq(projects.id, projectId));

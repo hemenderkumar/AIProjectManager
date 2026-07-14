@@ -277,6 +277,14 @@ export default function TasksTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlan]);
 
+  // If the project was created with no description/problem statement (easy to do when
+  // creating one independently, without going through Ideation first), `goal` is empty and
+  // the auto-plan above never had anything to run -- it used to just silently do nothing,
+  // leaving the page looking "stuck" with no plan and no explanation why. Purely derived from
+  // render-time values (no effect needed): once goal is filled in and a plan generated,
+  // detail.tasks.length or goal will no longer satisfy this, so it clears itself.
+  const autoPlanNeedsGoal = autoPlan && detail.tasks.length === 0 && !goal.trim();
+
   function updateTaskHours(index: number, hours: number) {
     setEditedTasks((prev) => prev.map((t, i) => (i === index ? { ...t, estimateHours: hours } : t)));
   }
@@ -461,6 +469,12 @@ export default function TasksTab({
           lifecycle for that kind of work, estimates effort and cost per role, and suggests a start/end
           date. Nothing is created until you review and approve it below.
         </p>
+        {autoPlanNeedsGoal && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+            This project doesn&apos;t have a description or problem statement yet, so there&apos;s nothing for AI to
+            plan from. Add a quick goal below, then click Generate plan.
+          </div>
+        )}
         {showPlanner && (
           <div className="p-4 bg-slate-50 rounded-lg space-y-3">
             <Field label="Project type">
