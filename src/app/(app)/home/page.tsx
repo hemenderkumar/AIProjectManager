@@ -1,6 +1,15 @@
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Lightbulb, LifeBuoy, Rocket, LayoutDashboard, ArrowRight } from "lucide-react";
+import {
+  Lightbulb,
+  LifeBuoy,
+  Rocket,
+  LayoutDashboard,
+  ArrowRight,
+  Sparkles,
+  FileSearch,
+  FileBarChart,
+} from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +22,20 @@ export default async function HomePage() {
     <div>
       <Topbar title={`Welcome${user ? `, ${user.name.split(" ")[0]}` : ""}`} subtitle="What are you working on today?" />
       <div className="p-8">
+        <div className="max-w-5xl bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 mb-6">
+          <p className="text-xs font-semibold tracking-wide uppercase text-indigo-600 mb-1.5">What Keel does</p>
+          <p className="text-sm text-slate-600 mb-4">
+            Keel is your AI-driven project and portfolio tracker: it plans work, drafts charters and RFPs, watches
+            budgets and risk, and turns your whole portfolio into board-ready reports.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <AboutChip icon={<Rocket size={16} />} label="Full project lifecycle" />
+            <AboutChip icon={<Sparkles size={16} />} label="An AI project manager" />
+            <AboutChip icon={<FileSearch size={16} />} label="Vendor evaluation" />
+            <AboutChip icon={<FileBarChart size={16} />} label="Board-ready reports" />
+          </div>
+        </div>
+
         <Link
           href="/dashboard"
           className="group max-w-5xl flex items-center justify-between gap-4 bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 rounded-xl px-6 py-5 mb-6"
@@ -86,6 +109,15 @@ function ChoiceCard({
       <p className="text-xs text-slate-500 leading-relaxed flex-1">{description}</p>
       <p className="text-xs font-medium text-indigo-600 mt-3 group-hover:underline">{cta} →</p>
     </Link>
+  );
+}
+
+function AboutChip({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-2.5 py-2">
+      <span className="text-indigo-600 shrink-0">{icon}</span>
+      {label}
+    </div>
   );
 }
 
