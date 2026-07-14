@@ -48,7 +48,14 @@ export async function POST(req: NextRequest) {
       proposedSolution: body.proposedSolution ?? null,
       expectedBenefits: body.expectedBenefits ?? null,
       ideationNotes: body.ideationNotes ?? null,
-      ideaType: body.ideaType === "OPPORTUNITY" || body.ideaType === "PROBLEM" ? body.ideaType : null,
+      // Neither project-creation form (independent "New Project" or the Ideation-intent one)
+      // actually has an Idea Type field to fill in, so this was always landing on null --
+      // which the Inception & Ideation tab then flags with a red-outlined <select> stuck on
+      // its disabled placeholder option plus an amber "Set an idea type" warning, on every
+      // single new project, whether or not it came from the Ideation flow. Defaulting to
+      // "OPPORTUNITY" (the more common case, and freely editable afterward) means a freshly
+      // created project doesn't look broken/unfinished the moment you open it.
+      ideaType: body.ideaType === "OPPORTUNITY" || body.ideaType === "PROBLEM" ? body.ideaType : "OPPORTUNITY",
     })
     .returning();
 
