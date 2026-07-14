@@ -52,8 +52,32 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
   const [recommending, setRecommending] = useState<string | null>(null);
   const [openIncidentId, setOpenIncidentId] = useState<string | null>(null);
   const [resolutionDraft, setResolutionDraft] = useState("");
+  const [draftNote, setDraftNote] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? null;
+
+  async function draftWithAI() {
+    if (!draftNote.trim()) return;
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const res = await fetch("/api/ai/draft-incident", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: draftNote, projectId: form.projectId || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDraftError(data?.error ?? "Couldn't draft this incident.");
+        return;
+      }
+      setForm((f) => ({ ...f, title: data.title ?? f.title, description: data.description ?? f.description, severity: data.severity ?? f.severity }));
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function submit() {
     if (!form.title.trim()) return;
@@ -130,6 +154,26 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
 
         {showForm && (
           <div className="p-4 bg-slate-50 border-b border-slate-100 space-y-3">
+            <div className="border border-indigo-100 bg-indigo-50/60 rounded-lg p-3 space-y-2">
+              <FormField label="Describe what happened (rough notes are fine) — AI drafts the fields below">
+                <textarea
+                  value={draftNote}
+                  onChange={(e) => setDraftNote(e.target.value)}
+                  className={fieldCls}
+                  rows={2}
+                  placeholder="e.g. checkout was timing out for a bunch of users around 2pm, seemed tied to the payment API"
+                />
+              </FormField>
+              <button
+                onClick={draftWithAI}
+                disabled={drafting || !draftNote.trim()}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              >
+                {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {drafting ? "Drafting..." : "Draft with AI"}
+              </button>
+              {draftError && <p className="text-xs text-rose-600">{draftError}</p>}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Title">
                 <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={fieldCls} />
