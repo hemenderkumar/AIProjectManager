@@ -69,7 +69,7 @@ export default async function HomePage() {
               Built for boutique IT consultancies
             </p>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-slate-900 leading-tight tracking-tight mb-5">
-              One place to run every engagement, from idea to invoice.
+              One place to run every engagement, from idea to ongoing support.
             </h1>
             <p className="text-base text-slate-600 mb-8 max-w-lg">
               Keel is an AI-driven project and portfolio tracker: it plans work, drafts charters and
