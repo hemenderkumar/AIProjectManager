@@ -58,7 +58,15 @@ const BYPASS_USER: SessionUser = {
 };
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  if (process.env.DISABLE_AUTH === "true") {
+  // DISABLE_AUTH is a local-dev-only convenience (skip logging in while iterating). It must
+  // never take effect once deployed -- VERCEL_ENV is only set by Vercel's build/runtime, so
+  // its presence means this is running on Vercel (preview or production), not a developer's
+  // own machine. Without this guard, accidentally leaving DISABLE_AUTH=true set in a Vercel
+  // project's environment variables (as happened here) disables real login for every visitor,
+  // treating them all as a fake "bypass-admin" user that doesn't exist in the users table --
+  // which also 500s anywhere the app writes that id as a foreign key (project membership,
+  // audit log, etc).
+  if (process.env.DISABLE_AUTH === "true" && !process.env.VERCEL_ENV) {
     return BYPASS_USER;
   }
   const cookieStore = await cookies();
