@@ -23,6 +23,7 @@ function NewProjectForm() {
   // keeps the old behavior of jumping straight into the AI task planner.
   const isIdeaIntent = searchParams.get("intent") === "idea";
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [aiMessage, setAiMessage] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -64,15 +65,30 @@ function NewProjectForm() {
     e.preventDefault();
     if (!form.name.trim()) return;
     setSaving(true);
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const created = await res.json();
-    setSaving(false);
-    if (created?.id) {
+    setSubmitError(null);
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const created = await res.json().catch(() => null);
+      if (!res.ok || !created?.id) {
+        // Previously this failed silently: the button flipped back to "Create Project" with
+        // no explanation, so a permissions error or a bad request just looked like the app
+        // "hung" or "got stuck" -- nothing ever indicated why nothing happened next.
+        setSubmitError(
+          created?.error || `Couldn't create the project (server responded with ${res.status}). Please try again.`
+        );
+        setSaving(false);
+        return;
+      }
       router.push(isIdeaIntent ? `/projects/${created.id}` : `/projects/${created.id}?autoplan=1`);
+      // Deliberately leave `saving` true here -- we're navigating away, and resetting it would
+      // just flash the button back to its normal state for an instant before the page unmounts.
+    } catch {
+      setSubmitError("Couldn't reach the server. Check your connection and try again.");
+      setSaving(false);
     }
   }
 
@@ -228,7 +244,7 @@ function NewProjectForm() {
           </Field>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
           <button
             type="submit"
             disabled={saving}
@@ -236,6 +252,7 @@ function NewProjectForm() {
           >
             {saving ? "Creating..." : "Create Project"}
           </button>
+          {submitError && <span className="text-xs text-red-600">{submitError}</span>}
         </div>
       </form>
     </div>
