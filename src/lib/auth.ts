@@ -14,6 +14,14 @@ export type SessionUser = {
 
 const COOKIE_NAME = "kpi_session";
 
+// Session lifetime, in seconds. Used for both the JWT's own expiration and the cookie's
+// maxAge, so they can never drift out of sync -- the cookie must never outlive the token it
+// carries. Once this elapses, jwtVerify() below starts rejecting the token, getCurrentUser()
+// returns null, and the (app) layout's existing guard redirects back to /login -- so "force
+// re-login after a while" falls out of shortening this one value, no separate enforcement
+// needed.
+export const SESSION_MAX_AGE_SECONDS = 60 * 60; // 1 hour
+
 function getSecret() {
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
@@ -33,10 +41,13 @@ export async function verifyPassword(password: string, hash: string) {
 }
 
 export async function createSessionToken(user: SessionUser) {
+  // Pass an absolute Unix timestamp (seconds) rather than a relative string like "1h" --
+  // unambiguous either way, and keeps this in lockstep with SESSION_MAX_AGE_SECONDS above.
+  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SECONDS;
   return new SignJWT({ ...user })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime(expiresAt)
     .sign(getSecret());
 }
 
