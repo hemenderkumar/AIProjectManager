@@ -4,6 +4,7 @@ import { users } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireRole, hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { generatePlaceholderPasswordHash, sendAccountSetupEmail } from "@/lib/passwordReset";
 
 // Roles a SUPER_USER is allowed to hand out to their own teammates. Deliberately excludes
 // ADMIN (platform-wide) and SUPER_USER (account-owner tier) — only a Keel administrator
@@ -33,12 +34,14 @@ export async function POST(req: NextRequest) {
   if (!user || !user.organizationId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  if (!body.name || !body.email || !body.password) {
-    return NextResponse.json({ error: "name, email, and password are required" }, { status: 400 });
+  if (!body.name || !body.email) {
+    return NextResponse.json({ error: "name and email are required" }, { status: 400 });
   }
   const role = ASSIGNABLE_ROLES.includes(body.role) ? body.role : "VIEWER";
 
-  const passwordHash = await hashPassword(body.password);
+  // Default: email them a one-time setup link instead of the owner typing/communicating a
+  // temporary password themselves — same choice as the Keel-admin "Add User" flow.
+  const passwordHash = body.password ? await hashPassword(body.password) : await generatePlaceholderPasswordHash();
   let created;
   try {
     [created] = await db
@@ -63,6 +66,11 @@ export async function POST(req: NextRequest) {
     organizationId: user.organizationId,
     detail: `${user.name} invited ${created.name} (${created.email}) as ${created.role}.`,
   });
+
+  if (!body.password) {
+    const { emailed, link } = await sendAccountSetupEmail(created, req.nextUrl.origin);
+    return NextResponse.json({ ...created, emailed, setupLink: link }, { status: 201 });
+  }
 
   return NextResponse.json(created, { status: 201 });
 }

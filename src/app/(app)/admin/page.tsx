@@ -35,6 +35,7 @@ export default function AdminPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "CONTRIBUTOR", organizationId: "" });
+  const [sendSetupLink, setSendSetupLink] = useState(true);
   const [orgActionId, setOrgActionId] = useState<string | null>(null);
   const [confirmDeleteOrgId, setConfirmDeleteOrgId] = useState<string | null>(null);
   const [orgDeleteError, setOrgDeleteError] = useState<string | null>(null);
@@ -135,7 +136,8 @@ export default function AdminPage() {
   }, []);
 
   async function createUser() {
-    if (!form.name || !form.email || !form.password) return;
+    if (!form.name || !form.email) return;
+    if (!sendSetupLink && !form.password) return;
     if (form.role === "SUPER_USER" && !form.organizationId) {
       alert("A SUPER_USER must be assigned to an organization.");
       return;
@@ -144,13 +146,24 @@ export default function AdminPage() {
     const res = await fetch("/api/admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, organizationId: form.organizationId || null }),
+      body: JSON.stringify({
+        ...form,
+        password: sendSetupLink ? undefined : form.password,
+        organizationId: form.organizationId || null,
+      }),
     });
     setSaving(false);
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       alert(data?.error ?? "Could not create user.");
       return;
+    }
+    if (sendSetupLink) {
+      alert(
+        data.emailed
+          ? `${data.name} was created — a setup link was emailed to ${data.email}.`
+          : `${data.name} was created, but the email wasn't sent (no email service configured). Share this link with them directly:\n\n${data.setupLink}`
+      );
     }
     setShowForm(false);
     setForm({ name: "", email: "", password: "", role: "CONTRIBUTOR", organizationId: "" });
@@ -512,7 +525,6 @@ export default function AdminPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input placeholder="Full name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} />
                 <input placeholder="Email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} />
-                <input placeholder="Temporary password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className={inputCls} />
                 <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} className={inputCls}>
                   {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
@@ -527,6 +539,29 @@ export default function AdminPage() {
               </div>
               {form.role === "SUPER_USER" && (
                 <p className="text-xs text-amber-600">A SUPER_USER must be assigned to an organization above.</p>
+              )}
+              <div className="flex rounded-lg border border-slate-200 p-0.5 text-xs font-medium w-fit">
+                <button
+                  type="button"
+                  onClick={() => setSendSetupLink(true)}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${sendSetupLink ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                >
+                  Email them a setup link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSendSetupLink(false)}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${!sendSetupLink ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                >
+                  Set a temporary password
+                </button>
+              </div>
+              {sendSetupLink ? (
+                <p className="text-xs text-slate-500">
+                  They&apos;ll get an email with a one-time link to choose their own password. Nobody, including you, will know it.
+                </p>
+              ) : (
+                <input placeholder="Temporary password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className={inputCls} />
               )}
               <button onClick={createUser} disabled={saving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {saving ? "Creating..." : "Create user"}

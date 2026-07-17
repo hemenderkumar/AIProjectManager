@@ -30,6 +30,7 @@ export default function OrganizationPage() {
   const [team, setTeam] = useState<TeamUser[]>([]);
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [teamForm, setTeamForm] = useState({ name: "", email: "", password: "", role: "VIEWER" });
+  const [sendSetupLink, setSendSetupLink] = useState(true);
   const [teamSaving, setTeamSaving] = useState(false);
   const [teamError, setTeamError] = useState<string | null>(null);
 
@@ -127,19 +128,27 @@ export default function OrganizationPage() {
   }
 
   async function inviteTeamMember() {
-    if (!teamForm.name || !teamForm.email || !teamForm.password) return;
+    if (!teamForm.name || !teamForm.email) return;
+    if (!sendSetupLink && !teamForm.password) return;
     setTeamSaving(true);
     setTeamError(null);
     const res = await fetch("/api/organization/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(teamForm),
+      body: JSON.stringify({ ...teamForm, password: sendSetupLink ? undefined : teamForm.password }),
     });
     setTeamSaving(false);
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       setTeamError(data?.error ?? "Could not invite this user.");
       return;
+    }
+    if (sendSetupLink) {
+      alert(
+        data.emailed
+          ? `${data.name} was invited — a setup link was emailed to ${data.email}.`
+          : `${data.name} was invited, but the email wasn't sent (no email service configured). Share this link with them directly:\n\n${data.setupLink}`
+      );
     }
     setShowTeamForm(false);
     setTeamForm({ name: "", email: "", password: "", role: "VIEWER" });
@@ -247,11 +256,31 @@ export default function OrganizationPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input placeholder="Full name" value={teamForm.name} onChange={(e) => setTeamForm((f) => ({ ...f, name: e.target.value }))} className={teamInputCls} />
                 <input placeholder="Email" type="email" value={teamForm.email} onChange={(e) => setTeamForm((f) => ({ ...f, email: e.target.value }))} className={teamInputCls} />
-                <input placeholder="Temporary password" value={teamForm.password} onChange={(e) => setTeamForm((f) => ({ ...f, password: e.target.value }))} className={teamInputCls} />
                 <select value={teamForm.role} onChange={(e) => setTeamForm((f) => ({ ...f, role: e.target.value }))} className={teamInputCls}>
                   {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
+              <div className="flex rounded-lg border border-slate-200 p-0.5 text-xs font-medium w-fit">
+                <button
+                  type="button"
+                  onClick={() => setSendSetupLink(true)}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${sendSetupLink ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                >
+                  Email them a setup link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSendSetupLink(false)}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${!sendSetupLink ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                >
+                  Set a temporary password
+                </button>
+              </div>
+              {sendSetupLink ? (
+                <p className="text-xs text-slate-500">They&apos;ll get an email with a one-time link to choose their own password.</p>
+              ) : (
+                <input placeholder="Temporary password" value={teamForm.password} onChange={(e) => setTeamForm((f) => ({ ...f, password: e.target.value }))} className={teamInputCls} />
+              )}
               {teamError && <p className="text-xs text-rose-600">{teamError}</p>}
               <button onClick={inviteTeamMember} disabled={teamSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                 {teamSaving ? "Inviting..." : "Invite"}
