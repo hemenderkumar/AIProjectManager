@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign } from "lucide-react";
+import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign, KeyRound } from "lucide-react";
 import RateCardSection from "@/components/RateCardSection";
 
 type User = { id: string; name: string; email: string; role: string; organizationId: string | null; resourceId: string | null };
@@ -164,6 +164,26 @@ export default function AdminPage() {
       body: JSON.stringify({ role }),
     });
     load();
+  }
+
+  const [resetPasswordId, setResetPasswordId] = useState<string | null>(null);
+
+  async function resetPassword(u: User) {
+    setResetPasswordId(u.id);
+    const res = await fetch(`/api/admin/users/${u.id}/reset-password`, { method: "POST" });
+    setResetPasswordId(null);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data?.error ?? "Could not start a password reset.");
+      return;
+    }
+    if (data.emailed) {
+      alert(`Reset link emailed to ${u.email}.`);
+    } else {
+      // No RESEND_API_KEY configured (or the send failed) -- fall back to sharing the link
+      // directly, same as the status-request flow does.
+      alert(`Email wasn't sent (no email service configured). Share this link with ${u.name} directly:\n\n${data.link}`);
+    }
   }
 
   async function updateResource(id: string, resourceId: string) {
@@ -560,7 +580,15 @@ export default function AdminPage() {
                       {resources.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </select>
                   </td>
-                  <td className="py-2.5 text-right">
+                  <td className="py-2.5 text-right space-x-3">
+                    <button
+                      onClick={() => resetPassword(u)}
+                      disabled={resetPasswordId === u.id}
+                      className="text-slate-400 hover:text-indigo-600 disabled:opacity-50 inline-flex items-center"
+                      title="Reset password"
+                    >
+                      <KeyRound size={15} />
+                    </button>
                     <button onClick={() => removeUser(u.id)} className="text-slate-400 hover:text-rose-600">
                       <Trash2 size={15} />
                     </button>

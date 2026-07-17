@@ -526,6 +526,21 @@ export const registrationRequests = pgTable("registration_requests", {
   resultingOrganizationId: text("resulting_organization_id").references(() => organizations.id, { onDelete: "set null" }),
 });
 
+// Self-service and admin-initiated password resets. Same tokenized-link pattern as
+// statusRequests (a random opaque token, not a JWT, so it can be looked up and invalidated
+// server-side) rather than reusing the session-token machinery in auth.ts, which is meant
+// for logged-in sessions, not one-time unauthenticated actions.
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: cuid(),
+  token: text("token").notNull().unique(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const projectMembers = pgTable(
   "project_members",
   {
