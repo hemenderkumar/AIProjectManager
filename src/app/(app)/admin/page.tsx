@@ -34,6 +34,8 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "CONTRIBUTOR", organizationId: "" });
   const [orgActionId, setOrgActionId] = useState<string | null>(null);
+  const [confirmDeleteOrgId, setConfirmDeleteOrgId] = useState<string | null>(null);
+  const [orgDeleteError, setOrgDeleteError] = useState<string | null>(null);
 
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [regActionId, setRegActionId] = useState<string | null>(null);
@@ -210,6 +212,20 @@ export default function AdminPage() {
     load();
   }
 
+  async function deleteOrgDirectly(id: string) {
+    setOrgActionId(id);
+    setOrgDeleteError(null);
+    const res = await fetch(`/api/admin/organizations/${id}`, { method: "DELETE" });
+    setOrgActionId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setOrgDeleteError(data?.error ?? "Could not delete this company.");
+      return;
+    }
+    setConfirmDeleteOrgId(null);
+    load();
+  }
+
   async function updateSettings(patch: Partial<Settings>) {
     const res = await fetch("/api/admin/settings", {
       method: "PATCH",
@@ -343,6 +359,7 @@ export default function AdminPage() {
             </div>
           )}
 
+          {orgDeleteError && <p className="text-xs text-rose-600 mb-3">{orgDeleteError}</p>}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
             <thead>
@@ -374,7 +391,7 @@ export default function AdminPage() {
                     >
                       <Download size={13} /> Export
                     </button>
-                    {o.deletionRequestedAt && (
+                    {o.deletionRequestedAt ? (
                       <>
                         <button
                           onClick={() => dismissDeletion(o.id)}
@@ -391,6 +408,31 @@ export default function AdminPage() {
                           Confirm delete
                         </button>
                       </>
+                    ) : confirmDeleteOrgId === o.id ? (
+                      <>
+                        <span className="text-xs text-slate-500">Delete {o.name} and everything in it?</span>
+                        <button
+                          onClick={() => deleteOrgDirectly(o.id)}
+                          disabled={orgActionId === o.id}
+                          className="text-xs font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                        >
+                          {orgActionId === o.id ? "Deleting..." : "Yes, delete"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteOrgId(null)}
+                          disabled={orgActionId === o.id}
+                          className="text-xs font-medium text-slate-400 hover:text-slate-600 disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteOrgId(o.id)}
+                        className="text-xs font-medium text-slate-500 hover:text-rose-600 inline-flex items-center gap-1"
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
                     )}
                   </td>
                 </tr>

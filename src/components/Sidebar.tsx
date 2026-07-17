@@ -89,10 +89,16 @@ export default function Sidebar({ user, open }: { user: SessionUser | null; open
           {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
             <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
           )}
-          {user?.role === "ADMIN" && (
-            <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Admin</NavLink>
-          )}
         </NavSection>
+
+        {user?.role === "ADMIN" && (
+          // Its own clearly-labeled section, not buried inside "More" — this is where
+          // inviting/managing users and companies (and approving registration requests)
+          // actually lives, so it needs to be easy to find, not the last item in a list.
+          <NavSection label="Account Management">
+            <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Users & Companies</NavLink>
+          </NavSection>
+        )}
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">
         <Link
