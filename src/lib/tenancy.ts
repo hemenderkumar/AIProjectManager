@@ -54,12 +54,42 @@ export async function requireProjectAccess(min: SessionUser["role"], projectId: 
 }
 
 // Drop-in replacement for `requireRole(min)` on routes that are internal-only regardless
-// of permission tier (Resources roster, Rate Cards) — blocks any client-company user (incl.
+// of permission tier (Resources roster) — blocks any client-company user (incl.
 // a SUPER_USER) even though their role tier might otherwise qualify.
 export async function requireInternal(min: SessionUser["role"]) {
   const user = await requireRole(min);
   if (!user) return null;
   return isInternalStaff(user) ? user : null;
+}
+
+// Rate Cards are scoped per company, not internal-only: ADMIN can see/edit any company's
+// rates (or everything, if none is specified); a SUPER_USER is confined to their own
+// company's rates; internal Keel staff (no organization) get the global default list.
+// Any other role — including a PM/CONTRIBUTOR/VIEWER inside a client org, which covers a
+// self-registered "individual" account — has no rate card access at all: that's company-wide
+// configuration, not something a single project-scoped teammate should see or change.
+export type RateCardScope =
+  | { kind: "ALL" } // ADMIN with no specific company requested — unfiltered
+  | { kind: "ORG"; organizationId: string | null }; // a specific company, or null = global defaults
+
+export async function requireRateCardAccess(
+  min: SessionUser["role"],
+  requestedOrgId?: string | null
+): Promise<{ user: SessionUser; scope: RateCardScope } | null> {
+  const user = await requireRole(min);
+  if (!user) return null;
+
+  if (user.role === "ADMIN") {
+    return { user, scope: requestedOrgId !== undefined ? { kind: "ORG", organizationId: requestedOrgId } : { kind: "ALL" } };
+  }
+  if (user.role === "SUPER_USER") {
+    if (!user.organizationId) return null;
+    return { user, scope: { kind: "ORG", organizationId: user.organizationId } };
+  }
+  if (isInternalStaff(user)) {
+    return { user, scope: { kind: "ORG", organizationId: null } };
+  }
+  return null;
 }
 
 // Some records (incidents, etc.) optionally link to a project via a nullable projectId.

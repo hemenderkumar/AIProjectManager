@@ -45,6 +45,19 @@ export type RoleMixRow = {
   contractorPercent: number;
 };
 
+// Rate cards are scoped per company, with the global (organizationId = null) list acting as
+// a fallback default. A client company's own row for a role+sourcing type always wins over
+// the global one; roles they haven't configured fall through to the global default. Merging
+// like this (rather than just concatenating both lists) also keeps findRate's "average of
+// this sourcing type" fallback from blending one company's rates with another's.
+export function mergeRateCardScopes<T extends RateCardEntry>(globalCards: T[], orgCards: T[]): T[] {
+  const key = (r: RateCardEntry) => `${r.role.trim().toLowerCase()}::${r.sourcingType}`;
+  const merged = new Map<string, T>();
+  for (const g of globalCards) merged.set(key(g), g);
+  for (const o of orgCards) merged.set(key(o), o);
+  return [...merged.values()];
+}
+
 export function findRate(rateCards: RateCardEntry[], role: string, sourcingType: SourcingType): number {
   const exact = rateCards.find(
     (r) => r.role.trim().toLowerCase() === role.trim().toLowerCase() && r.sourcingType === sourcingType

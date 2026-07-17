@@ -2,21 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rateCards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireInternal } from "@/lib/tenancy";
+import { requireRateCardAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
 
 const allowed = ["role", "sourcingType", "hourlyRate", "notes"] as const;
 const numericFields = ["hourlyRate"] as const;
 
+// A caller only ever has one scope (ADMIN aside): a specific company's rows, or the global
+// list. This confirms the row being touched actually belongs to that scope before allowing
+// the edit/delete — without it, a SUPER_USER could PATCH another company's rate card by id
+// even though the GET/POST routes would never have shown it to them in the first place.
+async function assertOwnsRow(
+  access: NonNullable<Awaited<ReturnType<typeof requireRateCardAccess>>>,
+  id: string
+): Promise<boolean> {
+  if (access.scope.kind === "ALL") return true;
+  const [row] = await db.select({ organizationId: rateCards.organizationId }).from(rateCards).where(eq(rateCards.id, id));
+  if (!row) return false;
+  return row.organizationId === access.scope.organizationId;
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireInternal("CONTRIBUTOR");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const access = await requireRateCardAccess("CONTRIBUTOR");
+  if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
-  const body = await req.json();
+  if (!(await assertOwnsRow(access, id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const body = await req.json();
   const [before] = await db.select({ hourlyRate: rateCards.hourlyRate, role: rateCards.role }).from(rateCards).where(eq(rateCards.id, id));
 
   const update: Record<string, unknown> = {};
@@ -35,8 +50,9 @@ export async function PATCH(
 
   if (before && before.hourlyRate !== updated.hourlyRate) {
     await logAudit({
-      actor: _authUser, action: "rate_card.updated", entityType: "rate_card", entityId: id,
-      detail: `${_authUser.name} changed the ${updated.role} rate from $${before.hourlyRate}/hr to $${updated.hourlyRate}/hr.`,
+      actor: access.user, action: "rate_card.updated", entityType: "rate_card", entityId: id,
+      organizationId: updated.organizationId,
+      detail: `${access.user.name} changed the ${updated.role} rate from $${before.hourlyRate}/hr to $${updated.hourlyRate}/hr.`,
     });
   }
 
@@ -47,9 +63,11 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireInternal("CONTRIBUTOR");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const access = await requireRateCardAccess("CONTRIBUTOR");
+  if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
+  if (!(await assertOwnsRow(access, id))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   await db.delete(rateCards).where(eq(rateCards.id, id));
   return NextResponse.json({ ok: true });
 }

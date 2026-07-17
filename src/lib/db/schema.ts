@@ -295,14 +295,19 @@ export const resources = pgTable("resources", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-// Org-wide reference rates by role + sourcing type (Onsite / Offshore / Contractor).
-// This is what makes support and project-execution rates changeable in one place instead
-// of being hardcoded — the Delivery & Pricing tab and Support Cost Estimator both read
-// from here, and it's edited from the Resources page.
+// Reference rates by role + sourcing type (Onsite / Offshore / Contractor). Scoped by
+// organizationId: null = Keel's own internal default list (used for internal/Keel-run
+// projects, and as a fallback wherever a client company hasn't set its own rates yet);
+// non-null = that specific client company's own rates, visible/editable only to their
+// SUPER_USER and to ADMIN — never to another company, and never to a project-scoped user
+// (PM/CONTRIBUTOR/VIEWER), including a self-registered "individual" account. This is what
+// makes support and project-execution rates changeable in one place instead of being
+// hardcoded — the Delivery & Pricing tab and Support Cost Estimator both read from here.
 export const rateCards = pgTable(
   "rate_cards",
   {
     id: cuid(),
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
     sourcingType: sourcingTypeEnum("sourcing_type").notNull().default("ONSITE"),
     hourlyRate: real("hourly_rate").notNull().default(0),
@@ -310,7 +315,7 @@ export const rateCards = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
-    uq: uniqueIndex("rate_card_role_sourcing_uq").on(t.role, t.sourcingType),
+    uq: uniqueIndex("rate_card_org_role_sourcing_uq").on(t.organizationId, t.role, t.sourcingType),
   })
 );
 

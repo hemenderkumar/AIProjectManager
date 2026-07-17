@@ -2,9 +2,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus } from "lucide-react";
+import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign } from "lucide-react";
+import RateCardSection from "@/components/RateCardSection";
 
-type User = { id: string; name: string; email: string; role: string; organizationId: string | null };
+type User = { id: string; name: string; email: string; role: string; organizationId: string | null; resourceId: string | null };
+type Resource = { id: string; name: string };
 type Organization = {
   id: string;
   name: string;
@@ -36,7 +38,9 @@ export default function AdminPage() {
   const [orgActionId, setOrgActionId] = useState<string | null>(null);
   const [confirmDeleteOrgId, setConfirmDeleteOrgId] = useState<string | null>(null);
   const [orgDeleteError, setOrgDeleteError] = useState<string | null>(null);
+  const [ratesOrgId, setRatesOrgId] = useState<string | null>(null);
 
+  const [resources, setResources] = useState<Resource[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [regActionId, setRegActionId] = useState<string | null>(null);
   const [regError, setRegError] = useState<string | null>(null);
@@ -47,16 +51,18 @@ export default function AdminPage() {
   const [companyError, setCompanyError] = useState<string | null>(null);
 
   async function load() {
-    const [u, s, o, r] = await Promise.all([
+    const [u, s, o, reg, res] = await Promise.all([
       fetch("/api/admin/users").then((r) => r.json()),
       fetch("/api/admin/settings").then((r) => r.json()),
       fetch("/api/admin/organizations").then((r) => r.json()),
       fetch("/api/admin/registrations").then((r) => r.json()),
+      fetch("/api/resources").then((r) => (r.ok ? r.json() : [])),
     ]);
     setUsers(Array.isArray(u) ? u : []);
     setSettings(s);
     setOrgs(Array.isArray(o) ? o : []);
-    setRegistrations(Array.isArray(r) ? r : []);
+    setRegistrations(Array.isArray(reg) ? reg : []);
+    setResources(Array.isArray(res) ? res : []);
   }
 
   const pendingRegistrations = registrations.filter((r) => r.status === "PENDING");
@@ -156,6 +162,15 @@ export default function AdminPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role }),
+    });
+    load();
+  }
+
+  async function updateResource(id: string, resourceId: string) {
+    await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resourceId: resourceId || null }),
     });
     load();
   }
@@ -385,6 +400,14 @@ export default function AdminPage() {
                   </td>
                   <td className="py-2.5 text-right space-x-3">
                     <button
+                      onClick={() => setRatesOrgId(ratesOrgId === o.id ? null : o.id)}
+                      className={`text-xs font-medium disabled:opacity-50 inline-flex items-center gap-1 ${
+                        ratesOrgId === o.id ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
+                      }`}
+                    >
+                      <DollarSign size={13} /> Rates
+                    </button>
+                    <button
                       onClick={() => exportOrg(o.id)}
                       disabled={orgActionId === o.id}
                       className="text-xs font-medium text-slate-500 hover:text-indigo-600 disabled:opacity-50 inline-flex items-center gap-1"
@@ -443,6 +466,14 @@ export default function AdminPage() {
             </tbody>
             </table>
           </div>
+          {ratesOrgId && (
+            <div className="mt-4">
+              <RateCardSection
+                organizationId={ratesOrgId}
+                title={`${orgs.find((o) => o.id === ratesOrgId)?.name ?? "Company"} rates`}
+              />
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
@@ -491,6 +522,7 @@ export default function AdminPage() {
                 <th className="py-2 font-medium">Email</th>
                 <th className="py-2 font-medium">Role</th>
                 <th className="py-2 font-medium">Organization</th>
+                <th className="py-2 font-medium">Resource</th>
                 <th className="py-2 font-medium"></th>
               </tr>
             </thead>
@@ -518,6 +550,16 @@ export default function AdminPage() {
                       {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                     </select>
                   </td>
+                  <td className="py-2.5">
+                    <select
+                      value={u.resourceId ?? ""}
+                      onChange={(e) => updateResource(u.id, e.target.value)}
+                      className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
+                    >
+                      <option value="">Not linked</option>
+                      {resources.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  </td>
                   <td className="py-2.5 text-right">
                     <button onClick={() => removeUser(u.id)} className="text-slate-400 hover:text-rose-600">
                       <Trash2 size={15} />
@@ -526,7 +568,7 @@ export default function AdminPage() {
                 </tr>
               ))}
               {users.length === 0 && (
-                <tr><td colSpan={5} className="py-6 text-center text-slate-400">No users yet.</td></tr>
+                <tr><td colSpan={6} className="py-6 text-center text-slate-400">No users yet.</td></tr>
               )}
             </tbody>
             </table>

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { eq, isNull } from "drizzle-orm";
 import Topbar from "@/components/Topbar";
 import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getProjectDetail } from "@/lib/portfolio";
@@ -6,6 +7,7 @@ import { db } from "@/lib/db";
 import { resources as resourcesTable, rateCards as rateCardsTable } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessProject, isInternalStaff } from "@/lib/tenancy";
+import { mergeRateCardScopes } from "@/lib/deliveryModel";
 import ProjectTabs from "@/components/project/ProjectTabs";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +27,16 @@ export default async function ProjectDetailPage({
   const detail = await getProjectDetail(id);
   if (!detail) notFound();
 
-  // Resources roster and rate cards are internal-only (Task #68) — a client-company
-  // user (even a project member) should never see the internal staffing/pricing sheet.
+  // The Resources roster is internal-only (Task #68) — a client-company user (even a project
+  // member) should never see the internal staffing sheet. Rate cards are different: they're
+  // scoped per company now, so a client project shows that company's own rates (falling back
+  // to the global defaults for anything they haven't configured) instead of nothing.
   const allResources = isInternalStaff(user) ? await db.select().from(resourcesTable) : [];
-  const rateCards = isInternalStaff(user) ? await db.select().from(rateCardsTable) : [];
+  const globalRateCards = await db.select().from(rateCardsTable).where(isNull(rateCardsTable.organizationId));
+  const orgRateCards = detail.project.organizationId
+    ? await db.select().from(rateCardsTable).where(eq(rateCardsTable.organizationId, detail.project.organizationId))
+    : [];
+  const rateCards = mergeRateCardScopes(globalRateCards, orgRateCards);
 
   return (
     <div>

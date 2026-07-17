@@ -3,9 +3,9 @@ import { askClaudeJSON } from "@/lib/ai";
 import { getProjectDetail } from "@/lib/portfolio";
 import { db } from "@/lib/db";
 import { deliveryRoleMix, projects, rateCards } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
-import type { PricingModel } from "@/lib/deliveryModel";
+import { mergeRateCardScopes, type PricingModel } from "@/lib/deliveryModel";
 
 type RoleRecommendation = {
   role: string;
@@ -38,7 +38,13 @@ export async function POST(req: NextRequest) {
   const totalHours = detail.tasks.reduce((s, t) => s + (t.estimateHours ?? 0), 0);
   const skillSet = new Set<string>();
   detail.tasks.forEach((t) => (t.requiredSkills ?? []).forEach((s) => skillSet.add(s)));
-  const existingRateCards = await db.select().from(rateCards);
+  // Rate cards are scoped per company — only mention this project's own company's roles
+  // (plus the global defaults) to the model, never another client's configured roles.
+  const [globalRateCards, orgRateCards] = await Promise.all([
+    db.select().from(rateCards).where(isNull(rateCards.organizationId)),
+    p.organizationId ? db.select().from(rateCards).where(eq(rateCards.organizationId, p.organizationId)) : Promise.resolve([]),
+  ]);
+  const existingRateCards = mergeRateCardScopes(globalRateCards, orgRateCards);
 
   const system = `You are advising a PM on how to SOURCE and PRICE a project's execution — not on scope or
 schedule. Two decisions:

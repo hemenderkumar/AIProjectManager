@@ -11,6 +11,7 @@ import {
   FileBarChart,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import MyRateCard from "@/components/MyRateCard";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function HomePage() {
     <div>
       <Topbar title={`Welcome${user ? `, ${user.name.split(" ")[0]}` : ""}`} subtitle="What are you working on today?" />
       <div className="p-8">
+        <MyRateCard />
         <div className="max-w-5xl bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 mb-6">
           <p className="text-xs font-semibold tracking-wide uppercase text-indigo-600 mb-1.5">What Keel does</p>
           <p className="text-sm text-slate-600 mb-4">

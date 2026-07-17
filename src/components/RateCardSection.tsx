@@ -15,10 +15,13 @@ const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.
 
 const emptyForm = { role: "", sourcingType: "ONSITE" as SourcingType, hourlyRate: 0, notes: "" };
 
-// Org-wide reference rates by role + sourcing type. This is what makes support and
-// project-execution rates changeable in one place — the Support Cost Estimator and each
-// project's Delivery & Pricing tab both read from here instead of a hardcoded number.
-export default function RateCardSection() {
+// Reference rates by role + sourcing type. This is what makes support and project-execution
+// rates changeable in one place — the Support Cost Estimator and each project's Delivery &
+// Pricing tab both read from here instead of a hardcoded number. Scoped by the caller's role
+// on the server (own company for a SUPER_USER, global defaults for internal staff) unless an
+// explicit `organizationId` is passed — used by Admin's per-company drill-down, where an
+// ADMIN picks which company's rates to view/edit.
+export default function RateCardSection({ organizationId, title }: { organizationId?: string; title?: string }) {
   const [cards, setCards] = useState<RateCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -26,9 +29,11 @@ export default function RateCardSection() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
+  const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : "";
+
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/rate-cards");
+    const res = await fetch(`/api/rate-cards${query}`);
     const data = await res.json();
     setCards(Array.isArray(data) ? data : []);
     setLoading(false);
@@ -37,13 +42,14 @@ export default function RateCardSection() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId]);
 
   async function save() {
     if (!form.role.trim()) return;
     setSaving(true);
     setError(null);
-    const res = await fetch("/api/rate-cards", {
+    const res = await fetch(`/api/rate-cards${query}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -82,7 +88,7 @@ export default function RateCardSection() {
     <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-900">Rate Card</p>
+          <p className="text-sm font-semibold text-slate-900">{title ?? "Rate Card"}</p>
           <p className="text-xs text-slate-500 mt-0.5">
             Editable $/hr by role and sourcing model — used by the Support Cost Estimator and every
             project&apos;s Delivery &amp; Pricing tab. Change a rate here and it flows through everywhere.

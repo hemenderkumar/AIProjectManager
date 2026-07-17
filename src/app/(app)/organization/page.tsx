@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
 import { Download, AlertTriangle, Loader2, Plus, Trash2 } from "lucide-react";
+import RateCardSection from "@/components/RateCardSection";
 
 type Organization = {
   id: string;
@@ -414,6 +415,8 @@ export default function OrganizationPage() {
             </table>
           </div>
         </div>
+
+        <RateCardSection title={`${org.name} rate card`} />
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <p className="text-sm font-semibold text-slate-900 mb-1">Export your data</p>

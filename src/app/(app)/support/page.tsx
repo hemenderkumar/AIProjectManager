@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
+import { eq, isNull } from "drizzle-orm";
 import Topbar from "@/components/Topbar";
 import SupportTabs from "@/components/SupportTabs";
 import ExportButtons from "@/components/ExportButtons";
 import { db } from "@/lib/db";
 import { incidents, projects, rateCards } from "@/lib/db/schema";
 import { DEFAULT_ASSUMPTIONS } from "@/lib/supportEstimate";
+import { mergeRateCardScopes } from "@/lib/deliveryModel";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessOptionalProject, filterProjectsForUser, isInternalStaff } from "@/lib/tenancy";
 
@@ -14,10 +16,21 @@ export default async function SupportPage() {
   const user = await getCurrentUser();
   if (!user) notFound();
 
+  // Rate cards are scoped per company now. ADMIN gets a true portfolio-wide average (every
+  // company's rows); everyone else gets their own company's rates merged over the global
+  // defaults — same "own company, falling back to defaults" rule used on a project's
+  // Delivery & Pricing tab.
   const [incidentRowsRaw, projectRowsRaw, rateCardRows] = await Promise.all([
     db.select().from(incidents),
     db.select({ id: projects.id, name: projects.name, organizationId: projects.organizationId }).from(projects),
-    db.select().from(rateCards),
+    user.role === "ADMIN"
+      ? db.select().from(rateCards)
+      : Promise.all([
+          db.select().from(rateCards).where(isNull(rateCards.organizationId)),
+          user.organizationId
+            ? db.select().from(rateCards).where(eq(rateCards.organizationId, user.organizationId))
+            : Promise.resolve([]),
+        ]).then(([globalRows, orgRows]) => mergeRateCardScopes(globalRows, orgRows)),
   ]);
 
   // Ongoing Support is portfolio-wide by design, but that must never mean cross-tenant —
