@@ -96,6 +96,22 @@ export const statusRequestStatusEnum = pgEnum("status_request_status", [
   "EXPIRED",
 ]);
 
+// Self-service sign-up: anyone can submit one of these without a login, but nothing in
+// `users` is created until an ADMIN approves it. "INDIVIDUAL" gets a personal organization
+// auto-created on approval (see approve route) so they read as a normal client-side user —
+// never as internal staff — without needing a real company. "COMPANY_OWNER" gets a brand
+// new organization + SUPER_USER on approval, mirroring the existing admin "New Company" flow.
+export const registrationTypeEnum = pgEnum("registration_type", [
+  "INDIVIDUAL",
+  "COMPANY_OWNER",
+]);
+
+export const registrationStatusEnum = pgEnum("registration_status", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);
+
 export const reportTypeEnum = pgEnum("report_type", [
   "WEEKLY_STATUS",
   "STEERING_COMMITTEE",
@@ -481,6 +497,28 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   loginCount: integer("login_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// A pending sign-up submitted through the public /register page. The password is hashed at
+// submission time (never stored in plain text) so approval only needs to copy it over into
+// the real `users` row rather than asking the person to set a password twice. Rejected/
+// pending rows never grant any access — only an APPROVED row (via the admin approve route)
+// results in a real login.
+export const registrationRequests = pgTable("registration_requests", {
+  id: cuid(),
+  type: registrationTypeEnum("type").notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  // Only set (and only relevant) for COMPANY_OWNER requests.
+  companyName: text("company_name"),
+  status: registrationStatusEnum("status").notNull().default("PENDING"),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: text("reviewed_by"), // snapshot of the admin's name, not a hard FK
+  // Populated once approved, so the request row keeps a permanent record of what it created.
+  resultingUserId: text("resulting_user_id").references(() => users.id, { onDelete: "set null" }),
+  resultingOrganizationId: text("resulting_organization_id").references(() => organizations.id, { onDelete: "set null" }),
 });
 
 export const projectMembers = pgTable(

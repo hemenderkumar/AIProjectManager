@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, registrationRequests } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { verifyPassword, createSessionToken, SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
@@ -13,6 +13,19 @@ export async function POST(req: NextRequest) {
 
   const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
   if (!user) {
+    // Give a clearer answer than "invalid credentials" for someone who registered but is
+    // still waiting on admin approval — a generic error here reads as a typo/wrong password,
+    // and they'd have no way to know their request is just sitting in the queue.
+    const [pending] = await db
+      .select({ status: registrationRequests.status })
+      .from(registrationRequests)
+      .where(eq(registrationRequests.email, email.toLowerCase()));
+    if (pending?.status === "PENDING") {
+      return NextResponse.json({ error: "Your registration is still awaiting admin approval." }, { status: 403 });
+    }
+    if (pending?.status === "REJECTED") {
+      return NextResponse.json({ error: "Your registration request was not approved. Contact your admin if you think this is a mistake." }, { status: 403 });
+    }
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 

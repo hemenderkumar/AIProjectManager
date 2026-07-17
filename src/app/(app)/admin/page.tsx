@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity } from "lucide-react";
+import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus } from "lucide-react";
 
 type User = { id: string; name: string; email: string; role: string; organizationId: string | null };
 type Organization = {
@@ -12,6 +12,15 @@ type Organization = {
   deletionRequestedBy: string | null;
 };
 type Settings = { weeklyReportCadence: string; steeringCadence: string; avatarVoiceGender: string };
+type Registration = {
+  id: string;
+  type: "INDIVIDUAL" | "COMPANY_OWNER";
+  name: string;
+  email: string;
+  companyName: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  requestedAt: string;
+};
 
 const ROLES = ["ADMIN", "SUPER_USER", "PM", "CONTRIBUTOR", "VIEWER"];
 
@@ -26,20 +35,55 @@ export default function AdminPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "CONTRIBUTOR", organizationId: "" });
   const [orgActionId, setOrgActionId] = useState<string | null>(null);
 
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [regActionId, setRegActionId] = useState<string | null>(null);
+  const [regError, setRegError] = useState<string | null>(null);
+
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [companyForm, setCompanyForm] = useState({ name: "", ownerName: "", ownerEmail: "", ownerPassword: "" });
   const [companySaving, setCompanySaving] = useState(false);
   const [companyError, setCompanyError] = useState<string | null>(null);
 
   async function load() {
-    const [u, s, o] = await Promise.all([
+    const [u, s, o, r] = await Promise.all([
       fetch("/api/admin/users").then((r) => r.json()),
       fetch("/api/admin/settings").then((r) => r.json()),
       fetch("/api/admin/organizations").then((r) => r.json()),
+      fetch("/api/admin/registrations").then((r) => r.json()),
     ]);
     setUsers(Array.isArray(u) ? u : []);
     setSettings(s);
     setOrgs(Array.isArray(o) ? o : []);
+    setRegistrations(Array.isArray(r) ? r : []);
+  }
+
+  const pendingRegistrations = registrations.filter((r) => r.status === "PENDING");
+
+  async function approveRegistration(id: string) {
+    setRegActionId(id);
+    setRegError(null);
+    const res = await fetch(`/api/admin/registrations/${id}/approve`, { method: "POST" });
+    setRegActionId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setRegError(data?.error ?? "Could not approve this request.");
+      return;
+    }
+    load();
+  }
+
+  async function rejectRegistration(id: string) {
+    if (!confirm("Reject this registration request? They won't be able to log in.")) return;
+    setRegActionId(id);
+    setRegError(null);
+    const res = await fetch(`/api/admin/registrations/${id}/reject`, { method: "POST" });
+    setRegActionId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setRegError(data?.error ?? "Could not reject this request.");
+      return;
+    }
+    load();
   }
 
   async function createCompany() {
@@ -192,6 +236,56 @@ export default function AdminPage() {
         }
       />
       <div className="p-8 max-w-3xl space-y-6">
+
+        {pendingRegistrations.length > 0 && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                <UserPlus size={16} className="text-indigo-600" /> Pending Registrations ({pendingRegistrations.length})
+              </p>
+            </div>
+            <p className="text-xs text-slate-400 mb-3">
+              Requests submitted from the public sign-up page. Approving creates their login —
+              individuals get their own organization (you can remap them to a real company below
+              anytime); company owners get a new organization with them as its SUPER_USER. Add
+              them to specific projects afterward from that project&apos;s Team access section.
+            </p>
+            {regError && <p className="text-xs text-rose-600 mb-3">{regError}</p>}
+            <div className="space-y-2">
+              {pendingRegistrations.map((r) => (
+                <div key={r.id} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">
+                      {r.name}{" "}
+                      <span className="text-xs font-normal text-slate-400">
+                        ({r.type === "COMPANY_OWNER" ? `company owner — ${r.companyName}` : "individual"})
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {r.email} · requested {new Date(r.requestedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => approveRegistration(r.id)}
+                      disabled={regActionId === r.id}
+                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                    >
+                      <Check size={13} /> Approve
+                    </button>
+                    <button
+                      onClick={() => rejectRegistration(r.id)}
+                      disabled={regActionId === r.id}
+                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
+                    >
+                      <X size={13} /> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-4">

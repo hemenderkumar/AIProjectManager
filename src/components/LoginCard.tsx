@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 // Shared login form — embedded directly on the marketing homepage (docked to the side)
 // and also used standalone on /login (e.g. for a session-expired redirect with ?next=).
@@ -67,6 +68,9 @@ export default function LoginCard({ next, id }: { next?: string; id?: string }) 
         </button>
       </form>
       <p className="text-xs text-slate-400 mt-4">
+        New here? <Link href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium">Request access</Link>
+      </p>
+      <p className="text-xs text-slate-400 mt-2">
         Seeded admin login: admin@example.com / changeme123 (set your own via .env.local, then re-seed)
       </p>
     </div>
