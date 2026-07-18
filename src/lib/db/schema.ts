@@ -90,6 +90,8 @@ export const userRoleEnum = pgEnum("user_role", [
   "VIEWER",
 ]);
 
+export const issueStatusEnum = pgEnum("issue_status", ["OPEN", "IN_PROGRESS", "RESOLVED", "WONT_FIX"]);
+
 export const statusRequestStatusEnum = pgEnum("status_request_status", [
   "PENDING",
   "COMPLETED",
@@ -748,6 +750,28 @@ export const activityEvents = pgTable("activity_events", {
   userName: text("user_name"), // snapshot in case the user is later deleted
   path: text("path"), // e.g. "/", "/login", "/rfp/respond/<token>"
   detail: text("detail"), // e.g. an RFP title or vendor name for a public visit
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// User-reported bugs/feedback, captured with an automatic client-side screenshot of the
+// page they were on (data URL, taken via html2canvas in the browser — no server-side
+// rendering needed). Any logged-in user can file one from anywhere in the app via the
+// floating "Report an issue" button; only ADMIN can see the resulting list (the event log
+// at /admin/issues). Deliberately its own table rather than reusing auditLog: auditLog is
+// an append-only trace of sensitive actions someone took, this is inbound reports that get
+// triaged and closed out, with a mutable status.
+export const issueReports = pgTable("issue_reports", {
+  id: cuid(),
+  reporterId: text("reporter_id").references(() => users.id, { onDelete: "set null" }),
+  reporterName: text("reporter_name"), // snapshot in case the user is later deleted
+  reporterEmail: text("reporter_email"),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+  pagePath: text("page_path").notNull(), // e.g. "/projects/abc123" — where they were when they reported it
+  description: text("description").notNull(),
+  screenshotDataUrl: text("screenshot_data_url"), // "data:image/png;base64,..." — null if capture failed client-side
+  status: issueStatusEnum("status").notNull().default("OPEN"),
+  resolvedBy: text("resolved_by"), // snapshot name of the admin who closed it out
+  resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

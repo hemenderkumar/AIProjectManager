@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign, KeyRound } from "lucide-react";
+import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign, KeyRound, Bug } from "lucide-react";
 import RateCardSection from "@/components/RateCardSection";
 
 type User = { id: string; name: string; email: string; role: string; organizationId: string | null; resourceId: string | null };
@@ -295,6 +295,9 @@ export default function AdminPage() {
             </Link>
             <Link href="/admin/audit-log" className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
               <ScrollText size={14} /> Audit Log
+            </Link>
+            <Link href="/admin/issues" className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+              <Bug size={14} /> Issue Reports
             </Link>
           </div>
         }
