@@ -5,7 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
-import { Sparkles, Loader2, CheckCircle2, Lock, Trash2 } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2, Lock, Trash2, Boxes } from "lucide-react";
 import IdeationWorkspace from "./IdeationWorkspace";
 import CountryStateFields from "@/components/CountryStateFields";
 
@@ -27,6 +27,14 @@ type FeasibilityResult = {
   keyRisks: string[];
   openQuestions: string[];
   assumptions: string[];
+};
+
+type SimilarProjectsResult = {
+  similarProjects: { name: string; whySimilar: string }[];
+  commonRequirementThemes: string[];
+  commonRisks: string[];
+  vendorTechLessons: string[];
+  note?: string;
 };
 
 export default function OverviewTab({
@@ -72,6 +80,31 @@ export default function OverviewTab({
 
   const [approving, setApproving] = useState(false);
   const [approveError, setApproveError] = useState<string | null>(null);
+
+  const [findingSimilar, setFindingSimilar] = useState(false);
+  const [similarError, setSimilarError] = useState<string | null>(null);
+  const [similarResult, setSimilarResult] = useState<SimilarProjectsResult | null>(null);
+
+  async function findSimilarProjects() {
+    setFindingSimilar(true);
+    setSimilarError(null);
+    setSimilarResult(null);
+    try {
+      const res = await fetch("/api/ai/similar-projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: p.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSimilarError(data?.error ?? "Couldn't find similar projects right now.");
+        return;
+      }
+      setSimilarResult(data);
+    } finally {
+      setFindingSimilar(false);
+    }
+  }
 
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -303,6 +336,65 @@ export default function OverviewTab({
             />
           </Field>
         </div>
+      </Card>
+
+      <Card
+        title="Similar past projects & patterns"
+        action={
+          <button
+            onClick={findSimilarProjects}
+            disabled={findingSimilar}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+          >
+            {findingSimilar ? <Loader2 size={13} className="animate-spin" /> : <Boxes size={13} />}
+            Find similar projects
+          </button>
+        }
+      >
+        <p className="text-xs text-slate-400 mb-2">
+          Looks across other projects you have access to for recurring requirement themes, risks, and
+          vendor/technology lessons that could apply here.
+        </p>
+        {similarError && <p className="text-xs text-rose-600 mb-2">{similarError}</p>}
+        {similarResult && (
+          <div className="border border-slate-200 bg-slate-50 rounded-lg p-3 space-y-2">
+            {similarResult.note && <p className="text-xs text-slate-500">{similarResult.note}</p>}
+            {similarResult.similarProjects.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-700 mb-1">Most similar projects</p>
+                <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5">
+                  {similarResult.similarProjects.map((sp, i) => (
+                    <li key={i}><span className="font-medium">{sp.name}</span> — {sp.whySimilar}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {similarResult.commonRequirementThemes.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-700 mb-1">Common requirement themes</p>
+                <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5">
+                  {similarResult.commonRequirementThemes.map((t, i) => <li key={i}>{t}</li>)}
+                </ul>
+              </div>
+            )}
+            {similarResult.commonRisks.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-700 mb-1">Common risks</p>
+                <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5">
+                  {similarResult.commonRisks.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              </div>
+            )}
+            {similarResult.vendorTechLessons.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-700 mb-1">Vendor / technology lessons</p>
+                <ul className="list-disc list-inside text-xs text-slate-500 space-y-0.5">
+                  {similarResult.vendorTechLessons.map((l, i) => <li key={i}>{l}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       <Card

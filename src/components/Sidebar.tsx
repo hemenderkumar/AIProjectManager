@@ -16,6 +16,7 @@ import {
   LifeBuoy,
   Building2,
   FileSearch,
+  TrendingUp,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
@@ -88,6 +89,9 @@ export default function Sidebar({ user, open }: { user: SessionUser | null; open
           )}
           {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
             <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
+          )}
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+            <NavLink href="/vendors" icon={<TrendingUp size={17} />} pathname={pathname}>Vendor Scorecard</NavLink>
           )}
         </NavSection>
 

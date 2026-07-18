@@ -15,6 +15,7 @@ import InvoicesTab from "./InvoicesTab";
 import DeliveryTab from "./DeliveryTab";
 import SowTab from "./SowTab";
 import DeliverablesTab from "./DeliverablesTab";
+import QaTab from "./QaTab";
 import type { SessionUser } from "@/lib/auth";
 import type { RateCardEntry } from "@/lib/deliveryModel";
 
@@ -42,6 +43,7 @@ const TABS = [
   "Delivery & Pricing",
   "SOW",
   "Deliverables",
+  "Ask AI",
   "C-Level Report",
 ] as const;
 
@@ -106,6 +108,7 @@ export default function ProjectTabs({
       {active === "Delivery & Pricing" && <DeliveryTab detail={detail} rateCards={rateCards} />}
       {active === "SOW" && <SowTab detail={detail} user={user} />}
       {active === "Deliverables" && <DeliverablesTab detail={detail} user={user} />}
+      {active === "Ask AI" && <QaTab detail={detail} />}
       {active === "C-Level Report" && <ReportTab detail={detail} />}
     </div>
   );

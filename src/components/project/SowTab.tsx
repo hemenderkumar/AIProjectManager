@@ -3,8 +3,23 @@ import { useEffect, useState } from "react";
 import type { ProjectDetail } from "./ProjectTabs";
 import type { SessionUser } from "@/lib/auth";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
-import { Plus, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, FileText } from "lucide-react";
+import { Plus, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, FileText, Gauge, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+
+type DriftResult = {
+  status: "ON_TRACK" | "MINOR_DRIFT" | "SIGNIFICANT_DRIFT";
+  summary: string;
+  scheduleNote: string;
+  fundingNote: string;
+  scopeNote: string;
+  recommendedActions: string[];
+};
+
+const DRIFT_STYLES: Record<string, { badge: string; icon: React.ReactNode }> = {
+  ON_TRACK: { badge: "bg-emerald-50 text-emerald-700", icon: <CheckCircle2 size={14} /> },
+  MINOR_DRIFT: { badge: "bg-amber-50 text-amber-700", icon: <AlertTriangle size={14} /> },
+  SIGNIFICANT_DRIFT: { badge: "bg-rose-50 text-rose-700", icon: <XCircle size={14} /> },
+};
 
 type Sow = {
   id: string;
@@ -47,6 +62,12 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // SOW-vs-actuals drift check, keyed by SOW id — an on-demand AI comparison against live
+  // project data, not something re-run automatically on every load.
+  const [checkingDriftId, setCheckingDriftId] = useState<string | null>(null);
+  const [driftResults, setDriftResults] = useState<Record<string, DriftResult>>({});
+  const [driftError, setDriftError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -130,6 +151,26 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
     if (!confirm("Delete this SOW? This cannot be undone.")) return;
     await fetch(`/api/sows/${id}`, { method: "DELETE" });
     load();
+  }
+
+  async function checkDrift(id: string) {
+    setCheckingDriftId(id);
+    setDriftError(null);
+    try {
+      const res = await fetch("/api/ai/sow-drift", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sowId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDriftError(data?.error ?? "Couldn't assess drift.");
+        return;
+      }
+      setDriftResults((prev) => ({ ...prev, [id]: data }));
+    } finally {
+      setCheckingDriftId(null);
+    }
   }
 
   return (
@@ -276,6 +317,39 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                       <pre className="whitespace-pre-wrap font-sans text-slate-600 bg-slate-50 rounded-lg p-3">{s.content}</pre>
                     </div>
                   )}
+
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="font-medium text-slate-700 flex items-center gap-1"><Gauge size={12} /> Drift vs. actuals</p>
+                      <button
+                        onClick={() => checkDrift(s.id)}
+                        disabled={checkingDriftId === s.id}
+                        className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium"
+                      >
+                        {checkingDriftId === s.id ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                        {checkingDriftId === s.id ? "Checking..." : "Check drift"}
+                      </button>
+                    </div>
+                    <AiWaitIndicator active={checkingDriftId === s.id} messages={["Reading the SOW baseline...", "Comparing against project actuals..."]} />
+                    {driftError && checkingDriftId === null && !driftResults[s.id] && <p className="text-rose-600">{driftError}</p>}
+                    {driftResults[s.id] && (
+                      <div className="border border-slate-200 rounded-lg p-3 space-y-1.5">
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-2.5 py-1 ${DRIFT_STYLES[driftResults[s.id].status]?.badge ?? ""}`}>
+                          {DRIFT_STYLES[driftResults[s.id].status]?.icon}
+                          {driftResults[s.id].status.replace("_", " ")}
+                        </span>
+                        <p>{driftResults[s.id].summary}</p>
+                        <p><span className="font-medium text-slate-700">Schedule: </span>{driftResults[s.id].scheduleNote}</p>
+                        <p><span className="font-medium text-slate-700">Funding: </span>{driftResults[s.id].fundingNote}</p>
+                        <p><span className="font-medium text-slate-700">Scope: </span>{driftResults[s.id].scopeNote}</p>
+                        {driftResults[s.id].recommendedActions.length > 0 && (
+                          <ul className="list-disc list-inside space-y-0.5">
+                            {driftResults[s.id].recommendedActions.map((a, i) => <li key={i}>{a}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
