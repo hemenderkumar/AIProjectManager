@@ -51,6 +51,12 @@ export async function PATCH(
     update.signedAt = new Date();
     update.signedBy = body.signedBy || user.name;
   }
+  // Internal approval, separate from the vendor's own signature — always stamped from the
+  // acting user server-side, never client-supplied, so it can't be spoofed.
+  if (body.status === "APPROVED" && sow.status !== "APPROVED") {
+    update.approvedAt = new Date();
+    update.approvedBy = user.name;
+  }
 
   const [updated] = await db.update(sows).set(update).where(eq(sows.id, id)).returning();
 

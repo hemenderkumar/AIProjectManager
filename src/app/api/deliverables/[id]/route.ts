@@ -43,6 +43,12 @@ export async function PATCH(
   if (body.title !== undefined) update.title = body.title;
   if (body.content !== undefined) update.content = body.content;
   if (body.status !== undefined) update.status = body.status;
+  // Approval is a real moment worth recording, not just another status edit — always stamped
+  // from the acting user server-side, never client-supplied, so it can't be spoofed.
+  if (body.status === "APPROVED" && d.status !== "APPROVED") {
+    update.approvedAt = new Date();
+    update.approvedBy = user.name;
+  }
 
   const [updated] = await db.update(deliverables).set(update).where(eq(deliverables.id, id)).returning();
 

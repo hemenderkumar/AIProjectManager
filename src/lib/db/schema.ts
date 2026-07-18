@@ -868,6 +868,7 @@ export const rfpRecommendations = pgTable("rfp_recommendations", {
 // require one — an owner with an existing vendor relationship can create one directly.
 export const sowStatusEnum = pgEnum("sow_status", [
   "DRAFT",
+  "APPROVED",
   "PENDING_SIGNATURE",
   "SIGNED",
   "ACTIVE",
@@ -901,6 +902,20 @@ export const sows = pgTable("sows", {
 
   signedBy: text("signed_by"),
   signedAt: timestamp("signed_at"),
+
+  // Internal review/approval — a separate moment from the vendor's own signature above.
+  // Stamped server-side only when status transitions to APPROVED, never client-supplied.
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
+
+  // The executed contract, scanned/exported as a PDF and attached back onto this SOW —
+  // stored inline as base64 rather than in external object storage, so no additional service
+  // (S3, Vercel Blob, etc.) needs to be provisioned to use this. Fine for the size of a typical
+  // signed contract; would need to move to blob storage if attachments grow much larger.
+  signedDocumentFilename: text("signed_document_filename"),
+  signedDocumentData: text("signed_document_data"), // base64-encoded PDF bytes
+  signedDocumentUploadedAt: timestamp("signed_document_uploaded_at"),
+  signedDocumentUploadedBy: text("signed_document_uploaded_by"),
 
   createdBy: text("created_by"), // snapshot of the owner's name
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -940,6 +955,19 @@ export const deliverables = pgTable("deliverables", {
   status: deliverableStatusEnum("status").notNull().default("DRAFT"),
   createdByAi: boolean("created_by_ai").notNull().default(false),
   createdBy: text("created_by"),
+
+  // Stamped server-side only when status transitions to APPROVED, never client-supplied.
+  approvedBy: text("approved_by"),
+  approvedAt: timestamp("approved_at"),
+
+  // A signed-off copy (e.g. a stakeholder sign-off sheet) attached back onto this deliverable —
+  // see the matching comment on sows.signedDocumentData for why this is inline base64 rather
+  // than external object storage.
+  signedDocumentFilename: text("signed_document_filename"),
+  signedDocumentData: text("signed_document_data"),
+  signedDocumentUploadedAt: timestamp("signed_document_uploaded_at"),
+  signedDocumentUploadedBy: text("signed_document_uploaded_by"),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

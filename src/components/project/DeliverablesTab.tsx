@@ -5,7 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { Card, inputCls, PrimaryButton } from "./ui";
 import {
   Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, Plus, FileText, ClipboardCheck,
-  Gauge, CheckCircle2, AlertTriangle, XCircle, ListChecks,
+  Gauge, CheckCircle2, AlertTriangle, XCircle, ListChecks, FileDown, Paperclip, Upload, X,
 } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 
@@ -32,7 +32,25 @@ type Deliverable = {
   createdBy: string | null;
   createdAt: string;
   testCases: TestCase[];
+  approvedBy: string | null;
+  approvedAt: string | null;
+  signedDocumentFilename: string | null;
+  signedDocumentUploadedAt: string | null;
+  signedDocumentUploadedBy: string | null;
 };
+
+// Reads a File as a base64 string (no data: URL prefix) for JSON upload.
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 type ReadinessCounts = { total: number; pass: number; fail: number; blocked: number; notRun: number };
 type ReadinessBreakdownRow = { deliverableId: string; title: string; type: string; total: number; passed: number; failed: number; blocked: number };
@@ -95,6 +113,9 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
   const [traceResults, setTraceResults] = useState<Record<string, TraceItem[]>>({});
   const [traceError, setTraceError] = useState<string | null>(null);
   const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
+
+  const [uploadingSignedFor, setUploadingSignedFor] = useState<string | null>(null);
+  const [signedDocError, setSignedDocError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -254,6 +275,43 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
     }
   }
 
+  async function uploadSignedCopy(deliverableId: string, file: File) {
+    setSignedDocError(null);
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setSignedDocError("Only PDF files can be attached as the signed copy.");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setSignedDocError("That file is too large — the signed copy must be under 4MB.");
+      return;
+    }
+    setUploadingSignedFor(deliverableId);
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const res = await fetch(`/api/deliverables/${deliverableId}/signed-document`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, dataBase64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSignedDocError(data?.error ?? "Couldn't upload the signed copy.");
+        return;
+      }
+      setDeliverables((prev) => prev.map((d) => (d.id === deliverableId ? { ...d, ...data } : d)));
+    } finally {
+      setUploadingSignedFor(null);
+    }
+  }
+
+  async function removeSignedCopy(deliverableId: string) {
+    if (!confirm("Remove the attached signed copy?")) return;
+    await fetch(`/api/deliverables/${deliverableId}/signed-document`, { method: "DELETE" });
+    setDeliverables((prev) =>
+      prev.map((d) => (d.id === deliverableId ? { ...d, signedDocumentFilename: null, signedDocumentUploadedAt: null, signedDocumentUploadedBy: null } : d))
+    );
+  }
+
   const hasTestData = readinessCounts && readinessCounts.total > 0;
 
   return (
@@ -366,6 +424,13 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                     </div>
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={`/api/deliverables/${d.id}/docx`}
+                      className="text-slate-400 hover:text-indigo-600"
+                      title="Download as Word document"
+                    >
+                      <FileDown size={14} />
+                    </a>
                     {canEdit ? (
                       <select
                         value={d.status}
@@ -386,6 +451,11 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                 </div>
                 {expanded && (
                   <div className="border-t border-slate-100 px-3 py-3">
+                    {d.approvedBy && (
+                      <p className="text-xs flex items-center gap-1 text-emerald-700 mb-2">
+                        <CheckCircle2 size={12} /> Approved by {d.approvedBy}{d.approvedAt ? ` on ${new Date(d.approvedAt).toLocaleDateString()}` : ""}
+                      </p>
+                    )}
                     {d.testCases.length > 0 || typeInfo?.isTest ? (
                       <TestCaseTable
                         deliverableId={d.id}
@@ -411,6 +481,46 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                         )}
                       </div>
                     )}
+
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <p className="text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1"><Paperclip size={12} /> Signed copy (PDF)</p>
+                      {signedDocError && uploadingSignedFor === null && <p className="text-xs text-rose-600 mb-1.5">{signedDocError}</p>}
+                      {d.signedDocumentFilename ? (
+                        <div className="flex items-center justify-between bg-slate-50 rounded-lg px-2.5 py-2 text-xs">
+                          <a href={`/api/deliverables/${d.id}/signed-document`} className="text-indigo-600 hover:text-indigo-700">
+                            {d.signedDocumentFilename}
+                          </a>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400">
+                              {d.signedDocumentUploadedBy}{d.signedDocumentUploadedAt ? ` · ${new Date(d.signedDocumentUploadedAt).toLocaleDateString()}` : ""}
+                            </span>
+                            {canEdit && (
+                              <button onClick={() => removeSignedCopy(d.id)} className="text-slate-400 hover:text-rose-600">
+                                <X size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ) : canEdit ? (
+                        <label className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 cursor-pointer w-fit">
+                          {uploadingSignedFor === d.id ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                          {uploadingSignedFor === d.id ? "Uploading..." : "Upload signed copy"}
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            className="hidden"
+                            disabled={uploadingSignedFor !== null}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) uploadSignedCopy(d.id, file);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      ) : (
+                        <p className="text-xs text-slate-400">No signed copy attached yet.</p>
+                      )}
+                    </div>
 
                     {traceable && canEdit && (
                       <div className="mt-3 pt-3 border-t border-slate-100">

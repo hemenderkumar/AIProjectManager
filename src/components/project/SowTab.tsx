@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { ProjectDetail } from "./ProjectTabs";
 import type { SessionUser } from "@/lib/auth";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
-import { Plus, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, FileText, Gauge, CheckCircle2, AlertTriangle, XCircle } from "lucide-react";
+import { Plus, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, FileText, Gauge, CheckCircle2, AlertTriangle, XCircle, FileDown, Upload, Paperclip, X } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type DriftResult = {
@@ -38,9 +38,29 @@ type Sow = {
   content: string | null;
   createdBy: string | null;
   createdAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  signedDocumentFilename: string | null;
+  signedDocumentUploadedAt: string | null;
+  signedDocumentUploadedBy: string | null;
 };
 
-const STATUSES = ["DRAFT", "PENDING_SIGNATURE", "SIGNED", "ACTIVE", "COMPLETED", "TERMINATED"];
+const STATUSES = ["DRAFT", "APPROVED", "PENDING_SIGNATURE", "SIGNED", "ACTIVE", "COMPLETED", "TERMINATED"];
+
+// Reads a File as a base64 string (no data: URL prefix) for JSON upload — the signed-document
+// endpoints take {filename, dataBase64} rather than multipart/form-data, so nothing needs a
+// multipart parser dependency.
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 const emptyForm = {
   title: "", vendorName: "", vendorContactName: "", vendorContactEmail: "",
@@ -68,6 +88,9 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
   const [checkingDriftId, setCheckingDriftId] = useState<string | null>(null);
   const [driftResults, setDriftResults] = useState<Record<string, DriftResult>>({});
   const [driftError, setDriftError] = useState<string | null>(null);
+
+  const [uploadingSignedFor, setUploadingSignedFor] = useState<string | null>(null);
+  const [signedDocError, setSignedDocError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -151,6 +174,41 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
     if (!confirm("Delete this SOW? This cannot be undone.")) return;
     await fetch(`/api/sows/${id}`, { method: "DELETE" });
     load();
+  }
+
+  async function uploadSignedCopy(id: string, file: File) {
+    setSignedDocError(null);
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setSignedDocError("Only PDF files can be attached as the signed copy.");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setSignedDocError("That file is too large — the signed copy must be under 4MB.");
+      return;
+    }
+    setUploadingSignedFor(id);
+    try {
+      const dataBase64 = await fileToBase64(file);
+      const res = await fetch(`/api/sows/${id}/signed-document`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, dataBase64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSignedDocError(data?.error ?? "Couldn't upload the signed copy.");
+        return;
+      }
+      setSows((prev) => prev.map((s) => (s.id === id ? { ...s, ...data } : s)));
+    } finally {
+      setUploadingSignedFor(null);
+    }
+  }
+
+  async function removeSignedCopy(id: string) {
+    if (!confirm("Remove the attached signed copy?")) return;
+    await fetch(`/api/sows/${id}/signed-document`, { method: "DELETE" });
+    setSows((prev) => prev.map((s) => (s.id === id ? { ...s, signedDocumentFilename: null, signedDocumentUploadedAt: null, signedDocumentUploadedBy: null } : s)));
   }
 
   async function checkDrift(id: string) {
@@ -285,6 +343,13 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                   </div>
                 </button>
                 <div className="flex items-center gap-2 shrink-0">
+                  <a
+                    href={`/api/sows/${s.id}/docx`}
+                    className="text-slate-400 hover:text-indigo-600"
+                    title="Download as Word document"
+                  >
+                    <FileDown size={14} />
+                  </a>
                   {canManage ? (
                     <select
                       value={s.status}
@@ -305,6 +370,11 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
               </div>
               {expandedId === s.id && (
                 <div className="border-t border-slate-100 px-3 py-3 space-y-2 text-xs text-slate-600">
+                  {s.approvedBy && (
+                    <p className="flex items-center gap-1 text-emerald-700">
+                      <CheckCircle2 size={12} /> Approved by {s.approvedBy}{s.approvedAt ? ` on ${new Date(s.approvedAt).toLocaleDateString()}` : ""}
+                    </p>
+                  )}
                   {s.scope && <p><span className="font-medium text-slate-700">Scope: </span>{s.scope}</p>}
                   {s.deliverablesSummary && <p><span className="font-medium text-slate-700">Deliverables: </span>{s.deliverablesSummary}</p>}
                   {s.timeline && <p><span className="font-medium text-slate-700">Timeline: </span>{s.timeline}</p>}
@@ -317,6 +387,46 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                       <pre className="whitespace-pre-wrap font-sans text-slate-600 bg-slate-50 rounded-lg p-3">{s.content}</pre>
                     </div>
                   )}
+
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <p className="font-medium text-slate-700 mb-1.5 flex items-center gap-1"><Paperclip size={12} /> Signed copy (PDF)</p>
+                    {signedDocError && uploadingSignedFor === null && <p className="text-rose-600 mb-1.5">{signedDocError}</p>}
+                    {s.signedDocumentFilename ? (
+                      <div className="flex items-center justify-between bg-slate-50 rounded-lg px-2.5 py-2">
+                        <a href={`/api/sows/${s.id}/signed-document`} className="text-indigo-600 hover:text-indigo-700">
+                          {s.signedDocumentFilename}
+                        </a>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400">
+                            {s.signedDocumentUploadedBy}{s.signedDocumentUploadedAt ? ` · ${new Date(s.signedDocumentUploadedAt).toLocaleDateString()}` : ""}
+                          </span>
+                          {canManage && (
+                            <button onClick={() => removeSignedCopy(s.id)} className="text-slate-400 hover:text-rose-600">
+                              <X size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : canManage ? (
+                      <label className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 cursor-pointer w-fit">
+                        {uploadingSignedFor === s.id ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                        {uploadingSignedFor === s.id ? "Uploading..." : "Upload signed copy"}
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          disabled={uploadingSignedFor !== null}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) uploadSignedCopy(s.id, file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <p className="text-slate-400">No signed copy attached yet.</p>
+                    )}
+                  </div>
 
                   <div className="mt-2 pt-2 border-t border-slate-100">
                     <div className="flex items-center justify-between mb-1.5">
