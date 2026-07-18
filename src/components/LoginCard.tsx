@@ -75,9 +75,11 @@ export default function LoginCard({ next, id }: { next?: string; id?: string }) 
       <p className="text-xs text-slate-400 mt-4">
         New here? <Link href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium">Request access</Link>
       </p>
-      <p className="text-xs text-slate-400 mt-2">
-        Seeded admin login: admin@example.com / changeme123 (set your own via .env.local, then re-seed)
-      </p>
+      {process.env.NODE_ENV !== "production" && (
+        <p className="text-xs text-slate-400 mt-2">
+          Seeded admin login: admin@example.com / changeme123 (set your own via .env.local, then re-seed)
+        </p>
+      )}
     </div>
   );
 }
