@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { isDownloadBlocked } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { BRAND, createKeelPdf, finalizeKeelPdf, coverMasthead, sectionTitle } from "@/lib/brand";
 
@@ -142,6 +143,12 @@ export async function GET(
   const { id } = await params;
   const user = await requireProjectAccess("VIEWER", id);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const detail = await getProjectDetail(id);
   if (!detail) return NextResponse.json({ error: "not found" }, { status: 404 });

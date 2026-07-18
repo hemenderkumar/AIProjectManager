@@ -1,6 +1,9 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { db } from "./db";
+import { users } from "./db/schema";
+import { eq } from "drizzle-orm";
 
 export type SessionUser = {
   id: string;
@@ -100,4 +103,18 @@ export async function requireRole(min: SessionUser["role"]) {
   const user = await getCurrentUser();
   if (!user || !roleAtLeast(user.role, min)) return null;
   return user;
+}
+
+// Gates downloads/exports specifically — NOT login, NOT the rest of the app. An
+// auto-provisioned INDIVIDUAL self-registration (see /api/auth/register) can use Keel right
+// away, but every document export (Word/PDF/PowerPoint, single or batch) stays blocked until
+// an admin has reviewed the account (Admin > Pending Registrations > Confirm) — and, in the
+// future, once billing is set up, this is also where a payment check would plug in. A live DB
+// read (not a claim baked into the session JWT at login) so approving someone unblocks them
+// immediately, without needing to log out and back in. Every other account-creation path
+// (admin-created users, company-owner approval, the seed admin) is verified from creation —
+// see the column comment on users.verifiedAt in schema.ts.
+export async function isDownloadBlocked(userId: string): Promise<boolean> {
+  const [row] = await db.select({ verifiedAt: users.verifiedAt }).from(users).where(eq(users.id, userId));
+  return !row?.verifiedAt;
 }

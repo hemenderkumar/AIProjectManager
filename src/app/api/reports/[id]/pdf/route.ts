@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { reports } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireInternal } from "@/lib/tenancy";
+import { isDownloadBlocked } from "@/lib/auth";
 import { getPortfolioSummary } from "@/lib/portfolio";
 import { buildPortfolioOnePager } from "@/lib/portfolioReportData";
 import { generatePortfolioNarrativeReportPdf } from "@/lib/portfolioReportExport";
@@ -14,6 +15,12 @@ import { generatePortfolioNarrativeReportPdf } from "@/lib/portfolioReportExport
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireInternal("VIEWER");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const { id } = await params;
   const [report] = await db.select().from(reports).where(eq(reports.id, id));

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { deliverables } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { isDownloadBlocked } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB original file
@@ -18,6 +19,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!d) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const user = await requireProjectAccess("VIEWER", d.projectId);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
   if (!d.signedDocumentData) return NextResponse.json({ error: "No signed copy attached" }, { status: 404 });
 
   const buffer = Buffer.from(d.signedDocumentData, "base64");

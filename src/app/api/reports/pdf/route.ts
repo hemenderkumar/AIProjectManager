@@ -3,6 +3,7 @@ import { getProjectDetail } from "@/lib/portfolio";
 import { buildPlannedVsActual } from "@/lib/reportData";
 import { generateReportPdf, generateReportOnePagerPdf } from "@/lib/reportExport";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { isDownloadBlocked } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const { projectId, report, onePager } = await req.json().catch(() => ({}));
@@ -12,6 +13,12 @@ export async function POST(req: NextRequest) {
 
   const user = await requireProjectAccess("VIEWER", projectId);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const detail = await getProjectDetail(projectId);
   if (!detail) return NextResponse.json({ error: "project not found" }, { status: 404 });

@@ -3,7 +3,7 @@ import JSZip from "jszip";
 import { db } from "@/lib/db";
 import { deliverables, deliverableTestCases, projects, organizations } from "@/lib/db/schema";
 import { inArray, eq } from "drizzle-orm";
-import { requireRole } from "@/lib/auth";
+import { requireRole, isDownloadBlocked } from "@/lib/auth";
 import { filterProjectsForUser } from "@/lib/tenancy";
 import { buildSectionedDocx, buildTestCaseDocx, type DocMeta } from "@/lib/docxExport";
 
@@ -28,6 +28,12 @@ const TYPE_LABELS: Record<string, string> = {
 export async function GET() {
   const user = await requireRole("PM");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const allProjects = await db
     .select({ id: projects.id, name: projects.name, organizationId: projects.organizationId })

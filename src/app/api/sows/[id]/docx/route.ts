@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { sows, projects, organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { isDownloadBlocked } from "@/lib/auth";
 import { buildSectionedDocx, docxHeaders, type DocMeta } from "@/lib/docxExport";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +13,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const user = await requireProjectAccess("VIEWER", sow.projectId);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   // Company vs Keel branding: a project's organizationId is the client company it's for (null =
   // internal-only) — see the matching comment in the deliverables docx route.

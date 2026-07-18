@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { resources } from "@/lib/db/schema";
 import { requireInternal } from "@/lib/tenancy";
+import { isDownloadBlocked } from "@/lib/auth";
 import { generateTablePptx, type TableColumn } from "@/lib/tableExport";
 
 type Row = typeof resources.$inferSelect;
@@ -18,6 +19,12 @@ const columns: TableColumn<Row>[] = [
 export async function POST() {
   const user = await requireInternal("VIEWER");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const rows = await db.select().from(resources);
   const generatedAt = new Date();

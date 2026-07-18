@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllProjectsWithMetrics } from "@/lib/portfolio";
-import { requireRole } from "@/lib/auth";
+import { requireRole, isDownloadBlocked } from "@/lib/auth";
 import { generateTablePdf, type TableColumn } from "@/lib/tableExport";
 
 type Row = Awaited<ReturnType<typeof getAllProjectsWithMetrics>>[number];
@@ -18,6 +18,12 @@ const columns: TableColumn<Row>[] = [
 export async function POST() {
   const user = await requireRole("VIEWER");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const rows = await getAllProjectsWithMetrics(user);
   const generatedAt = new Date();

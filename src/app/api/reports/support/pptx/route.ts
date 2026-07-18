@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { incidents, projects } from "@/lib/db/schema";
-import { requireRole } from "@/lib/auth";
+import { requireRole, isDownloadBlocked } from "@/lib/auth";
 import { canAccessOptionalProject } from "@/lib/tenancy";
 import { generateTablePptx, type TableColumn } from "@/lib/tableExport";
 
@@ -18,6 +18,12 @@ const columns: TableColumn<Row>[] = [
 export async function POST() {
   const user = await requireRole("VIEWER");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const [allIncidents, allProjects] = await Promise.all([
     db.select().from(incidents),

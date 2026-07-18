@@ -24,6 +24,10 @@ export async function POST(
   // registration time (see /api/auth/register) — this row is only here for admin visibility.
   // "Approving" one just marks it reviewed; there is no account left to create.
   if (request.type === "INDIVIDUAL" && request.resultingUserId) {
+    // This is the moment that actually unblocks downloads/exports for them — see
+    // isDownloadBlocked() in lib/auth.ts. Login itself was never gated on this.
+    await db.update(users).set({ verifiedAt: new Date() }).where(eq(users.id, request.resultingUserId));
+
     await db
       .update(registrationRequests)
       .set({ status: "APPROVED", reviewedAt: new Date(), reviewedBy: admin.name })

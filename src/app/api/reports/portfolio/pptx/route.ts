@@ -2,11 +2,17 @@ import { NextResponse } from "next/server";
 import { getPortfolioSummary } from "@/lib/portfolio";
 import { buildPortfolioOnePager } from "@/lib/portfolioReportData";
 import { generatePortfolioOnePagerPptx } from "@/lib/portfolioExport";
-import { requireRole } from "@/lib/auth";
+import { requireRole, isDownloadBlocked } from "@/lib/auth";
 
 export async function POST() {
   const user = await requireRole("VIEWER");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const summary = await getPortfolioSummary(user);
   const data = buildPortfolioOnePager(summary);

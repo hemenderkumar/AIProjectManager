@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { sows } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { isDownloadBlocked } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 
 // The signed/executed contract, attached as a PDF. Stored inline as base64 (no external blob
@@ -23,6 +24,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!sow) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const user = await requireProjectAccess("VIEWER", sow.projectId);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
   if (!sow.signedDocumentData) return NextResponse.json({ error: "No signed copy attached" }, { status: 404 });
 
   const buffer = Buffer.from(sow.signedDocumentData, "base64");

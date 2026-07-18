@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { deliverables, deliverableTestCases, projects, organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { isDownloadBlocked } from "@/lib/auth";
 import { buildSectionedDocx, buildTestCaseDocx, docxHeaders, type DiagramImage, type DocMeta } from "@/lib/docxExport";
 
 const TEST_TYPES = new Set(["FUNCTIONAL_TEST_SCRIPT", "UAT_SCRIPT"]);
@@ -76,6 +77,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const user = await requireProjectAccess("VIEWER", d.projectId);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   // No diagram on this path — the plain GET link works with just the text, so downloading
   // still works even if a client can't render Mermaid (e.g. a bookmarked/shared link opened
@@ -92,6 +99,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const user = await requireProjectAccess("VIEWER", d.projectId);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const body = await req.json().catch(() => ({}));
   const diagram: DiagramImage | null =

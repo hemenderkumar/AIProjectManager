@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth";
+import { requireRole, isDownloadBlocked } from "@/lib/auth";
 import { buildOrganizationExport } from "@/lib/orgExport";
 import { logAudit } from "@/lib/audit";
 
@@ -9,6 +9,12 @@ import { logAudit } from "@/lib/audit";
 export async function GET() {
   const user = await requireRole("SUPER_USER");
   if (!user || !user.organizationId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (await isDownloadBlocked(user.id)) {
+    return NextResponse.json(
+      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+      { status: 403 }
+    );
+  }
 
   const data = await buildOrganizationExport(user.organizationId);
   if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });

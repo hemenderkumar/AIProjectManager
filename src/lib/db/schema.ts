@@ -515,6 +515,13 @@ export const users = pgTable("users", {
   // that request needs a way to actually revoke the login they already have.
   disabledAt: timestamp("disabled_at"),
   disabledReason: text("disabled_reason"),
+  // Gates downloads/exports specifically (not login, not general app use) — see
+  // isDownloadBlocked() in lib/auth.ts. Defaults to now() so every existing account and every
+  // other account-creation path (admin-created users, company-owner approval, the seed admin)
+  // is verified from the moment it's created; the one deliberate exception is the
+  // auto-provisioned INDIVIDUAL self-registration path (see /api/auth/register), which
+  // explicitly passes null here until an admin reviews it from Admin > Pending Registrations.
+  verifiedAt: timestamp("verified_at").defaultNow(),
 });
 
 // A sign-up submitted through the public /register page. The password is hashed at

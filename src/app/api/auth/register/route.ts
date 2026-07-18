@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     const [org] = await db.insert(organizations).values({ name: `${name} (Individual)` }).returning();
     const [createdUser] = await db
       .insert(users)
-      .values({ name, email, passwordHash, role: "CONTRIBUTOR", organizationId: org.id })
+      .values({ name, email, passwordHash, role: "CONTRIBUTOR", organizationId: org.id, verifiedAt: null })
       .returning({ id: users.id });
     resultingUserId = createdUser.id;
     resultingOrganizationId = org.id;
