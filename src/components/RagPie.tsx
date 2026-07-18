@@ -15,7 +15,15 @@ export default function RagPie({ byRag }: { byRag: Record<string, number> }) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <PieChart>
-        <Pie data={data} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75} paddingAngle={2}>
+        <Pie
+          data={data}
+          dataKey="value"
+          nameKey="name"
+          innerRadius={45}
+          outerRadius={75}
+          paddingAngle={2}
+          isAnimationActive={false}
+        >
           {data.map((entry) => (
             <Cell key={entry.name} fill={COLORS[entry.name] ?? "#94a3b8"} />
           ))}
