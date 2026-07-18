@@ -19,7 +19,7 @@ type OrgOption = { id: string; name: string };
 type SessionUser = { id: string; name: string; role: string; organizationId: string | null };
 type VendorInsights = { summary: string; standouts: string[] };
 
-const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 export default function VendorsPage() {
   return (
@@ -140,7 +140,7 @@ function VendorsInner() {
                 <button
                   onClick={generateInsights}
                   disabled={insightsLoading}
-                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium"
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 font-medium"
                 >
                   {insightsLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                   {insightsLoading ? "Comparing..." : "Compare with AI"}

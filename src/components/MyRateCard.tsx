@@ -51,7 +51,7 @@ export default function MyRateCard() {
           min={0}
           value={resource.costPerHour ?? 0}
           onChange={(e) => updateRate(Number(e.target.value))}
-          className="w-24 text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-24 text-sm border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent-500"
         />
         <span className="text-slate-400 text-sm">/hr</span>
         {saving && <span className="text-xs text-slate-400 ml-2">Saving...</span>}

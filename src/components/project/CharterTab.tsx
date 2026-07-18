@@ -183,7 +183,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
             <button
               onClick={generateDraft}
               disabled={generating}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
             >
               {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
               Draft with AI
@@ -272,7 +272,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
                 type="button"
                 onClick={regenerateDiagram}
                 disabled={regeneratingDiagram}
-                className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
               >
                 {regeneratingDiagram ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                 {p.architectureDiagram ? "Regenerate" : "Generate"}

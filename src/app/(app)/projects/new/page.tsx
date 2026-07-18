@@ -141,9 +141,9 @@ function NewProjectForm() {
         }
       />
       <div className="p-8 max-w-3xl">
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-6 space-y-3">
-          <p className="text-sm font-semibold text-indigo-900">✨ Describe it, and AI fills the form</p>
-          <p className="text-xs text-indigo-700">
+        <div className="bg-accent-50 border border-accent-200 rounded-xl p-5 mb-6 space-y-3">
+          <p className="text-sm font-semibold text-accent-900">✨ Describe it, and AI fills the form</p>
+          <p className="text-xs text-accent-700">
             Type a sentence or two about the project — what it is, why it matters, who&apos;s involved —
             and the fields below will be filled in automatically. You can review and edit everything
             before creating the project.
@@ -153,14 +153,14 @@ function NewProjectForm() {
             onChange={(e) => setAiMessage(e.target.value)}
             rows={3}
             placeholder="e.g. We need to replace our aging invoicing system before Q3. It's costing us support tickets and slowing down finance. Sarah in Finance is sponsoring, budget is tight, this is high priority."
-            className="w-full text-sm border border-indigo-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-sm border border-accent-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-accent-500"
           />
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={generateWithAi}
               disabled={aiLoading || !aiMessage.trim()}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
             >
               {aiLoading ? "Filling in..." : "Fill form with AI"}
             </button>
@@ -248,7 +248,7 @@ function NewProjectForm() {
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
           >
             {saving ? "Creating..." : "Create Project"}
           </button>
@@ -260,7 +260,7 @@ function NewProjectForm() {
 }
 
 const inputCls =
-  "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+  "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

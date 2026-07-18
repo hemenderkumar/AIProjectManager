@@ -6,7 +6,7 @@ import { Sparkles, Loader2, Plus, Trash2, Copy, CheckCircle2, Trophy, Send } fro
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import DownloadPdfLink from "@/components/DownloadPdfLink";
 
-const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 type Rfp = {
   id: string; title: string; status: string; projectId: string | null;
@@ -29,14 +29,14 @@ type Detail = {
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-600",
-  PUBLISHED: "bg-indigo-50 text-indigo-700",
+  PUBLISHED: "bg-accent-50 text-accent-700",
   EVALUATING: "bg-amber-50 text-amber-700",
   AWARDED: "bg-emerald-50 text-emerald-700",
   CLOSED: "bg-slate-100 text-slate-500",
 };
 const VENDOR_STATUS_STYLES: Record<string, string> = {
   INVITED: "bg-slate-100 text-slate-600",
-  VIEWED: "bg-indigo-50 text-indigo-700",
+  VIEWED: "bg-accent-50 text-accent-700",
   SUBMITTED: "bg-emerald-50 text-emerald-700",
   DECLINED: "bg-rose-50 text-rose-600",
 };
@@ -237,7 +237,7 @@ export default function RfpDetailPage() {
             <button
               onClick={publish}
               disabled={publishing || !docForm.content.trim()}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 disabled:opacity-50"
               title={!docForm.content.trim() ? "Draft or write the RFP content before publishing" : undefined}
             >
               <Send size={12} /> {publishing ? "Publishing..." : "Publish"}
@@ -255,7 +255,7 @@ export default function RfpDetailPage() {
               <button
                 onClick={draftWithAi}
                 disabled={drafting}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
               >
                 {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {rfp.content ? "Regenerate with AI" : "Draft with AI"}
@@ -326,7 +326,7 @@ export default function RfpDetailPage() {
               <span className="block text-xs font-medium text-slate-500 mb-1">Weight %</span>
               <input type="number" value={criterionForm.weightPercent} onChange={(e) => setCriterionForm((f) => ({ ...f, weightPercent: e.target.value }))} className={inputCls} />
             </label>
-            <button type="submit" disabled={criterionSaving} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-sm font-medium disabled:opacity-50">
+            <button type="submit" disabled={criterionSaving} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 text-sm font-medium disabled:opacity-50">
               <Plus size={14} /> Add
             </button>
           </form>
@@ -345,7 +345,7 @@ export default function RfpDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VENDOR_STATUS_STYLES[v.status] ?? "bg-slate-100 text-slate-600"}`}>{v.status}</span>
-                      <button onClick={() => copyLink(v)} className="text-slate-400 hover:text-indigo-600" title="Copy response link">
+                      <button onClick={() => copyLink(v)} className="text-slate-400 hover:text-accent-600" title="Copy response link">
                         {copiedId === v.id ? <CheckCircle2 size={14} className="text-emerald-600" /> : <Copy size={14} />}
                       </button>
                       <button onClick={() => removeVendor(v.id)} className="text-slate-300 hover:text-rose-500"><Trash2 size={14} /></button>
@@ -377,7 +377,7 @@ export default function RfpDetailPage() {
               <input type="email" value={vendorForm.contactEmail} onChange={(e) => setVendorForm((f) => ({ ...f, contactEmail: e.target.value }))} className={inputCls} />
             </label>
             <div className="col-span-3">
-              <button type="submit" disabled={vendorSaving} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              <button type="submit" disabled={vendorSaving} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50">
                 <Plus size={14} /> {vendorSaving ? "Inviting..." : "Invite Vendor"}
               </button>
             </div>
@@ -390,7 +390,7 @@ export default function RfpDetailPage() {
             <button
               onClick={runEvaluation}
               disabled={evaluating || criteria.length === 0 || submittedVendors.length === 0}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
               title={criteria.length === 0 ? "Add at least one scoring criterion first" : submittedVendors.length === 0 ? "Waiting on vendor submissions" : undefined}
             >
               {evaluating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}

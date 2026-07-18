@@ -35,7 +35,7 @@ export default async function ExecutionPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
             <div className="flex items-center gap-2 mb-2">
-              <Lightbulb size={18} className="text-indigo-600" />
+              <Lightbulb size={18} className="text-accent-600" />
               <p className="text-sm font-semibold text-slate-900">Continue from an Approved Idea</p>
             </div>
             <p className="text-xs text-slate-500 mb-3">
@@ -46,14 +46,14 @@ export default async function ExecutionPage() {
             {readyToApprove.length === 0 ? (
               <p className="text-xs text-slate-400">
                 No ideas are charter-ready yet. Work through them on the{" "}
-                <Link href="/ideation" className="text-indigo-600 hover:underline">Ideation</Link> page.
+                <Link href="/ideation" className="text-accent-600 hover:underline">Ideation</Link> page.
               </p>
             ) : (
               <div className="space-y-2">
                 {readyToApprove.map((p) => (
                   <div key={p.id} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2">
                     <div>
-                      <Link href={`/projects/${p.id}`} className="text-sm font-medium text-slate-800 hover:text-indigo-600">
+                      <Link href={`/projects/${p.id}`} className="text-sm font-medium text-slate-800 hover:text-accent-600">
                         {p.name}
                       </Link>
                       <p className="text-xs text-slate-400">
@@ -70,7 +70,7 @@ export default async function ExecutionPage() {
 
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
             <div className="flex items-center gap-2 mb-2">
-              <Rocket size={18} className="text-indigo-600" />
+              <Rocket size={18} className="text-accent-600" />
               <p className="text-sm font-semibold text-slate-900">Start a New Project</p>
             </div>
             <p className="text-xs text-slate-500 mb-4">
@@ -79,7 +79,7 @@ export default async function ExecutionPage() {
             </p>
             <Link
               href="/projects/new"
-              className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
+              className="flex items-center justify-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
             >
               <PlusCircle size={16} />
               New Project
@@ -107,7 +107,7 @@ export default async function ExecutionPage() {
               {inExecution.map((p) => (
                 <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <Link href={`/projects/${p.id}`} className="font-medium text-slate-900 hover:text-indigo-600">
+                    <Link href={`/projects/${p.id}`} className="font-medium text-slate-900 hover:text-accent-600">
                       {p.name}
                     </Link>
                   </td>
@@ -117,7 +117,7 @@ export default async function ExecutionPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 w-28">
                       <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${p.percentComplete}%` }} />
+                        <div className="h-full bg-accent-500 rounded-full" style={{ width: `${p.percentComplete}%` }} />
                       </div>
                       <span className="text-xs text-slate-500">{p.percentComplete}%</span>
                     </div>

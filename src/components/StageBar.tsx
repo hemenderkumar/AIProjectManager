@@ -11,7 +11,7 @@ export default function StageBar({ byStage }: { byStage: Record<string, number> 
         <XAxis dataKey="stage" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={50} />
         <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
         <Tooltip />
-        <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="count" fill="var(--accent-600)" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

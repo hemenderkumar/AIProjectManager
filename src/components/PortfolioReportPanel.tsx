@@ -30,7 +30,7 @@ export default function PortfolioReportPanel() {
   return (
     <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 flex flex-col">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={16} className="text-indigo-600" />
+        <Sparkles size={16} className="text-accent-600" />
         <p className="text-sm font-semibold text-slate-900">Portfolio-wide executive report</p>
       </div>
       <p className="text-xs text-slate-500 mb-3">
@@ -40,7 +40,7 @@ export default function PortfolioReportPanel() {
         <button
           onClick={generate}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
           {loading ? "Generating..." : "Generate Report"}

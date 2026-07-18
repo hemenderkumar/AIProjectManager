@@ -147,7 +147,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
           <p className="text-sm font-semibold text-slate-900">Incidents ({incidents.length})</p>
           <button
             onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
           >
             <Plus size={14} /> New Incident
           </button>
@@ -155,7 +155,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
 
         {showForm && (
           <div className="p-4 bg-slate-50 border-b border-slate-100 space-y-3">
-            <div className="border border-indigo-100 bg-indigo-50/60 rounded-lg p-3 space-y-2">
+            <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
               <FormField label="Describe what happened (rough notes are fine) — AI drafts the fields below">
                 <textarea
                   value={draftNote}
@@ -168,7 +168,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
               <button
                 onClick={draftWithAI}
                 disabled={drafting || !draftNote.trim()}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 font-medium"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
               >
                 {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {drafting ? "Drafting..." : "Draft with AI"}
@@ -206,7 +206,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
             <button
               onClick={submit}
               disabled={saving}
-              className="text-xs px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50 font-medium"
+              className="text-xs px-3 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 disabled:opacity-50 font-medium"
             >
               {saving ? "Saving..." : "Log Incident"}
             </button>
@@ -236,7 +236,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
                         setOpenIncidentId((prev) => (prev === inc.id ? null : inc.id));
                         setResolutionDraft(inc.resolutionNotes ?? "");
                       }}
-                      className="font-medium text-slate-800 hover:text-indigo-600 text-left"
+                      className="font-medium text-slate-800 hover:text-accent-600 text-left"
                     >
                       {inc.title}
                     </button>
@@ -274,14 +274,14 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
                         <button
                           onClick={() => getRecommendation(inc.id)}
                           disabled={recommending === inc.id}
-                          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+                          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
                         >
                           {recommending === inc.id ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                           Get AI Recommendation
                         </button>
                       </div>
                       {inc.aiRecommendation && (
-                        <div className="border border-indigo-200 bg-indigo-50/60 rounded-lg p-3 mb-2 whitespace-pre-wrap text-xs text-indigo-900">
+                        <div className="border border-accent-200 bg-accent-50/60 rounded-lg p-3 mb-2 whitespace-pre-wrap text-xs text-accent-900">
                           {inc.aiRecommendation}
                         </div>
                       )}
@@ -315,7 +315,7 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
   );
 }
 
-const fieldCls = "w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500";
+const fieldCls = "w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (

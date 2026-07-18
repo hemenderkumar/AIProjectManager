@@ -46,7 +46,7 @@ export default function ReportsPage() {
             <button
               onClick={() => generate("WEEKLY_STATUS")}
               disabled={generating === "WEEKLY_STATUS"}
-              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
             >
               {generating === "WEEKLY_STATUS" ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
               Weekly report now
@@ -54,7 +54,7 @@ export default function ReportsPage() {
             <button
               onClick={() => generate("STEERING_COMMITTEE")}
               disabled={generating === "STEERING_COMMITTEE"}
-              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 disabled:opacity-50"
             >
               {generating === "STEERING_COMMITTEE" ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
               Steering pack now
@@ -72,7 +72,7 @@ export default function ReportsPage() {
               <button
                 key={r.id}
                 onClick={() => setActive(r)}
-                className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-start gap-2 ${active?.id === r.id ? "bg-indigo-50" : ""}`}
+                className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 flex items-start gap-2 ${active?.id === r.id ? "bg-accent-50" : ""}`}
               >
                 <FileText size={15} className="text-slate-400 mt-0.5 shrink-0" />
                 <div>

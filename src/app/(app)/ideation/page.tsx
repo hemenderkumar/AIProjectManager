@@ -28,7 +28,7 @@ export default async function IdeationPage() {
             <ExportButtons endpoint="/api/reports/ideation" filenamePrefix="ideation" />
             <Link
               href="/projects/new?intent=idea"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
             >
               <PlusCircle size={16} />
               New Idea
@@ -37,11 +37,11 @@ export default async function IdeationPage() {
         }
       />
       <div className="p-8 space-y-5">
-        <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-5 py-4 flex items-start gap-3">
-          <Lightbulb size={18} className="text-indigo-600 mt-0.5 shrink-0" />
+        <div className="rounded-xl border border-accent-100 bg-accent-50/60 px-5 py-4 flex items-start gap-3">
+          <Lightbulb size={18} className="text-accent-600 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-indigo-900 mb-1">How ideation works</p>
-            <p className="text-xs text-indigo-800 leading-relaxed">
+            <p className="text-sm font-semibold text-accent-900 mb-1">How ideation works</p>
+            <p className="text-xs text-accent-800 leading-relaxed">
               Every idea starts here — brainstorm and align on what to take forward, get an AI technical
               feasibility read, generate a cost/schedule estimate, build the project charter, then approve
               it. Once approved, it moves to Project Execution and you continue with the same record — nothing
@@ -68,7 +68,7 @@ export default async function IdeationPage() {
               {ideas.map((p) => (
                 <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <Link href={`/projects/${p.id}`} className="font-medium text-slate-900 hover:text-indigo-600">
+                    <Link href={`/projects/${p.id}`} className="font-medium text-slate-900 hover:text-accent-600">
                       {p.name}
                     </Link>
                   </td>

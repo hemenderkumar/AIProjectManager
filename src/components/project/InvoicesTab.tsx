@@ -83,7 +83,7 @@ export default function InvoicesTab({ detail }: { detail: ProjectDetail }) {
         action={
           <button
             onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
           >
             <Plus size={14} /> Add Invoice
           </button>

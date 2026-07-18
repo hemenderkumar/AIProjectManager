@@ -73,7 +73,7 @@ export default function CommsTab({ detail }: { detail: ProjectDetail }) {
         action={
           <button
             onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
           >
             <Plus size={14} /> Log Communication
           </button>
@@ -81,7 +81,7 @@ export default function CommsTab({ detail }: { detail: ProjectDetail }) {
       >
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-            <div className="border border-indigo-100 bg-indigo-50/60 rounded-lg p-3 space-y-2">
+            <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
               <Field label="Paste raw notes (meeting notes, an email, chat log) — AI drafts the fields below">
                 <textarea
                   value={rawNotes}
@@ -94,7 +94,7 @@ export default function CommsTab({ detail }: { detail: ProjectDetail }) {
               <button
                 onClick={draftWithAI}
                 disabled={drafting || !rawNotes.trim()}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 font-medium"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
               >
                 {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {drafting ? "Drafting..." : "Draft with AI"}
@@ -126,7 +126,7 @@ export default function CommsTab({ detail }: { detail: ProjectDetail }) {
             return (
               <div key={c.id} className="border border-slate-100 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon size={14} className="text-indigo-500" />
+                  <Icon size={14} className="text-accent-500" />
                   <span className="text-xs font-medium text-slate-600">{c.type}</span>
                   <span className="text-xs text-slate-400">{formatDateTime(c.date)}</span>
                 </div>

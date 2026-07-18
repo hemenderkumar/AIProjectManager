@@ -214,7 +214,7 @@ export default function AvatarAssistant() {
             <button
               onClick={() => ask("Summarize the current status of this project, highlighting anything that needs attention.")}
               disabled={loading}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 flex items-center gap-1"
+              className="text-xs px-2.5 py-1.5 rounded-full bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 flex items-center gap-1"
             >
               <Sparkles size={12} /> Summarize this project
             </button>
@@ -231,7 +231,7 @@ export default function AvatarAssistant() {
             <button
               onClick={() => ask("Give me a quick spoken status update on the whole portfolio.")}
               disabled={loading}
-              className="text-xs px-2.5 py-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 flex items-center gap-1"
+              className="text-xs px-2.5 py-1.5 rounded-full bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 flex items-center gap-1"
             >
               <Sparkles size={12} /> Brief me
             </button>
@@ -269,9 +269,9 @@ export default function AvatarAssistant() {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder={activeProjectId ? "Ask about this project..." : "Ask your AI PM..."}
-          className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
         />
-        <button type="submit" disabled={loading} className="px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors disabled:opacity-50">
+        <button type="submit" disabled={loading} className="px-3 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors disabled:opacity-50">
           <Send size={15} />
         </button>
       </form>

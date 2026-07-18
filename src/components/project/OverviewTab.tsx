@@ -344,7 +344,7 @@ export default function OverviewTab({
           <button
             onClick={findSimilarProjects}
             disabled={findingSimilar}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
           >
             {findingSimilar ? <Loader2 size={13} className="animate-spin" /> : <Boxes size={13} />}
             Find similar projects
@@ -403,7 +403,7 @@ export default function OverviewTab({
           <button
             onClick={assessFeasibility}
             disabled={assessing}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
           >
             {assessing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
             Assess Feasibility with AI
@@ -461,7 +461,7 @@ export default function OverviewTab({
         </p>
         <button
           onClick={() => onNavigate("Tasks")}
-          className="text-xs px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium"
+          className="text-xs px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 font-medium"
         >
           Go to Tasks — Plan with AI
         </button>
@@ -475,7 +475,7 @@ export default function OverviewTab({
         </p>
         <button
           onClick={() => onNavigate("Charter")}
-          className="text-xs px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium"
+          className="text-xs px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 font-medium"
         >
           Go to Charter
         </button>

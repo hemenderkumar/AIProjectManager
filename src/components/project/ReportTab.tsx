@@ -145,8 +145,8 @@ export default function ReportTab({ detail }: { detail: ProjectDetail }) {
                   <YAxis tick={{ fontSize: 11, fill: "#64748b" }} />
                   <Tooltip />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="Planned" fill="#c7d2fe" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="Actual" fill="#4f46e5" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Planned" fill="var(--accent-300)" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Actual" fill="var(--accent-600)" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

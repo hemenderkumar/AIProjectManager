@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
+import ThemeSwitcher from "./ThemeSwitcher";
 
 function NavLink({ href, icon, children, pathname }: { href: string; icon: React.ReactNode; children: React.ReactNode; pathname: string }) {
   const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -28,10 +29,10 @@ function NavLink({ href, icon, children, pathname }: { href: string; icon: React
     <Link
       href={href}
       className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        active ? "bg-accent-50 text-accent-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
       }`}
     >
-      {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-indigo-600" />}
+      {active && <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-full bg-accent-600" />}
       {icon}
       {children}
     </Link>
@@ -107,9 +108,10 @@ export default function Sidebar({ user, open }: { user: SessionUser | null; open
         )}
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">
+        <ThemeSwitcher />
         <Link
           href="/projects/new"
-          className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
+          className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
         >
           <PlusCircle size={16} />
           New Project

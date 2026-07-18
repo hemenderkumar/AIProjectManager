@@ -110,7 +110,7 @@ export default function SupportEstimator({
           <p className="text-sm font-semibold text-slate-900">Applications ({apps.length})</p>
           <button
             onClick={addApp}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
           >
             <Plus size={14} /> Add application
           </button>
@@ -269,7 +269,7 @@ export default function SupportEstimator({
         </div>
         {result.canShare && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
-            <div className={`rounded-lg border p-3 ${!shared ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200"}`}>
+            <div className={`rounded-lg border p-3 ${!shared ? "border-accent-300 bg-accent-50/60" : "border-slate-200"}`}>
               <p className="text-slate-500">Dedicated (per-app teams)</p>
               <p className="text-base font-semibold text-slate-800">${Math.round(result.dedicatedMonthlyCost).toLocaleString()}/mo</p>
             </div>
@@ -299,7 +299,7 @@ export default function SupportEstimator({
           <button
             onClick={saveToProject}
             disabled={!selectedProjectId || saving}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 disabled:opacity-50"
           >
             {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : <Save size={13} />}
             {saved ? "Saved" : "Save to project"}
@@ -314,7 +314,7 @@ function Stat({ label, value, highlight }: { label: string; value: string; highl
   return (
     <div className="border border-slate-200 rounded-lg p-3 text-center">
       <p className="text-xs text-slate-400">{label}</p>
-      <p className={`text-lg font-semibold mt-0.5 ${highlight ? "text-indigo-600" : "text-slate-800"}`}>{value}</p>
+      <p className={`text-lg font-semibold mt-0.5 ${highlight ? "text-accent-600" : "text-slate-800"}`}>{value}</p>
     </div>
   );
 }

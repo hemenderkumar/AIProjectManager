@@ -240,7 +240,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
           canManage ? (
             <button
               onClick={() => setShowForm((s) => !s)}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
             >
               <Plus size={14} /> New SOW
             </button>
@@ -254,14 +254,14 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
 
         {showForm && canManage && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-            <div className="border border-indigo-100 bg-indigo-50/60 rounded-lg p-3 space-y-2">
-              <p className="text-xs text-indigo-700">
+            <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
+              <p className="text-xs text-accent-700">
                 Draft the whole SOW from this project&apos;s charter and plan, then review/edit everything below before saving.
               </p>
               <button
                 onClick={draftWithAI}
                 disabled={drafting}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 font-medium"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
               >
                 {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {drafting ? "Drafting..." : "Draft with AI"}
@@ -346,7 +346,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                 <div className="flex items-center gap-2 shrink-0">
                   <a
                     href={`/api/sows/${s.id}/docx`}
-                    className="text-slate-400 hover:text-indigo-600"
+                    className="text-slate-400 hover:text-accent-600"
                     title="Download as Word document"
                   >
                     <FileDown size={14} />
@@ -394,7 +394,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                     {signedDocError && uploadingSignedFor === null && <p className="text-rose-600 mb-1.5">{signedDocError}</p>}
                     {s.signedDocumentFilename ? (
                       <div className="flex items-center justify-between bg-slate-50 rounded-lg px-2.5 py-2">
-                        <a href={`/api/sows/${s.id}/signed-document`} className="text-indigo-600 hover:text-indigo-700">
+                        <a href={`/api/sows/${s.id}/signed-document`} className="text-accent-600 hover:text-accent-700">
                           {s.signedDocumentFilename}
                         </a>
                         <div className="flex items-center gap-2">
@@ -409,7 +409,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                         </div>
                       </div>
                     ) : canManage ? (
-                      <label className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 cursor-pointer w-fit">
+                      <label className="flex items-center gap-1.5 text-accent-600 hover:text-accent-700 cursor-pointer w-fit">
                         {uploadingSignedFor === s.id ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                         {uploadingSignedFor === s.id ? "Uploading..." : "Upload signed copy"}
                         <input
@@ -435,7 +435,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                       <button
                         onClick={() => checkDrift(s.id)}
                         disabled={checkingDriftId === s.id}
-                        className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium"
+                        className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 font-medium"
                       >
                         {checkingDriftId === s.id ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                         {checkingDriftId === s.id ? "Checking..." : "Check drift"}

@@ -107,9 +107,9 @@ export default function HowItWorksPage() {
                   onClick={() => goTo(i)}
                   className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 transition-colors ${
                     i === active
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-accent-600 text-white"
                       : i < active
-                      ? "bg-indigo-100 text-indigo-600"
+                      ? "bg-accent-100 text-accent-600"
                       : "bg-slate-100 text-slate-400"
                   }`}
                   aria-label={s.title}
@@ -120,7 +120,7 @@ export default function HowItWorksPage() {
                 {i < STEPS.length - 1 && (
                   <div className="w-6 sm:w-10 h-0.5 bg-slate-100 mx-1 overflow-hidden">
                     <div
-                      className={`h-full bg-indigo-300 ${i < active ? "animate-flow-line-grow" : ""}`}
+                      className={`h-full bg-accent-300 ${i < active ? "animate-flow-line-grow" : ""}`}
                       style={{ transform: i < active ? undefined : "scaleX(0)", transformOrigin: "left" }}
                     />
                   </div>
@@ -131,7 +131,7 @@ export default function HowItWorksPage() {
 
           {/* Active step panel */}
           <div key={active} className="animate-step-fade-in flex flex-col sm:flex-row gap-4 sm:items-start">
-            <div className="h-12 w-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <div className="h-12 w-12 rounded-xl bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">
               {step.icon}
             </div>
             <div className="flex-1 min-w-0">
@@ -140,7 +140,7 @@ export default function HowItWorksPage() {
               {step.linkHref && (
                 <Link
                   href={step.linkHref}
-                  className="inline-block mt-3 text-xs px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium"
+                  className="inline-block mt-3 text-xs px-3 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 font-medium"
                 >
                   {step.linkLabel} →
                 </Link>

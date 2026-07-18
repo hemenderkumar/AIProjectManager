@@ -250,7 +250,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
           <button
             onClick={brainstormWithAi}
             disabled={brainstorming}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
           >
             {brainstorming ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
             Brainstorm with AI
@@ -283,17 +283,17 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
             {detail.brainstormEntries.map((e) => (
               <div
                 key={e.id}
-                className={`rounded-lg p-3 text-xs border ${e.source === "AI" ? "bg-indigo-50/60 border-indigo-200" : "bg-slate-50 border-slate-200"}`}
+                className={`rounded-lg p-3 text-xs border ${e.source === "AI" ? "bg-accent-50/60 border-accent-200" : "bg-slate-50 border-slate-200"}`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`font-semibold ${e.source === "AI" ? "text-indigo-900" : "text-slate-700"}`}>
+                  <span className={`font-semibold ${e.source === "AI" ? "text-accent-900" : "text-slate-700"}`}>
                     {e.source === "AI" ? "AI" : e.author || "Note"} · {formatDateTime(e.createdAt)}
                   </span>
                   <button onClick={() => deleteNote(e.id)} className="text-slate-400 hover:text-rose-600">
                     <Trash2 size={12} />
                   </button>
                 </div>
-                <p className={`whitespace-pre-wrap ${e.source === "AI" ? "text-indigo-800" : "text-slate-600"}`}>
+                <p className={`whitespace-pre-wrap ${e.source === "AI" ? "text-accent-800" : "text-slate-600"}`}>
                   {e.content}
                 </p>
               </div>
@@ -318,7 +318,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
               <button
                 onClick={generateOptionsWithAi}
                 disabled={generatingOptions}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
               >
                 {generatingOptions ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 Generate options with AI
@@ -344,7 +344,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
               <button
                 onClick={draftOptionWithAi}
                 disabled={draftingOption || !manualOption.name.trim()}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 font-medium"
               >
                 {draftingOption ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {draftingOption ? "Drafting..." : "Draft description + pros/cons with AI"}
@@ -361,7 +361,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
               </div>
               <button
                 onClick={addManualOption}
-                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 font-medium"
+                className="text-xs px-3 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 font-medium"
               >
                 Save option
               </button>
@@ -380,7 +380,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-xs font-semibold text-slate-800">
                       {o.name}
-                      {o.createdByAi && <span className="ml-1.5 text-xs text-indigo-500 align-middle">AI</span>}
+                      {o.createdByAi && <span className="ml-1.5 text-xs text-accent-500 align-middle">AI</span>}
                     </p>
                     <div className="flex items-center gap-1.5">
                       {o.isSelected && <span className="text-xs text-emerald-700 font-medium flex items-center gap-0.5"><CheckCircle2 size={11} /> Selected</span>}
@@ -423,12 +423,12 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
       <div className="border-t border-slate-200 pt-4">
         <div className="flex items-center justify-between mb-1.5">
           <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-            <Cpu size={13} className="text-indigo-500" /> Technical Recommendation &amp; Architecture
+            <Cpu size={13} className="text-accent-500" /> Technical Recommendation &amp; Architecture
           </p>
           <button
             onClick={getTechnicalRecommendation}
             disabled={recommending}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
           >
             {recommending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
             {p.recommendedTechnology ? "Re-run recommendation" : "Get recommendation"}
@@ -448,10 +448,10 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
 
         {p.recommendedTechnology ? (
           <div className="space-y-3">
-            <div className="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
-              <p className="text-xs font-semibold text-indigo-900 mb-1">{p.recommendedTechnology}</p>
+            <div className="rounded-lg border border-accent-200 bg-accent-50/60 p-3">
+              <p className="text-xs font-semibold text-accent-900 mb-1">{p.recommendedTechnology}</p>
               {p.technicalRecommendationRationale && (
-                <p className="text-xs text-indigo-800 whitespace-pre-wrap">{p.technicalRecommendationRationale}</p>
+                <p className="text-xs text-accent-800 whitespace-pre-wrap">{p.technicalRecommendationRationale}</p>
               )}
             </div>
 
@@ -504,7 +504,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
               <button
                 onClick={saveReview}
                 disabled={savingReview}
-                className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 font-medium disabled:opacity-50"
+                className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 font-medium disabled:opacity-50"
               >
                 {savingReview ? "Saving..." : "Save review"}
               </button>

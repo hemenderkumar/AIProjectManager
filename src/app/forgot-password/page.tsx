@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
             <p className="text-xs text-slate-500">
               If an account exists for that email, we&apos;ve sent a link to reset your password. It expires in 1 hour.
             </p>
-            <Link href="/login" className="inline-block mt-4 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+            <Link href="/login" className="inline-block mt-4 text-xs font-medium text-accent-600 hover:text-accent-700">
               Back to login
             </Link>
           </div>
@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
                   placeholder="you@company.com"
                 />
               </div>
@@ -69,13 +69,13 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="w-full px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
               >
                 {loading ? "Sending..." : "Send reset link"}
               </button>
             </form>
             <p className="text-xs text-slate-400 mt-4">
-              <Link href="/login" className="text-indigo-600 hover:text-indigo-700 font-medium">Back to login</Link>
+              <Link href="/login" className="text-accent-600 hover:text-accent-700 font-medium">Back to login</Link>
             </p>
           </>
         )}

@@ -33,7 +33,7 @@ type PlanTask = {
 // Who/what executes a task -- suggested by AI at creation time (single-task draft or the
 // bulk planner), always editable here. Color-coded so it reads at a glance in the task list.
 const EXECUTION_SOURCE_STYLES: Record<string, string> = {
-  AI: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  AI: "border-accent-200 bg-accent-50 text-accent-700",
   INTERNAL: "border-slate-200 bg-white text-slate-600",
   VENDOR: "border-amber-200 bg-amber-50 text-amber-700",
 };
@@ -459,7 +459,7 @@ export default function TasksTab({
         action={
           <button
             onClick={() => setShowPlanner((s) => !s)}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
           >
             <Sparkles size={14} /> Plan with AI
           </button>
@@ -519,22 +519,22 @@ export default function TasksTab({
             {preview && (
               <div className="space-y-4 mt-2">
                 {preview.approach && (
-                  <div className="border border-indigo-200 bg-indigo-50/60 rounded-lg p-3">
-                    <p className="text-xs font-semibold text-indigo-900 mb-1">
+                  <div className="border border-accent-200 bg-accent-50/60 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-accent-900 mb-1">
                       {approach.trim() ? "Approach" : "AI-recommended approach"}: {preview.approach.summary}
                     </p>
                     {preview.approach.details && (
-                      <p className="text-xs text-indigo-700">
+                      <p className="text-xs text-accent-700">
                         {Object.entries(preview.approach.details)
                           .map(([label, value]) => `${label}: ${value}`)
                           .join(" · ")}
                       </p>
                     )}
                     {preview.approach.rationale && (
-                      <p className="text-xs text-indigo-600 mt-1">{preview.approach.rationale}</p>
+                      <p className="text-xs text-accent-600 mt-1">{preview.approach.rationale}</p>
                     )}
                     {!approach.trim() && (
-                      <p className="text-xs text-indigo-500 mt-1.5">
+                      <p className="text-xs text-accent-500 mt-1.5">
                         Don&apos;t agree? Set a preferred approach above and click Generate plan again.
                       </p>
                     )}
@@ -723,7 +723,7 @@ export default function TasksTab({
                     </p>
                     <button
                       onClick={addMaterialCost}
-                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-accent-50 text-accent-600 hover:bg-accent-100"
                     >
                       <Plus size={12} /> Add item
                     </button>
@@ -825,7 +825,7 @@ export default function TasksTab({
                       <p className="text-xs font-medium text-slate-600">Support roles needed</p>
                       <button
                         onClick={addOngoingRole}
-                        className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                        className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-accent-50 text-accent-600 hover:bg-accent-100"
                       >
                         <Plus size={12} /> Add role
                       </button>
@@ -892,7 +892,7 @@ export default function TasksTab({
             {agentTasks.map((t) => (
               <div key={t.id} className="flex items-center justify-between border border-slate-100 rounded-lg px-3 py-2">
                 <div className="flex items-start gap-2">
-                  <Bot size={14} className="text-indigo-500 mt-0.5" />
+                  <Bot size={14} className="text-accent-500 mt-0.5" />
                   <div>
                     <p className="text-sm font-medium text-slate-800">{t.title}</p>
                     {t.description && <p className="text-xs text-slate-400">{t.description}</p>}
@@ -933,7 +933,7 @@ export default function TasksTab({
             </div>
             <button
               onClick={() => setShowForm((s) => !s)}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
             >
               <Plus size={14} /> Add Task
             </button>
@@ -942,7 +942,7 @@ export default function TasksTab({
       >
         {showForm && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
-            <div className="border border-indigo-100 bg-indigo-50/60 rounded-lg p-3 space-y-2">
+            <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
               <Field label="Describe the task (one line is fine) — AI drafts the fields below">
                 <textarea
                   value={taskDraftNote}
@@ -955,7 +955,7 @@ export default function TasksTab({
               <button
                 onClick={draftTaskWithAI}
                 disabled={draftingTask || !taskDraftNote.trim()}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 font-medium"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
               >
                 {draftingTask ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                 {draftingTask ? "Drafting..." : "Draft with AI"}
@@ -1007,7 +1007,7 @@ export default function TasksTab({
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2">
                   <div
-                    className="h-full bg-indigo-500"
+                    className="h-full bg-accent-500"
                     style={{ width: `${phaseTasks.length ? Math.round((done / phaseTasks.length) * 100) : 0}%` }}
                   />
                 </div>
@@ -1052,7 +1052,7 @@ export default function TasksTab({
                     <td className="py-2.5 font-medium text-slate-800 max-w-[220px]">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span>{t.title}</span>
-                        {t.createdByAi && <span className="text-xs text-indigo-500 align-middle">AI</span>}
+                        {t.createdByAi && <span className="text-xs text-accent-500 align-middle">AI</span>}
                         {t.executionSource === "AI" && <ExecutionSourceBadge source="AI" />}
                       </div>
                       <div className="mt-1">
@@ -1098,7 +1098,7 @@ export default function TasksTab({
                         <button
                           onClick={() => toggleTimeLog(t.id)}
                           title="Log time / view effort history"
-                          className={`hover:text-indigo-600 ${openTimeLogTaskId === t.id ? "text-indigo-600" : "text-slate-400"}`}
+                          className={`hover:text-accent-600 ${openTimeLogTaskId === t.id ? "text-accent-600" : "text-slate-400"}`}
                         >
                           <Clock size={14} />
                         </button>
@@ -1107,7 +1107,7 @@ export default function TasksTab({
                             onClick={() => requestStatus(t.id, t.assigneeId)}
                             disabled={requestingFor === t.id}
                             title="Request a status update from the assignee"
-                            className="text-slate-400 hover:text-indigo-600 disabled:opacity-50"
+                            className="text-slate-400 hover:text-accent-600 disabled:opacity-50"
                           >
                             {requestingFor === t.id ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
                           </button>
@@ -1148,7 +1148,7 @@ export default function TasksTab({
                           <button
                             onClick={() => logTime(t.id)}
                             disabled={loggingTime}
-                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 disabled:opacity-50"
                           >
                             {loggingTime ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                             Log

@@ -123,7 +123,7 @@ export default function UserActivityPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5 ${
-                          e.type === "LOGIN" ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-600"
+                          e.type === "LOGIN" ? "bg-accent-50 text-accent-700" : "bg-slate-100 text-slate-600"
                         }`}
                       >
                         {e.type === "LOGIN" ? <LogIn size={11} /> : <Eye size={11} />}

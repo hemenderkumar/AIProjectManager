@@ -47,13 +47,13 @@ export default function AiWaitIndicator({
   const timeLabel = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 
   return (
-    <div className={`rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2.5 ${className}`}>
-      <div className="relative h-1 w-full rounded-full bg-indigo-100 overflow-hidden mb-2">
-        <div className="absolute inset-y-0 rounded-full bg-indigo-500 animate-ai-wait-slide" />
+    <div className={`rounded-lg border border-accent-100 bg-accent-50/60 px-3 py-2.5 ${className}`}>
+      <div className="relative h-1 w-full rounded-full bg-accent-100 overflow-hidden mb-2">
+        <div className="absolute inset-y-0 rounded-full bg-accent-500 animate-ai-wait-slide" />
       </div>
       <div className="flex items-center justify-between text-xs">
-        <span className="text-indigo-700">{messages[msgIndex]}</span>
-        <span className="text-indigo-400 tabular-nums">{timeLabel}</span>
+        <span className="text-accent-700">{messages[msgIndex]}</span>
+        <span className="text-accent-400 tabular-nums">{timeLabel}</span>
       </div>
     </div>
   );

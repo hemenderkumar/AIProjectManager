@@ -11,7 +11,7 @@ type RateCard = {
   notes: string | null;
 };
 
-const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 const emptyForm = { role: "", sourcingType: "ONSITE" as SourcingType, hourlyRate: 0, notes: "" };
 
@@ -96,7 +96,7 @@ export default function RateCardSection({ organizationId, title }: { organizatio
         </div>
         <button
           onClick={() => setShowForm((s) => !s)}
-          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 shrink-0"
+          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 shrink-0"
         >
           <Plus size={14} /> Add Rate
         </button>
@@ -151,7 +151,7 @@ export default function RateCardSection({ organizationId, title }: { organizatio
             <button
               onClick={save}
               disabled={saving}
-              className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+              className="px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
             >
               {saving ? "Saving..." : "Add rate"}
             </button>
@@ -185,7 +185,7 @@ export default function RateCardSection({ organizationId, title }: { organizatio
                           min={0}
                           value={c.hourlyRate}
                           onChange={(e) => updateRate(c.id, Number(e.target.value))}
-                          className="w-16 text-sm border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-16 text-sm border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:ring-2 focus:ring-accent-500"
                         />
                         <span className="text-slate-400 text-xs">/hr</span>
                       </div>

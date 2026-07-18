@@ -24,10 +24,10 @@ export default function Avatar({ speaking, gender }: { speaking: boolean; gender
       />
       {speaking && (
         <>
-          <circle cx="14" cy="30" r="2" fill="#a5b4fc" opacity="0.8">
+          <circle cx="14" cy="30" r="2" fill="var(--accent-300)" opacity="0.8">
             <animate attributeName="cy" values="30;22;30" dur="1.2s" repeatCount="indefinite" />
           </circle>
-          <circle cx="86" cy="30" r="2" fill="#a5b4fc" opacity="0.8">
+          <circle cx="86" cy="30" r="2" fill="var(--accent-300)" opacity="0.8">
             <animate attributeName="cy" values="30;22;30" dur="1.4s" repeatCount="indefinite" />
           </circle>
         </>

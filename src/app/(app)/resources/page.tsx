@@ -18,7 +18,7 @@ type Resource = {
   sourcingType: SourcingType | null;
 };
 
-const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 const emptyForm = {
   name: "",
@@ -167,7 +167,7 @@ export default function ResourcesPage() {
             <ExportButtons endpoint="/api/reports/resources" filenamePrefix="resources" />
             <button
               onClick={startCreate}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
             >
               <Plus size={16} /> Add Resource
             </button>
@@ -291,7 +291,7 @@ export default function ResourcesPage() {
               <button
                 onClick={save}
                 disabled={saving}
-                className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
               >
                 {saving ? "Saving..." : editingId ? "Save changes" : "Create resource"}
               </button>
@@ -327,7 +327,7 @@ export default function ResourcesPage() {
               {filtered.map((r) => (
                 <tr key={r.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <button onClick={() => startEdit(r)} className="font-medium text-slate-900 hover:text-indigo-600 text-left">
+                    <button onClick={() => startEdit(r)} className="font-medium text-slate-900 hover:text-accent-600 text-left">
                       {r.name}
                     </button>
                     {r.email && <p className="text-xs text-slate-400">{r.email}</p>}
@@ -358,7 +358,7 @@ export default function ResourcesPage() {
                         min={0}
                         value={r.costPerHour ?? 0}
                         onChange={(e) => updateRate(r.id, Number(e.target.value))}
-                        className="w-16 text-sm border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-16 text-sm border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:ring-2 focus:ring-accent-500"
                       />
                       <span className="text-slate-400 text-xs">/hr</span>
                     </div>

@@ -84,7 +84,7 @@ export default function IncidentPatterns() {
         <button
           onClick={analyze}
           disabled={loading}
-          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50 shrink-0"
+          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 disabled:opacity-50 shrink-0"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : patterns ? <RefreshCw size={15} /> : <Sparkles size={15} />}
           {loading ? "Analyzing..." : patterns ? "Re-analyze" : "Analyze for Patterns"}
@@ -133,7 +133,7 @@ export default function IncidentPatterns() {
               <button
                 onClick={() => convertToProject(pattern, i)}
                 disabled={creatingIndex !== null}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium mt-1"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 font-medium mt-1"
               >
                 {creatingIndex === i ? <Loader2 size={12} className="animate-spin" /> : <ArrowRight size={12} />}
                 {creatingIndex === i ? "Creating..." : "Convert to Improvement Project"}

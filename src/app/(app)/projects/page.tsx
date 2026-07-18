@@ -29,7 +29,7 @@ export default async function ProjectsPage() {
             <ExportButtons endpoint="/api/reports/projects" filenamePrefix="projects" />
             <Link
               href="/projects/new"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
             >
               <PlusCircle size={16} />
               New Project
@@ -58,7 +58,7 @@ export default async function ProjectsPage() {
               {sorted.map((p) => (
                 <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-3">
-                    <Link href={`/projects/${p.id}`} className="font-medium text-slate-900 hover:text-indigo-600">
+                    <Link href={`/projects/${p.id}`} className="font-medium text-slate-900 hover:text-accent-600">
                       {p.name}
                     </Link>
                   </td>
@@ -70,7 +70,7 @@ export default async function ProjectsPage() {
                     <div className="flex items-center gap-2 w-28">
                       <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-indigo-500 rounded-full"
+                          className="h-full bg-accent-500 rounded-full"
                           style={{ width: `${p.percentComplete}%` }}
                         />
                       </div>

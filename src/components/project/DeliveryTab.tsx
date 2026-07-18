@@ -102,7 +102,7 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
           <button
             onClick={getRecommendation}
             disabled={recommending}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
           >
             <Sparkles size={14} /> {recommending ? "Thinking..." : rows.length ? "Re-run recommendation" : "Get recommendation"}
           </button>
@@ -161,7 +161,7 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
         action={
           <button
             onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
           >
             <Plus size={14} /> Add Role
           </button>
@@ -214,7 +214,7 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
                 <tr key={row.id} className="border-b border-slate-50 last:border-0 align-top">
                   <td className="py-2.5 font-medium text-slate-800">
                     {row.role}
-                    {row.createdByAi && <p className="text-xs text-indigo-500 font-normal">AI suggested</p>}
+                    {row.createdByAi && <p className="text-xs text-accent-500 font-normal">AI suggested</p>}
                     {row.rationale && <p className="text-xs text-slate-400 font-normal max-w-xs">{row.rationale}</p>}
                   </td>
                   <td className="py-2.5 text-right">

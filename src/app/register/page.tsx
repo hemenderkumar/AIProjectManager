@@ -51,7 +51,7 @@ export default function RegisterPage() {
             <p className="text-xs text-slate-500">
               Thanks — an admin will review your request. You&apos;ll be able to log in once it&apos;s approved.
             </p>
-            <Link href="/login" className="inline-block mt-4 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+            <Link href="/login" className="inline-block mt-4 text-xs font-medium text-accent-600 hover:text-accent-700">
               Back to login
             </Link>
           </div>
@@ -67,7 +67,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => setType("INDIVIDUAL")}
                 className={`flex-1 py-1.5 rounded-md transition-colors ${
-                  type === "INDIVIDUAL" ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"
+                  type === "INDIVIDUAL" ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"
                 }`}
               >
                 Individual
@@ -76,7 +76,7 @@ export default function RegisterPage() {
                 type="button"
                 onClick={() => setType("COMPANY_OWNER")}
                 className={`flex-1 py-1.5 rounded-md transition-colors ${
-                  type === "COMPANY_OWNER" ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"
+                  type === "COMPANY_OWNER" ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"
                 }`}
               >
                 Company owner
@@ -91,7 +91,7 @@ export default function RegisterPage() {
                     required
                     value={form.companyName}
                     onChange={(e) => update("companyName", e.target.value)}
-                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
                     placeholder="Acme Corp"
                   />
                 </div>
@@ -104,7 +104,7 @@ export default function RegisterPage() {
                   required
                   value={form.name}
                   onChange={(e) => update("name", e.target.value)}
-                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
                   placeholder="Jane Doe"
                 />
               </div>
@@ -115,7 +115,7 @@ export default function RegisterPage() {
                   required
                   value={form.email}
                   onChange={(e) => update("email", e.target.value)}
-                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
                   placeholder="you@company.com"
                 />
               </div>
@@ -127,7 +127,7 @@ export default function RegisterPage() {
                   minLength={8}
                   value={form.password}
                   onChange={(e) => update("password", e.target.value)}
-                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
                   placeholder="At least 8 characters"
                 />
               </div>
@@ -135,13 +135,13 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="w-full px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
               >
                 {loading ? "Submitting..." : "Request access"}
               </button>
             </form>
             <p className="text-xs text-slate-400 mt-4">
-              Already have an account? <Link href="/login" className="text-indigo-600 hover:text-indigo-700 font-medium">Log in</Link>
+              Already have an account? <Link href="/login" className="text-accent-600 hover:text-accent-700 font-medium">Log in</Link>
             </p>
           </>
         )}

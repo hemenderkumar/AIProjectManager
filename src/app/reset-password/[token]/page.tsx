@@ -30,7 +30,7 @@ export default async function ResetPasswordPage({
           <div className="text-center py-2">
             <p className="text-sm font-semibold text-slate-900 mb-2">This link is invalid or has expired</p>
             <p className="text-xs text-slate-500 mb-4">Request a new password reset link and try again.</p>
-            <Link href="/forgot-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+            <Link href="/forgot-password" className="text-xs font-medium text-accent-600 hover:text-accent-700">
               Request a new link
             </Link>
           </div>

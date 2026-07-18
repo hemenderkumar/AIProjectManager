@@ -56,7 +56,7 @@ export default async function RfpRespondPage({ params }: { params: Promise<{ tok
           href={`/api/rfp-respond/${token}/pdf`}
           filename={`${rfp.title || "rfp"}.pdf`}
           label="Download the RFP as PDF"
-          className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+          className="text-xs text-accent-600 hover:text-accent-700 font-medium"
         />
       </Shell>
     );
@@ -81,7 +81,7 @@ export default async function RfpRespondPage({ params }: { params: Promise<{ tok
             href={`/api/rfp-respond/${token}/pdf`}
             filename={`${rfp.title || "rfp"}.pdf`}
             label="Download as PDF"
-            className="shrink-0 text-xs text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap"
+            className="shrink-0 text-xs text-accent-600 hover:text-accent-700 font-medium whitespace-nowrap"
           />
         )}
       </div>

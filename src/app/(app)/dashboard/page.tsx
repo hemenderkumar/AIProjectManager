@@ -41,9 +41,9 @@ export default async function DashboardPage() {
       />
 
       <div className="p-8 space-y-6">
-        <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-5 py-4">
-          <p className="text-xs font-semibold text-indigo-900 uppercase tracking-wide mb-1">Executive Summary</p>
-          <p className="text-sm text-indigo-900">{healthNarrative}</p>
+        <div className="rounded-xl border border-accent-100 bg-accent-50/60 px-5 py-4">
+          <p className="text-xs font-semibold text-accent-900 uppercase tracking-wide mb-1">Executive Summary</p>
+          <p className="text-sm text-accent-900">{healthNarrative}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -109,7 +109,7 @@ export default async function DashboardPage() {
           <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <p className="text-sm font-semibold text-slate-900">Needs Attention</p>
-              <Link href="/projects" className="text-xs text-indigo-600 hover:underline">
+              <Link href="/projects" className="text-xs text-accent-600 hover:underline">
                 View all projects
               </Link>
             </div>
@@ -133,7 +133,7 @@ export default async function DashboardPage() {
                   {atRisk.map((p) => (
                     <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
                       <td className="px-4 py-2.5">
-                        <Link href={`/projects/${p.id}`} className="font-medium text-slate-900 hover:text-indigo-600">
+                        <Link href={`/projects/${p.id}`} className="font-medium text-slate-900 hover:text-accent-600">
                           {p.name}
                         </Link>
                       </td>

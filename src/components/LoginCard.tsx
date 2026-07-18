@@ -43,14 +43,14 @@ export default function LoginCard({ next, id }: { next?: string; id?: string }) 
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
             placeholder="you@company.com"
           />
         </div>
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="block text-xs font-medium text-slate-500">Password</label>
-            <Link href="/forgot-password" className="text-xs text-indigo-600 hover:text-indigo-700">
+            <Link href="/forgot-password" className="text-xs text-accent-600 hover:text-accent-700">
               Forgot password?
             </Link>
           </div>
@@ -59,7 +59,7 @@ export default function LoginCard({ next, id }: { next?: string; id?: string }) 
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
             placeholder="••••••••"
           />
         </div>
@@ -67,13 +67,13 @@ export default function LoginCard({ next, id }: { next?: string; id?: string }) 
         <button
           type="submit"
           disabled={loading}
-          className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+          className="w-full px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
       <p className="text-xs text-slate-400 mt-4">
-        New here? <Link href="/register" className="text-indigo-600 hover:text-indigo-700 font-medium">Request access</Link>
+        New here? <Link href="/register" className="text-accent-600 hover:text-accent-700 font-medium">Request access</Link>
       </p>
       {process.env.NODE_ENV !== "production" && (
         <p className="text-xs text-slate-400 mt-2">

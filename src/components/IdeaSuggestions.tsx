@@ -84,7 +84,7 @@ export default function IdeaSuggestions() {
         <button
           onClick={suggest}
           disabled={loading}
-          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50 shrink-0"
+          className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 disabled:opacity-50 shrink-0"
         >
           {loading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
           {loading ? "Thinking..." : ideas ? "Suggest more" : "Suggest Ideas with AI"}
@@ -107,7 +107,7 @@ export default function IdeaSuggestions() {
                   <X size={14} />
                 </button>
                 <div className="flex items-center gap-2 pr-4">
-                  <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">
+                  <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent-50 text-accent-600">
                     {TYPE_LABEL[idea.ideaType]}
                   </span>
                   <span className="text-xs font-medium text-slate-400">{idea.priority}</span>
@@ -122,7 +122,7 @@ export default function IdeaSuggestions() {
                 <button
                   onClick={() => createFromIdea(idea, i)}
                   disabled={creatingIndex !== null}
-                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium mt-1"
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 font-medium mt-1"
                 >
                   {creatingIndex === i ? (
                     <Loader2 size={12} className="animate-spin" />

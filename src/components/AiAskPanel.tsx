@@ -35,7 +35,7 @@ export default function AiAskPanel() {
   return (
     <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 flex flex-col">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={16} className="text-indigo-600" />
+        <Sparkles size={16} className="text-accent-600" />
         <p className="text-sm font-semibold text-slate-900">Ask the portfolio assistant</p>
       </div>
 
@@ -50,12 +50,12 @@ export default function AiAskPanel() {
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask anything about your projects..."
-          className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
         />
         <button
           type="submit"
           disabled={loading}
-          className="px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 disabled:opacity-50"
+          className="px-3 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 disabled:opacity-50"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>

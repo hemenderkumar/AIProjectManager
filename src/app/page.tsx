@@ -47,14 +47,14 @@ export default async function HomePage() {
           {user ? (
             <Link
               href="/home"
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
             >
               Go to Tracker
             </Link>
           ) : (
             <a
               href="#login"
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700"
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
             >
               Log in
             </a>
@@ -62,10 +62,10 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <section className="bg-gradient-to-b from-indigo-50/70 via-slate-50/60 to-white pt-16 pb-16">
+      <section className="bg-gradient-to-b from-accent-50/70 via-slate-50/60 to-white pt-16 pb-16">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
           <div>
-            <p className="text-xs font-medium tracking-widest uppercase text-indigo-600 mb-5">
+            <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-5">
               Built for boutique IT consultancies
             </p>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-slate-900 leading-tight tracking-tight mb-5">
@@ -98,7 +98,7 @@ export default async function HomePage() {
                 </p>
                 <Link
                   href="/home"
-                  className="block w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 transition-colors"
+                  className="block w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 transition-colors"
                 >
                   Go to the Tracker
                 </Link>
@@ -148,7 +148,7 @@ export default async function HomePage() {
       </section>
 
       <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-16 scroll-mt-16">
-        <p className="text-xs font-medium tracking-widest uppercase text-indigo-600 mb-2">How it works</p>
+        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">How it works</p>
         <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">From a first idea to a board-ready report, in four steps.</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Step
@@ -176,7 +176,7 @@ export default async function HomePage() {
 
       <section id="features" className="bg-slate-50 border-y border-slate-200 scroll-mt-16">
         <div className="max-w-5xl mx-auto px-6 py-16">
-          <p className="text-xs font-medium tracking-widest uppercase text-indigo-600 mb-2">What you get</p>
+          <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">What you get</p>
           <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything a boutique consultancy needs to run delivery, in one tracker.</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2">
             <FeatureRow
@@ -229,7 +229,7 @@ function FeatureRow({ icon, title, description }: { icon: React.ReactNode; title
   return (
     <div className="border-t border-slate-200 py-6 pr-8">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-indigo-600">{icon}</span>
+        <span className="text-accent-600">{icon}</span>
         <p className="text-sm font-semibold text-slate-900">{title}</p>
       </div>
       <p className="text-sm text-slate-500 leading-relaxed">{description}</p>
@@ -240,7 +240,7 @@ function FeatureRow({ icon, title, description }: { icon: React.ReactNode; title
 function Step({ number, title, description }: { number: string; title: string; description: string }) {
   return (
     <div className="border-t border-slate-200 pt-5 pr-6">
-      <p className="text-xs font-semibold text-indigo-300 mb-2">{number}</p>
+      <p className="text-xs font-semibold text-accent-300 mb-2">{number}</p>
       <p className="text-sm font-semibold text-slate-900 mb-1.5">{title}</p>
       <p className="text-xs text-slate-500 leading-relaxed">{description}</p>
     </div>

@@ -92,7 +92,7 @@ export default function AiEditChat({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700"
+        className="flex items-center gap-1.5 text-xs text-accent-600 hover:text-accent-700"
       >
         <MessageSquarePlus size={13} /> Edit with AI
       </button>
@@ -102,9 +102,9 @@ export default function AiEditChat({
   const changeEntries = proposal ? Object.entries(proposal.changes) : [];
 
   return (
-    <div className="border border-indigo-100 bg-indigo-50/40 rounded-lg p-3 space-y-2">
+    <div className="border border-accent-100 bg-accent-50/40 rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-medium text-indigo-700 flex items-center gap-1">
+        <p className="text-xs font-medium text-accent-700 flex items-center gap-1">
           <Sparkles size={12} /> Edit with AI
         </p>
         <button onClick={() => { setOpen(false); discard(); }} className="text-slate-400 hover:text-slate-600">
@@ -119,13 +119,13 @@ export default function AiEditChat({
             onChange={(e) => setInstruction(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !proposing) propose(); }}
             placeholder={placeholder}
-            className="flex-1 text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent-500"
             disabled={proposing}
           />
           <button
             onClick={propose}
             disabled={proposing || !instruction.trim()}
-            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white disabled:opacity-50 font-medium shrink-0"
+            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white disabled:opacity-50 font-medium shrink-0"
           >
             {proposing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
             {proposing ? "Thinking..." : "Propose"}
@@ -154,7 +154,7 @@ export default function AiEditChat({
                 <button
                   onClick={apply}
                   disabled={applying}
-                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white disabled:opacity-50 font-medium"
+                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white disabled:opacity-50 font-medium"
                 >
                   {applying ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                   {applying ? "Applying..." : "Apply"}

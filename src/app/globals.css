@@ -7,6 +7,111 @@ html {
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+
+  /* The app's single accent color, used everywhere (buttons, links, focus rings, active nav,
+     badge tints) via bg-accent-*/text-accent-*/border-accent-* etc. Defaults to the original
+     indigo scale so this is a no-op unless a theme is picked. A ThemeSwitcher (see Sidebar)
+     sets data-theme on <html>, which the blocks below override — swapping every one of those
+     classes app-wide without touching a single component, since Tailwind's utilities all
+     resolve through these custom properties instead of literal indigo values now. */
+  --accent-50: var(--color-indigo-50);
+  --accent-100: var(--color-indigo-100);
+  --accent-200: var(--color-indigo-200);
+  --accent-300: var(--color-indigo-300);
+  --accent-400: var(--color-indigo-400);
+  --accent-500: var(--color-indigo-500);
+  --accent-600: var(--color-indigo-600);
+  --accent-700: var(--color-indigo-700);
+  --accent-800: var(--color-indigo-800);
+  --accent-900: var(--color-indigo-900);
+}
+
+/* Each theme reuses one of Tailwind's own built-in, already-accessible color ramps rather than
+   hand-picked hex values. The 50-400 stops map 1:1 (light tints for badge/card backgrounds);
+   500-900 are shifted one stop darker than a literal same-name mapping would give, because
+   accent-600 alone is used as plain text/link color in ~110 places — at the ramp's native
+   "600" position several of these hues (amber especially) are too light to read reliably as
+   text on white. Shifting keeps every theme's accent-600 in the same rough contrast range as
+   the default indigo-600 it replaces. */
+/* Explicit (rather than relying on the :root fallback) so a swatch button in the theme
+   switcher can force itself back to indigo regardless of whichever theme is currently active
+   on <html> — custom properties otherwise cascade down through data-theme scopes. */
+[data-theme="indigo"] {
+  --accent-50: var(--color-indigo-50);
+  --accent-100: var(--color-indigo-100);
+  --accent-200: var(--color-indigo-200);
+  --accent-300: var(--color-indigo-300);
+  --accent-400: var(--color-indigo-400);
+  --accent-500: var(--color-indigo-500);
+  --accent-600: var(--color-indigo-600);
+  --accent-700: var(--color-indigo-700);
+  --accent-800: var(--color-indigo-800);
+  --accent-900: var(--color-indigo-900);
+}
+
+[data-theme="nautical"] {
+  --accent-50: var(--color-amber-50);
+  --accent-100: var(--color-amber-100);
+  --accent-200: var(--color-amber-200);
+  --accent-300: var(--color-amber-300);
+  --accent-400: var(--color-amber-400);
+  --accent-500: var(--color-amber-600);
+  --accent-600: var(--color-amber-700);
+  --accent-700: var(--color-amber-800);
+  --accent-800: var(--color-amber-900);
+  --accent-900: var(--color-amber-950);
+}
+
+[data-theme="ocean"] {
+  --accent-50: var(--color-teal-50);
+  --accent-100: var(--color-teal-100);
+  --accent-200: var(--color-teal-200);
+  --accent-300: var(--color-teal-300);
+  --accent-400: var(--color-teal-400);
+  --accent-500: var(--color-teal-600);
+  --accent-600: var(--color-teal-700);
+  --accent-700: var(--color-teal-800);
+  --accent-800: var(--color-teal-900);
+  --accent-900: var(--color-teal-950);
+}
+
+[data-theme="chart"] {
+  --accent-50: var(--color-cyan-50);
+  --accent-100: var(--color-cyan-100);
+  --accent-200: var(--color-cyan-200);
+  --accent-300: var(--color-cyan-300);
+  --accent-400: var(--color-cyan-400);
+  --accent-500: var(--color-cyan-600);
+  --accent-600: var(--color-cyan-700);
+  --accent-700: var(--color-cyan-800);
+  --accent-800: var(--color-cyan-900);
+  --accent-900: var(--color-cyan-950);
+}
+
+[data-theme="compass"] {
+  --accent-50: var(--color-emerald-50);
+  --accent-100: var(--color-emerald-100);
+  --accent-200: var(--color-emerald-200);
+  --accent-300: var(--color-emerald-300);
+  --accent-400: var(--color-emerald-400);
+  --accent-500: var(--color-emerald-600);
+  --accent-600: var(--color-emerald-700);
+  --accent-700: var(--color-emerald-800);
+  --accent-800: var(--color-emerald-900);
+  --accent-900: var(--color-emerald-950);
+}
+
+[data-theme="coral"] {
+  --accent-50: var(--color-rose-50);
+  --accent-100: var(--color-rose-100);
+  --accent-200: var(--color-rose-200);
+  --accent-300: var(--color-rose-300);
+  --accent-400: var(--color-rose-400);
+  --accent-500: var(--color-rose-600);
+  --accent-600: var(--color-rose-700);
+  --accent-700: var(--color-rose-800);
+  --accent-800: var(--color-rose-900);
+  --accent-900: var(--color-rose-950);
 }
 
 @theme inline {
@@ -23,23 +128,38 @@ html {
   --text-xs--line-height: calc(1.25 / 0.8125);
   --text-sm: 0.9375rem;
   --text-sm--line-height: calc(1.375 / 0.9375);
+
+  /* Indirection layer so bg-accent-600 etc. are real Tailwind utilities that resolve to the
+     theme-swappable custom properties above, instead of a fixed color. */
+  --color-accent-50: var(--accent-50);
+  --color-accent-100: var(--accent-100);
+  --color-accent-200: var(--accent-200);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
 }
 
 body {
   color: var(--foreground);
   /* A very soft two-tone wash instead of a flat fill — barely visible, but it keeps large
-     empty page backgrounds from feeling like a blank spreadsheet. */
+     empty page backgrounds from feeling like a blank spreadsheet. Uses color-mix against the
+     live accent variable (rather than a fixed indigo rgba) so it re-tints with the chosen theme. */
   background:
-    radial-gradient(1200px 600px at 8% -10%, rgba(99, 102, 241, 0.06), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgba(99, 102, 241, 0.05), transparent 55%),
+    radial-gradient(1200px 600px at 8% -10%, color-mix(in srgb, var(--accent-500) 6%, transparent), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, color-mix(in srgb, var(--accent-500) 5%, transparent), transparent 55%),
     var(--background);
   background-attachment: fixed;
 }
 
 /* Consistent, brand-colored focus ring everywhere instead of each browser's default blue
-   outline — keeps keyboard-navigation visible without looking mismatched against indigo UI. */
+   outline — keeps keyboard-navigation visible without looking mismatched against the accent
+   color, whichever theme is active. */
 :focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--accent-500);
   outline-offset: 2px;
 }
 

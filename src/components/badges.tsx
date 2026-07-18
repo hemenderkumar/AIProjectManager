@@ -59,7 +59,7 @@ export function ExecutionSourceBadge({ source }: { source: "AI" | "INTERNAL" | "
   if (!source) return null;
   if (source === "AI") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-600 text-white">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent-600 text-white">
         <Sparkles size={11} /> AI recommended
       </span>
     );

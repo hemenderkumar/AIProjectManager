@@ -34,7 +34,7 @@ export default function StatusTab({ detail }: { detail: ProjectDetail }) {
 
   return (
     <div className="max-w-3xl space-y-4">
-      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-800">
+      <div className="bg-accent-50 border border-accent-100 rounded-xl p-4 text-sm text-accent-800">
         <span className="font-semibold">Auto-computed health:</span> {detail.autoRag} — {detail.autoRagReasons.join("; ")}
         {" "}(schedule variance {detail.scheduleVarianceDays} days, budget variance {detail.budgetVariancePercent}%)
       </div>
@@ -44,7 +44,7 @@ export default function StatusTab({ detail }: { detail: ProjectDetail }) {
         action={
           <button
             onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
           >
             <Plus size={14} /> Log Status Update
           </button>

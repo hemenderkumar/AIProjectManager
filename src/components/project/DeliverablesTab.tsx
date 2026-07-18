@@ -359,7 +359,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
               <button
                 onClick={assessReadiness}
                 disabled={assessingReadiness}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 font-medium"
               >
                 {assessingReadiness ? <Loader2 size={13} className="animate-spin" /> : <Gauge size={13} />}
                 {assessingReadiness ? "Assessing..." : "Assess with AI"}
@@ -419,7 +419,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                 <button
                   onClick={() => generate(t.value)}
                   disabled={generatingType !== null}
-                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium"
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 font-medium"
                 >
                   {generatingType === t.value ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                   {generatingType === t.value ? "Generating..." : "Generate with AI"}
@@ -462,7 +462,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                     <button
                       onClick={() => downloadWord(d)}
                       disabled={downloadingId === d.id}
-                      className="text-slate-400 hover:text-indigo-600 disabled:opacity-50"
+                      className="text-slate-400 hover:text-accent-600 disabled:opacity-50"
                       title="Download as Word document"
                     >
                       {downloadingId === d.id ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
@@ -535,7 +535,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                       {signedDocError && uploadingSignedFor === null && <p className="text-xs text-rose-600 mb-1.5">{signedDocError}</p>}
                       {d.signedDocumentFilename ? (
                         <div className="flex items-center justify-between bg-slate-50 rounded-lg px-2.5 py-2 text-xs">
-                          <a href={`/api/deliverables/${d.id}/signed-document`} className="text-indigo-600 hover:text-indigo-700">
+                          <a href={`/api/deliverables/${d.id}/signed-document`} className="text-accent-600 hover:text-accent-700">
                             {d.signedDocumentFilename}
                           </a>
                           <div className="flex items-center gap-2">
@@ -550,7 +550,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                           </div>
                         </div>
                       ) : canEdit ? (
-                        <label className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 cursor-pointer w-fit">
+                        <label className="flex items-center gap-1.5 text-xs text-accent-600 hover:text-accent-700 cursor-pointer w-fit">
                           {uploadingSignedFor === d.id ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                           {uploadingSignedFor === d.id ? "Uploading..." : "Upload signed copy"}
                           <input
@@ -588,7 +588,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                           <button
                             onClick={() => checkCoverage(d.id)}
                             disabled={tracingId === d.id}
-                            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 font-medium"
+                            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50 font-medium"
                           >
                             {tracingId === d.id ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                             {tracingId === d.id ? "Checking..." : "Check task coverage"}
@@ -614,7 +614,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                                   <button
                                     onClick={() => createTaskFromItem(d.id, item)}
                                     disabled={creatingTaskFor === item.suggestedTaskTitle}
-                                    className="text-indigo-600 hover:text-indigo-700 shrink-0 whitespace-nowrap"
+                                    className="text-accent-600 hover:text-accent-700 shrink-0 whitespace-nowrap"
                                   >
                                     {creatingTaskFor === item.suggestedTaskTitle ? "Adding..." : "+ Create task"}
                                   </button>
@@ -659,7 +659,7 @@ function TestCaseTable({
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-medium text-slate-500 flex items-center gap-1"><ClipboardCheck size={12} /> Test cases</p>
         {canEdit && (
-          <button onClick={onAdd} className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700">
+          <button onClick={onAdd} className="flex items-center gap-1 text-xs text-accent-600 hover:text-accent-700">
             <Plus size={12} /> Add test case
           </button>
         )}

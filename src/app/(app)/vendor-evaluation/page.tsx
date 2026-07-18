@@ -9,11 +9,11 @@ type ProjectOption = { id: string; name: string; organizationId: string | null }
 type OrgOption = { id: string; name: string };
 type SessionUser = { id: string; name: string; role: string; organizationId: string | null };
 
-const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-600",
-  PUBLISHED: "bg-indigo-50 text-indigo-700",
+  PUBLISHED: "bg-accent-50 text-accent-700",
   EVALUATING: "bg-amber-50 text-amber-700",
   AWARDED: "bg-emerald-50 text-emerald-700",
   CLOSED: "bg-slate-100 text-slate-500",
@@ -185,7 +185,7 @@ function VendorEvaluationInner() {
           <div className="flex justify-end">
             <button
               onClick={() => setShowForm((s) => !s)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700"
             >
               <Plus size={15} /> New RFP
             </button>
@@ -242,7 +242,7 @@ function VendorEvaluationInner() {
               <button
                 type="submit"
                 disabled={saving || draftingNew}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 {saving ? "Creating..." : "Create RFP"}
@@ -251,7 +251,7 @@ function VendorEvaluationInner() {
                 type="button"
                 onClick={createAndDraftRfp}
                 disabled={saving || draftingNew}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 text-sm font-medium hover:bg-indigo-100 disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-50 text-accent-600 text-sm font-medium hover:bg-accent-100 disabled:opacity-50"
               >
                 {draftingNew ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 {draftingNew ? "Creating & drafting..." : "Create & Draft with AI"}

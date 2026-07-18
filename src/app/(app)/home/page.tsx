@@ -25,7 +25,7 @@ export default async function HomePage() {
       <div className="p-8">
         <MyRateCard />
         <div className="max-w-5xl bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 mb-6">
-          <p className="text-xs font-semibold tracking-wide uppercase text-indigo-600 mb-1.5">What Keel does</p>
+          <p className="text-xs font-semibold tracking-wide uppercase text-accent-600 mb-1.5">What Keel does</p>
           <p className="text-sm text-slate-600 mb-4">
             Keel is your AI-driven project and portfolio tracker: it plans work, drafts charters and RFPs, watches
             budgets and risk, and turns your whole portfolio into board-ready reports.
@@ -40,7 +40,7 @@ export default async function HomePage() {
 
         <Link
           href="/dashboard"
-          className="group max-w-5xl flex items-center justify-between gap-4 bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors hover:bg-indigo-700 rounded-xl px-6 py-5 mb-6"
+          className="group max-w-5xl flex items-center justify-between gap-4 bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 rounded-xl px-6 py-5 mb-6"
         >
           <div className="flex items-center gap-4">
             <div className="h-11 w-11 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
@@ -48,7 +48,7 @@ export default async function HomePage() {
             </div>
             <div>
               <p className="text-sm font-semibold">Go to the Tracker</p>
-              <p className="text-xs text-indigo-100">Open the portfolio dashboard — status, budgets, and risk across every project.</p>
+              <p className="text-xs text-accent-100">Open the portfolio dashboard — status, budgets, and risk across every project.</p>
             </div>
           </div>
           <ArrowRight size={18} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
@@ -58,21 +58,21 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl">
           <ChoiceCard
             href="/ideation"
-            icon={<Lightbulb size={22} className="text-indigo-600" />}
+            icon={<Lightbulb size={22} className="text-accent-600" />}
             title="New Ideation"
             description="Brainstorm a new opportunity or a problem that needs solving, run a feasibility check, and build the case before it becomes a project."
             cta="Start ideating"
           />
           <ChoiceCard
             href="/execution"
-            icon={<Rocket size={22} className="text-indigo-600" />}
+            icon={<Rocket size={22} className="text-accent-600" />}
             title="New Project"
             description="Skip ideation and kick off a new project directly — the AI planner is ready as soon as it's created."
             cta="Start a project"
           />
           <ChoiceCard
             href="/support"
-            icon={<LifeBuoy size={22} className="text-indigo-600" />}
+            icon={<LifeBuoy size={22} className="text-accent-600" />}
             title="Project Support"
             description="Log or triage an incident on a live project, or estimate what ongoing support should cost."
             cta="Go to Ongoing Support"
@@ -104,12 +104,12 @@ function ChoiceCard({
   return (
     <Link
       href={href}
-      className="group bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 hover:border-indigo-300 hover:shadow-sm transition-all flex flex-col"
+      className="group bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 hover:border-accent-300 hover:shadow-sm transition-all flex flex-col"
     >
-      <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center mb-3">{icon}</div>
+      <div className="h-10 w-10 rounded-lg bg-accent-50 flex items-center justify-center mb-3">{icon}</div>
       <p className="text-sm font-semibold text-slate-900 mb-1.5">{title}</p>
       <p className="text-xs text-slate-500 leading-relaxed flex-1">{description}</p>
-      <p className="text-xs font-medium text-indigo-600 mt-3 group-hover:underline">{cta} →</p>
+      <p className="text-xs font-medium text-accent-600 mt-3 group-hover:underline">{cta} →</p>
     </Link>
   );
 }
@@ -117,7 +117,7 @@ function ChoiceCard({
 function AboutChip({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-2.5 py-2">
-      <span className="text-indigo-600 shrink-0">{icon}</span>
+      <span className="text-accent-600 shrink-0">{icon}</span>
       {label}
     </div>
   );

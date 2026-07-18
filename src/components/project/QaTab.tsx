@@ -59,7 +59,7 @@ export default function QaTab({ detail }: { detail: ProjectDetail }) {
                 <p className="text-sm text-slate-800">{t.question}</p>
               </div>
               <div className="flex items-start gap-2">
-                <span className="mt-0.5 shrink-0 rounded-full bg-indigo-50 text-indigo-600 p-1"><Sparkles size={12} /></span>
+                <span className="mt-0.5 shrink-0 rounded-full bg-accent-50 text-accent-600 p-1"><Sparkles size={12} /></span>
                 <p className="text-sm text-slate-600 whitespace-pre-wrap">{t.answer}</p>
               </div>
             </div>
@@ -86,7 +86,7 @@ export default function QaTab({ detail }: { detail: ProjectDetail }) {
           <button
             onClick={ask}
             disabled={asking || !question.trim()}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 text-sm font-medium shrink-0"
           >
             {asking ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
           </button>

@@ -26,7 +26,7 @@ type Registration = {
 
 const ROLES = ["ADMIN", "SUPER_USER", "PM", "CONTRIBUTOR", "VIEWER"];
 
-const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -305,7 +305,7 @@ export default function AdminPage() {
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <UserPlus size={16} className="text-indigo-600" /> Pending Registrations ({pendingRegistrations.length})
+                <UserPlus size={16} className="text-accent-600" /> Pending Registrations ({pendingRegistrations.length})
               </p>
             </div>
             <p className="text-xs text-slate-400 mb-3">
@@ -356,7 +356,7 @@ export default function AdminPage() {
             <p className="text-sm font-semibold text-slate-900">Organizations</p>
             <button
               onClick={() => setShowCompanyForm((s) => !s)}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
             >
               <Plus size={14} /> New Company
             </button>
@@ -400,7 +400,7 @@ export default function AdminPage() {
               <button
                 onClick={createCompany}
                 disabled={companySaving}
-                className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
               >
                 {companySaving ? "Creating..." : "Create Company & Owner"}
               </button>
@@ -435,7 +435,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => setRatesOrgId(ratesOrgId === o.id ? null : o.id)}
                       className={`text-xs font-medium disabled:opacity-50 inline-flex items-center gap-1 ${
-                        ratesOrgId === o.id ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
+                        ratesOrgId === o.id ? "text-accent-600" : "text-slate-500 hover:text-accent-600"
                       }`}
                     >
                       <DollarSign size={13} /> Rates
@@ -443,7 +443,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => exportOrg(o.id)}
                       disabled={orgActionId === o.id}
-                      className="text-xs font-medium text-slate-500 hover:text-indigo-600 disabled:opacity-50 inline-flex items-center gap-1"
+                      className="text-xs font-medium text-slate-500 hover:text-accent-600 disabled:opacity-50 inline-flex items-center gap-1"
                     >
                       <Download size={13} /> Export
                     </button>
@@ -514,7 +514,7 @@ export default function AdminPage() {
             <p className="text-sm font-semibold text-slate-900">Users & roles</p>
             <button
               onClick={() => setShowForm((s) => !s)}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
             >
               <Plus size={14} /> Add User
             </button>
@@ -544,14 +544,14 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() => setSendSetupLink(true)}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${sendSetupLink ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${sendSetupLink ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
                 >
                   Email them a setup link
                 </button>
                 <button
                   type="button"
                   onClick={() => setSendSetupLink(false)}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${!sendSetupLink ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${!sendSetupLink ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
                 >
                   Set a temporary password
                 </button>
@@ -563,7 +563,7 @@ export default function AdminPage() {
               ) : (
                 <input placeholder="Temporary password" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className={inputCls} />
               )}
-              <button onClick={createUser} disabled={saving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              <button onClick={createUser} disabled={saving} className="px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50">
                 {saving ? "Creating..." : "Create user"}
               </button>
             </div>
@@ -619,7 +619,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => resetPassword(u)}
                       disabled={resetPasswordId === u.id}
-                      className="text-slate-400 hover:text-indigo-600 disabled:opacity-50 inline-flex items-center"
+                      className="text-slate-400 hover:text-accent-600 disabled:opacity-50 inline-flex items-center"
                       title="Reset password"
                     >
                       <KeyRound size={15} />

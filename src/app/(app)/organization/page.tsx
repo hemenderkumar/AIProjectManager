@@ -17,7 +17,7 @@ type Division = { id: string; name: string };
 type Stakeholder = { id: string; name: string; title: string | null; email: string | null; divisionId: string | null };
 
 const ASSIGNABLE_ROLES = ["PM", "CONTRIBUTOR", "VIEWER"];
-const teamInputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+const teamInputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 export default function OrganizationPage() {
   const [org, setOrg] = useState<Organization | null>(null);
@@ -241,7 +241,7 @@ export default function OrganizationPage() {
             <p className="text-sm font-semibold text-slate-900">Your team</p>
             <button
               onClick={() => setShowTeamForm((s) => !s)}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
             >
               <Plus size={14} /> Invite teammate
             </button>
@@ -264,14 +264,14 @@ export default function OrganizationPage() {
                 <button
                   type="button"
                   onClick={() => setSendSetupLink(true)}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${sendSetupLink ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${sendSetupLink ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
                 >
                   Email them a setup link
                 </button>
                 <button
                   type="button"
                   onClick={() => setSendSetupLink(false)}
-                  className={`px-3 py-1.5 rounded-md transition-colors ${!sendSetupLink ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                  className={`px-3 py-1.5 rounded-md transition-colors ${!sendSetupLink ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"}`}
                 >
                   Set a temporary password
                 </button>
@@ -282,7 +282,7 @@ export default function OrganizationPage() {
                 <input placeholder="Temporary password" value={teamForm.password} onChange={(e) => setTeamForm((f) => ({ ...f, password: e.target.value }))} className={teamInputCls} />
               )}
               {teamError && <p className="text-xs text-rose-600">{teamError}</p>}
-              <button onClick={inviteTeamMember} disabled={teamSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              <button onClick={inviteTeamMember} disabled={teamSaving} className="px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50">
                 {teamSaving ? "Inviting..." : "Invite"}
               </button>
             </div>
@@ -353,7 +353,7 @@ export default function OrganizationPage() {
             <button
               onClick={addDivision}
               disabled={divisionSaving || !newDivisionName.trim()}
-              className="shrink-0 px-3 py-2 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-medium hover:bg-indigo-100 disabled:opacity-50"
+              className="shrink-0 px-3 py-2 rounded-lg bg-accent-50 text-accent-600 text-xs font-medium hover:bg-accent-100 disabled:opacity-50"
             >
               {divisionSaving ? "Adding..." : "+ Add division"}
             </button>
@@ -377,7 +377,7 @@ export default function OrganizationPage() {
             <p className="text-sm font-semibold text-slate-900">Stakeholders (project sponsors)</p>
             <button
               onClick={() => setShowStakeholderForm((s) => !s)}
-              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100"
             >
               <Plus size={14} /> Add stakeholder
             </button>
@@ -399,7 +399,7 @@ export default function OrganizationPage() {
                 </select>
               </div>
               {stakeholderError && <p className="text-xs text-rose-600">{stakeholderError}</p>}
-              <button onClick={addStakeholder} disabled={stakeholderSaving} className="px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              <button onClick={addStakeholder} disabled={stakeholderSaving} className="px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50">
                 {stakeholderSaving ? "Adding..." : "Add stakeholder"}
               </button>
             </div>
@@ -455,7 +455,7 @@ export default function OrganizationPage() {
           <button
             onClick={exportData}
             disabled={exporting}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
           >
             {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
             {exporting ? "Preparing export..." : "Export my organization's data (JSON)"}
