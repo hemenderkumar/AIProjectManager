@@ -6,12 +6,13 @@ import { Bug, X, Camera, Loader2, Check } from "lucide-react";
 const PANEL_ID = "keel-issue-reporter-panel";
 
 // Floating "Report an issue" widget, available on every page (mounted once in AppShell,
-// same as the AI PM avatar). Deliberately bottom-LEFT — the avatar already owns bottom-right,
-// and the two would otherwise overlap. Clicking it immediately captures a screenshot of the
-// current page client-side via html2canvas (a DOM screenshot of what's visible in the
-// browser, not a native OS/screen capture — no permission prompt needed), so the reporter
-// only has to type what went wrong. The screenshot excludes this panel itself via
-// ignoreElements, so it shows the underlying page, not our own form.
+// same as the AI PM avatar). Stacked above the avatar on the right edge — bottom-left is
+// out because the sidebar's own footer (user name + logout) lives there on every page, and
+// a left-side button would sit right on top of it. Clicking the button immediately captures
+// a screenshot of the current page client-side via html2canvas (a DOM screenshot of what's
+// visible in the browser, not a native OS/screen capture — no permission prompt needed), so
+// the reporter only has to type what went wrong. The screenshot excludes this panel itself
+// via ignoreElements, so it shows the underlying page, not our own form.
 export default function IssueReporter() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -31,7 +32,11 @@ export default function IssueReporter() {
     setDone(false);
     setError(null);
     try {
-      const html2canvas = (await import("html2canvas")).default;
+      // html2canvas-pro, not stock html2canvas: this app's Tailwind v4 theme (including the
+      // 6-theme accent-color switcher) uses oklch()/color-mix() throughout, which the
+      // original html2canvas can't parse and throws on. html2canvas-pro is the maintained
+      // fork that adds support for those modern CSS color functions; same API otherwise.
+      const html2canvas = (await import("html2canvas-pro")).default;
       const canvas = await html2canvas(document.body, {
         // Skip our own floating panel so the capture shows the page underneath it, not
         // the report form itself.
@@ -92,7 +97,7 @@ export default function IssueReporter() {
     return (
       <button
         onClick={openAndCapture}
-        className="fixed bottom-5 left-5 h-12 w-12 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center hover:scale-105 transition-transform z-50 text-slate-500 hover:text-rose-600"
+        className="fixed bottom-24 right-5 h-12 w-12 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center hover:scale-105 transition-transform z-50 text-slate-500 hover:text-rose-600"
         aria-label="Report an issue"
         title="Report an issue"
       >
@@ -104,7 +109,7 @@ export default function IssueReporter() {
   return (
     <div
       id={PANEL_ID}
-      className="fixed bottom-5 left-5 w-80 bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 shadow-xl z-50 flex flex-col overflow-hidden"
+      className="fixed bottom-24 right-5 w-80 bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 shadow-xl z-50 flex flex-col overflow-hidden"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
         <p className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">

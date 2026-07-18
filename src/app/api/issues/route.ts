@@ -28,20 +28,30 @@ export async function POST(req: NextRequest) {
     screenshotDataUrl = null;
   }
 
-  const [created] = await db
-    .insert(issueReports)
-    .values({
-      reporterId: user.id,
-      reporterName: user.name,
-      reporterEmail: user.email,
-      organizationId: user.organizationId,
-      pagePath,
-      description: description.slice(0, 4000),
-      screenshotDataUrl,
-    })
-    .returning({ id: issueReports.id });
+  try {
+    const [created] = await db
+      .insert(issueReports)
+      .values({
+        reporterId: user.id,
+        reporterName: user.name,
+        reporterEmail: user.email,
+        organizationId: user.organizationId,
+        pagePath,
+        description: description.slice(0, 4000),
+        screenshotDataUrl,
+      })
+      .returning({ id: issueReports.id });
 
-  return NextResponse.json({ ok: true, id: created?.id }, { status: 201 });
+    return NextResponse.json({ ok: true, id: created?.id }, { status: 201 });
+  } catch (err) {
+    console.error("issue report insert failed:", err);
+    // Postgres 42P01 = "relation does not exist" -- the most likely cause here is the
+    // issue_reports table not having been pushed to this database yet (schema.ts added
+    // it, but `npm run db:push` still needs to be run against production once).
+    const code = (err as { code?: string })?.code;
+    const hint = code === "42P01" ? " The issue_reports table doesn't exist yet — run `npm run db:push` against this database." : "";
+    return NextResponse.json({ error: `Could not save your report.${hint}` }, { status: 500 });
+  }
 }
 
 // ADMIN-only event log of everything reported — most recent first. Capped at 200, same
