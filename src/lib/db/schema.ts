@@ -435,6 +435,11 @@ export const milestones = pgTable("milestones", {
   completedAt: timestamp("completed_at"),
   status: taskStatusEnum("status").notNull().default("TODO"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Set when this milestone came from an SOW's contractual milestone list (AI-drafted or
+  // owner-added) rather than being added directly on the Milestones tab — lets a milestone
+  // show up in both places (one shared list) instead of maintaining a separate SOW-only
+  // milestones table.
+  sowId: text("sow_id").references((): AnyPgColumn => sows.id, { onDelete: "cascade" }),
 });
 
 // A client company (tenant). Internal staff (your own team) have organizationId = null on
@@ -852,6 +857,119 @@ export const rfpRecommendations = pgTable("rfp_recommendations", {
   recommendedVendorId: text("recommended_vendor_id").references(() => rfpVendors.id, { onDelete: "set null" }),
   summary: text("summary"), // AI-generated overall comparison + rationale
   generatedAt: timestamp("generated_at").notNull().defaultNow(),
+});
+
+// Statement of Work: the formal contract document between the company and a vendor for a
+// specific project, created by the company owner once a charter and plan exist. Deliberately
+// its own table rather than reusing charter fields — a charter describes the project to
+// yourselves, an SOW is the contractual document exchanged with a vendor, and a project can
+// have more than one SOW (different vendors, or renewals/amendments over time). Optionally
+// linked to a vendor already evaluated through the RFP module (rfpVendorId), but doesn't
+// require one — an owner with an existing vendor relationship can create one directly.
+export const sowStatusEnum = pgEnum("sow_status", [
+  "DRAFT",
+  "PENDING_SIGNATURE",
+  "SIGNED",
+  "ACTIVE",
+  "COMPLETED",
+  "TERMINATED",
+]);
+
+export const sows = pgTable("sows", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  rfpVendorId: text("rfp_vendor_id").references(() => rfpVendors.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  vendorName: text("vendor_name").notNull(),
+  vendorContactName: text("vendor_contact_name"),
+  vendorContactEmail: text("vendor_contact_email"),
+  status: sowStatusEnum("status").notNull().default("DRAFT"),
+
+  scope: text("scope"),
+  deliverablesSummary: text("deliverables_summary"),
+  timeline: text("timeline"),
+  fundingAmount: real("funding_amount"),
+  fundingTerms: text("funding_terms"),
+  risks: text("risks"),
+  issues: text("issues"),
+
+  // The full AI-drafted (or owner-edited) SOW document text.
+  content: text("content"),
+  createdByAi: boolean("created_by_ai").notNull().default(false),
+
+  signedBy: text("signed_by"),
+  signedAt: timestamp("signed_at"),
+
+  createdBy: text("created_by"), // snapshot of the owner's name
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Working deliverable documents for a project, generated with AI from the charter/plan and
+// then reviewed/edited by the team. Five specific types were called for; OTHER exists so the
+// same tab can hold anything else worth attaching without inventing a new type each time.
+export const deliverableTypeEnum = pgEnum("deliverable_type", [
+  "REQUIREMENTS_NFR",
+  "DESIGN",
+  "FUNCTIONAL_TEST_SCRIPT",
+  "UAT_SCRIPT",
+  "RELEASE_DOCUMENTATION",
+  "OTHER",
+]);
+
+export const deliverableStatusEnum = pgEnum("deliverable_status", [
+  "DRAFT",
+  "IN_REVIEW",
+  "APPROVED",
+  "FINAL",
+]);
+
+export const deliverables = pgTable("deliverables", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  type: deliverableTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  // Document body (markdown) — populated for the narrative types (requirements/NFR, design,
+  // release documentation, other). The two test-script types instead use structured rows in
+  // deliverableTestCases below, since those are meant to actually be executed, not just read.
+  content: text("content"),
+  status: deliverableStatusEnum("status").notNull().default("DRAFT"),
+  createdByAi: boolean("created_by_ai").notNull().default(false),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const testCaseStatusEnum = pgEnum("test_case_status", [
+  "NOT_RUN",
+  "PASS",
+  "FAIL",
+  "BLOCKED",
+]);
+
+// One row per test case for a FUNCTIONAL_TEST_SCRIPT or UAT_SCRIPT deliverable — AI-generated
+// initially, then actually executed by the team: actualResult/status/executedBy/executedAt
+// get filled in as each one is run, which is the whole point of calling these "scripts"
+// rather than just a document describing testing.
+export const deliverableTestCases = pgTable("deliverable_test_cases", {
+  id: cuid(),
+  deliverableId: text("deliverable_id")
+    .notNull()
+    .references(() => deliverables.id, { onDelete: "cascade" }),
+  sequence: integer("sequence").notNull().default(0),
+  scenario: text("scenario").notNull(),
+  steps: text("steps"),
+  expectedResult: text("expected_result"),
+  actualResult: text("actual_result"),
+  status: testCaseStatusEnum("status").notNull().default("NOT_RUN"),
+  executedBy: text("executed_by"),
+  executedAt: timestamp("executed_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Relations
