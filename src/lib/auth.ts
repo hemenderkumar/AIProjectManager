@@ -118,3 +118,18 @@ export async function isDownloadBlocked(userId: string): Promise<boolean> {
   const [row] = await db.select({ verifiedAt: users.verifiedAt }).from(users).where(eq(users.id, userId));
   return !row?.verifiedAt;
 }
+
+// Keep in sync with the THEMES list in components/ThemeSwitcher.tsx.
+export const VALID_THEMES = ["indigo", "nautical", "ocean", "chart", "compass", "coral"] as const;
+export type ThemeId = (typeof VALID_THEMES)[number];
+
+// Saved per-account (users.theme), not the browser — so it follows a person to any device or
+// browser they log into. Called from the root layout on every request so <html data-theme>
+// is correct in the very first byte of HTML sent, with nothing for client JS to correct after
+// the fact. Logged-out visitors (or a session that's expired) just get the CSS default (indigo).
+export async function getCurrentTheme(): Promise<ThemeId> {
+  const user = await getCurrentUser();
+  if (!user) return "indigo";
+  const [row] = await db.select({ theme: users.theme }).from(users).where(eq(users.id, user.id));
+  return (row?.theme as ThemeId) ?? "indigo";
+}

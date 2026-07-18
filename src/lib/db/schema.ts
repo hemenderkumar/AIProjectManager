@@ -522,6 +522,12 @@ export const users = pgTable("users", {
   // auto-provisioned INDIVIDUAL self-registration path (see /api/auth/register), which
   // explicitly passes null here until an admin reviews it from Admin > Pending Registrations.
   verifiedAt: timestamp("verified_at").defaultNow(),
+  // Account-level color theme (one of the ids in ThemeSwitcher.tsx / the [data-theme] blocks
+  // in globals.css) — saved here rather than the browser's localStorage so it follows the
+  // person to any device/browser they log into. The root layout reads this at request time
+  // (see getCurrentTheme() in lib/auth.ts) and renders it straight onto <html> server-side,
+  // so there's no flash-of-wrong-theme to guard against on load.
+  theme: text("theme").notNull().default("indigo"),
 });
 
 // A sign-up submitted through the public /register page. The password is hashed at

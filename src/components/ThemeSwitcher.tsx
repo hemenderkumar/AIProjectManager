@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 
 // Each entry's `id` doubles as the data-theme value applied to <html> and as the CSS selector
 // in globals.css ([data-theme="..."] overriding --accent-*). Adding a 7th theme is: one entry
-// here, one matching block in globals.css — no component needs to know the actual colors.
+// here, one matching block in globals.css, and one entry in VALID_THEMES in lib/auth.ts.
 const THEMES = [
   { id: "indigo", label: "Indigo" },
   { id: "nautical", label: "Nautical" },
@@ -14,22 +14,26 @@ const THEMES = [
   { id: "coral", label: "Coral" },
 ] as const;
 
-const THEME_KEY = "keel.theme";
-
 export default function ThemeSwitcher() {
-  // Lazy initializer instead of an effect: reads the same localStorage key the inline
-  // anti-flash script in the root layout already applied to <html> before paint, so this
-  // control's selected state matches what's on screen from the very first render — no
-  // separate mount effect needed, and nothing to flicker between "indigo" and the real value.
+  // The root layout already rendered the account's saved theme onto <html data-theme="..."> in
+  // the initial server response (see getCurrentTheme() in lib/auth.ts) — reading it back off
+  // the DOM here just mirrors that into this control's own state, with nothing to flicker
+  // between a placeholder and the real value.
   const [theme, setTheme] = useState<string>(() => {
-    if (typeof window === "undefined") return "indigo";
-    return window.localStorage.getItem(THEME_KEY) ?? "indigo";
+    if (typeof document === "undefined") return "indigo";
+    return document.documentElement.getAttribute("data-theme") ?? "indigo";
   });
 
   function applyTheme(id: string) {
     setTheme(id);
-    window.localStorage.setItem(THEME_KEY, id);
     document.documentElement.setAttribute("data-theme", id);
+    // Best-effort — the UI has already switched instantly either way. Saved against the
+    // account (not the browser) so it's the same the next time they log in from anywhere.
+    fetch("/api/me/theme", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ theme: id }),
+    }).catch(() => {});
   }
 
   return (

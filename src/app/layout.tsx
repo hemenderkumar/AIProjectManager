@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
+import { getCurrentTheme } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Keel",
@@ -25,25 +26,19 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Saved per-account (users.theme), not the browser, so it's the same on every device someone
+  // logs into — see getCurrentTheme() in lib/auth.ts. Read here, server-side, on every request,
+  // so <html data-theme> is correct in the very first byte of HTML: no anti-flash inline script
+  // or client-side correction needed, unlike the old localStorage-only version of this.
+  const theme = await getCurrentTheme();
+
   return (
-    <html lang="en" className="antialiased">
-      <head>
-        {/* Applies the saved theme to <html> before first paint, so a returning visitor with
-            a non-default theme doesn't see a flash of indigo before ThemeSwitcher's own effect
-            runs. Deliberately a plain inline script, not a client component — it has to run
-            before hydration, synchronously, blocking nothing else. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "try{var t=localStorage.getItem('keel.theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}",
-          }}
-        />
-      </head>
+    <html lang="en" className="antialiased" data-theme={theme}>
       <body className="min-h-screen font-sans">
         <PwaRegister />
         {children}
