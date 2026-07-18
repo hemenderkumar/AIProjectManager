@@ -952,6 +952,10 @@ export const deliverables = pgTable("deliverables", {
   // release documentation, other). The two test-script types instead use structured rows in
   // deliverableTestCases below, since those are meant to actually be executed, not just read.
   content: text("content"),
+  // Mermaid diagram syntax (same convention as projects.architectureDiagram) — populated for
+  // DESIGN deliverables so the key components and how they interact can be shown as an actual
+  // picture, not just described in prose. Nullable/unused for every other type.
+  diagram: text("diagram"),
   status: deliverableStatusEnum("status").notNull().default("DRAFT"),
   createdByAi: boolean("created_by_ai").notNull().default(false),
   createdBy: text("created_by"),

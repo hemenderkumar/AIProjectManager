@@ -37,9 +37,20 @@ charter, recommended technology, and task plan below. Identify the key component
 built, each with: its responsibility, how it interacts with other components, and key data it owns or
 processes. Ground this in the project's own scope, recommended technology, and architecture notes — do not
 invent an unrelated tech stack or components with no basis in the given context.
+
+Then produce a simple Mermaid diagram (flowchart TD syntax) showing those same key components/layers and
+how they connect — e.g. client, API/backend, database, external integrations, based on the recommended
+technology. Keep it to 5-12 nodes with short labels and simple arrows (A --> B). Use only valid Mermaid
+"flowchart TD" syntax with alphanumeric node ids and labels in square brackets, e.g.:
+flowchart TD
+  A[Web Client] --> B[API Server]
+  B --> C[(Database)]
+Do not include markdown code fences, just the raw Mermaid syntax starting with "flowchart TD". The diagram
+must depict the SAME components described in the content below — don't introduce new ones only in one place.
+
 Respond as JSON: { "title": string, "content": string (the full document as plain text: an overview paragraph,
 then one section per key component with its responsibility/interactions/data, then a brief data flow
-summary) }.`,
+summary), "diagram": string (raw Mermaid flowchart TD syntax, no code fences) }.`,
 
   FUNCTIONAL_TEST_SCRIPT: `You are writing a Functional Test Script for the CONFIRMED scope of a project, based
 on its requirements/scope and task list below. Produce concrete, executable test cases that verify the
@@ -145,7 +156,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ...created, testCases }, { status: 201 });
   }
 
-  const { data, error } = await askClaudeJSON<{ title: string; content: string }>(system, userPrompt, 6000);
+  const { data, error } = await askClaudeJSON<{ title: string; content: string; diagram?: string }>(system, userPrompt, 6000);
   if (error || !data) return NextResponse.json({ error: error || "No response from the AI model" }, { status: 502 });
 
   const [created] = await db
@@ -155,6 +166,7 @@ export async function POST(req: NextRequest) {
       type: deliverableType,
       title: data.title || DEFAULT_TITLES[deliverableType],
       content: data.content,
+      diagram: deliverableType === "DESIGN" ? data.diagram || null : null,
       createdByAi: true,
       createdBy: user.name,
     })

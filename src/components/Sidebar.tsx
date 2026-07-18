@@ -17,6 +17,7 @@ import {
   Building2,
   FileSearch,
   TrendingUp,
+  Compass,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
@@ -68,6 +69,7 @@ export default function Sidebar({ user, open }: { user: SessionUser | null; open
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         <NavLink href="/home" icon={<Home size={17} />} pathname={pathname}>Home</NavLink>
         <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
+        <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Keel Works</NavLink>
 
         <NavSection label="Project Lifecycle">
           <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>

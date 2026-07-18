@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Avatar from "./Avatar";
-import { Send, X, Sparkles, Volume2, VolumeX, Square, FolderPlus, FileSearch } from "lucide-react";
+import { Send, X, Sparkles, Volume2, VolumeX, Square, FolderPlus, FileSearch, ListChecks } from "lucide-react";
 
 const GREETING = "Hi, I'm your AI PM. What are you looking to do today?";
 // Sticks for the length of the browser tab's session (cleared when the tab closes, not
@@ -12,6 +12,13 @@ const GREETED_KEY = "keel.assistantGreeted";
 
 export default function AvatarAssistant() {
   const router = useRouter();
+  const pathname = usePathname();
+  // Present on every page, but not equally helpful everywhere by default — when the current
+  // page is a specific project, route questions to the project-scoped assistant (grounded in
+  // that project's own charter/tasks/risks/SOWs/deliverables) instead of the portfolio-wide
+  // one, so "what's blocking us" actually means THIS project, not the whole portfolio.
+  const projectMatch = pathname?.match(/^\/projects\/([^/?#]+)/);
+  const activeProjectId = projectMatch ? projectMatch[1] : null;
   const [open, setOpen] = useState(false);
   const [gender, setGender] = useState<"female" | "male">("female");
   const [speaking, setSpeaking] = useState(false);
@@ -115,13 +122,15 @@ export default function AvatarAssistant() {
     if (!q.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/ai/ask", {
+      const endpoint = activeProjectId ? "/api/ai/project-chat" : "/api/ai/ask";
+      const body = activeProjectId ? { projectId: activeProjectId, question: q } : { question: q };
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      speak(data.answer ?? "I couldn't find an answer for that.");
+      speak(data.answer ?? data.error ?? "I couldn't find an answer for that.");
     } finally {
       setLoading(false);
       setQuestion("");
@@ -197,32 +206,53 @@ export default function AvatarAssistant() {
       </div>
 
       <div className="px-4 pb-3 flex gap-2 flex-wrap">
-        <button
-          onClick={() => ask("Give me a quick spoken status update on the whole portfolio.")}
-          disabled={loading}
-          className="text-xs px-2.5 py-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 flex items-center gap-1"
-        >
-          <Sparkles size={12} /> Brief me
-        </button>
-        <button
-          onClick={() => ask("What needs my attention right now?")}
-          disabled={loading}
-          className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
-        >
-          What needs attention?
-        </button>
-        <button
-          onClick={() => router.push("/projects/new")}
-          className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1"
-        >
-          <FolderPlus size={12} /> Start a project
-        </button>
-        <button
-          onClick={() => router.push("/vendor-evaluation")}
-          className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1"
-        >
-          <FileSearch size={12} /> Draft an RFP
-        </button>
+        {activeProjectId ? (
+          <>
+            <button
+              onClick={() => ask("Summarize the current status of this project, highlighting anything that needs attention.")}
+              disabled={loading}
+              className="text-xs px-2.5 py-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 flex items-center gap-1"
+            >
+              <Sparkles size={12} /> Summarize this project
+            </button>
+            <button
+              onClick={() => ask("What's blocking progress on this project right now?")}
+              disabled={loading}
+              className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50 flex items-center gap-1"
+            >
+              <ListChecks size={12} /> What&apos;s blocking us?
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => ask("Give me a quick spoken status update on the whole portfolio.")}
+              disabled={loading}
+              className="text-xs px-2.5 py-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 flex items-center gap-1"
+            >
+              <Sparkles size={12} /> Brief me
+            </button>
+            <button
+              onClick={() => ask("What needs my attention right now?")}
+              disabled={loading}
+              className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+            >
+              What needs attention?
+            </button>
+            <button
+              onClick={() => router.push("/projects/new")}
+              className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1"
+            >
+              <FolderPlus size={12} /> Start a project
+            </button>
+            <button
+              onClick={() => router.push("/vendor-evaluation")}
+              className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1"
+            >
+              <FileSearch size={12} /> Draft an RFP
+            </button>
+          </>
+        )}
       </div>
 
       <form
@@ -235,7 +265,7 @@ export default function AvatarAssistant() {
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask your AI PM..."
+          placeholder={activeProjectId ? "Ask about this project..." : "Ask your AI PM..."}
           className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
         <button type="submit" disabled={loading} className="px-3 py-2 rounded-lg bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 transition-colors disabled:opacity-50">

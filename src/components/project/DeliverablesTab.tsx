@@ -8,6 +8,8 @@ import {
   Gauge, CheckCircle2, AlertTriangle, XCircle, ListChecks, FileDown, Paperclip, Upload, X,
 } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+import MermaidDiagram from "@/components/MermaidDiagram";
+import { renderMermaidToImages } from "@/lib/mermaidToImage";
 
 type TestCase = {
   id: string;
@@ -27,6 +29,7 @@ type Deliverable = {
   type: string;
   title: string;
   content: string | null;
+  diagram: string | null;
   status: string;
   createdByAi: boolean;
   createdBy: string | null;
@@ -116,6 +119,8 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
 
   const [uploadingSignedFor, setUploadingSignedFor] = useState<string | null>(null);
   const [signedDocError, setSignedDocError] = useState<string | null>(null);
+
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -312,6 +317,35 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
     );
   }
 
+  // Diagram-aware Word download: if this deliverable has a Mermaid diagram (Detailed Design),
+  // render it to SVG+PNG client-side (Mermaid needs a DOM, can't run on the server) and POST
+  // it along so the server can embed an actual picture; otherwise a plain GET would do, but
+  // using the same POST path keeps this one code path instead of two.
+  async function downloadWord(d: Deliverable) {
+    setDownloadingId(d.id);
+    try {
+      const diagram = d.diagram?.trim() ? await renderMermaidToImages(d.diagram) : null;
+      const res = await fetch(`/api/deliverables/${d.id}/docx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diagram }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const slug = d.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "deliverable";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   const hasTestData = readinessCounts && readinessCounts.total > 0;
 
   return (
@@ -424,13 +458,14 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                     </div>
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
-                    <a
-                      href={`/api/deliverables/${d.id}/docx`}
-                      className="text-slate-400 hover:text-indigo-600"
+                    <button
+                      onClick={() => downloadWord(d)}
+                      disabled={downloadingId === d.id}
+                      className="text-slate-400 hover:text-indigo-600 disabled:opacity-50"
                       title="Download as Word document"
                     >
-                      <FileDown size={14} />
-                    </a>
+                      {downloadingId === d.id ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+                    </button>
                     {canEdit ? (
                       <select
                         value={d.status}
@@ -467,6 +502,18 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                       />
                     ) : (
                       <div>
+                        {d.type === "DESIGN" && (
+                          <div className="mb-3">
+                            <p className="text-xs font-medium text-slate-500 mb-1">Architecture diagram</p>
+                            {d.diagram ? (
+                              <MermaidDiagram chart={d.diagram} />
+                            ) : (
+                              <p className="text-xs text-slate-400">
+                                No diagram yet — regenerate this deliverable with AI to add one.
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <p className="text-xs font-medium text-slate-500 mb-1 flex items-center gap-1"><FileText size={12} /> Content</p>
                         {canEdit ? (
                           <textarea

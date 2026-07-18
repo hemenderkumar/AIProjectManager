@@ -1,6 +1,35 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, ImageRun } from "docx";
 
 const BRAND_COLOR = "4F46E5"; // indigo-600, matching the app's accent color
+
+// A diagram rendered client-side (Mermaid needs a DOM — see lib/mermaidToImage.ts) and handed
+// to the server as both raw SVG and a rasterized PNG. docx supports embedding an SVG directly
+// as long as a PNG fallback is provided (Word's own SVG rendering is inconsistent across
+// versions), so both get passed straight through to ImageRun below — no server-side rendering
+// of any kind is needed.
+export type DiagramImage = { svgBase64: string; pngBase64: string; width: number; height: number };
+
+function diagramParagraph(diagram: DiagramImage): Paragraph {
+  const maxDocWidth = 500; // points — fits within a standard page's margins
+  let width = diagram.width;
+  let height = diagram.height;
+  if (width > maxDocWidth) {
+    height = Math.round((height / width) * maxDocWidth);
+    width = maxDocWidth;
+  }
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 200 },
+    children: [
+      new ImageRun({
+        type: "svg",
+        data: Buffer.from(diagram.svgBase64, "base64"),
+        fallback: { type: "png", data: Buffer.from(diagram.pngBase64, "base64") },
+        transformation: { width, height },
+      }),
+    ],
+  });
+}
 
 function bodyParagraphs(text: string): Paragraph[] {
   const lines = text.split("\n");
@@ -38,12 +67,16 @@ function titleBlock(title: string, subtitle?: string): Paragraph[] {
 
 // A plain document made of a title + a series of labeled sections — used for the SOW export
 // and the three narrative deliverable types (Requirements/NFR, Design, Release Documentation).
+// `diagram`, when given (Detailed Design only), is inserted as an actual picture right after
+// the section whose heading matches `diagramAfterHeading` (defaults to the first section).
 export async function buildSectionedDocx(
   title: string,
   subtitle: string,
-  sections: { heading: string; body: string }[]
+  sections: { heading: string; body: string }[],
+  diagram?: DiagramImage | null,
+  diagramAfterHeading?: string
 ): Promise<Buffer> {
-  const children: Paragraph[] = [...titleBlock(title, subtitle)];
+  const children: (Paragraph | Table)[] = [...titleBlock(title, subtitle)];
 
   for (const section of sections) {
     if (!section.body?.trim()) continue;
@@ -55,6 +88,17 @@ export async function buildSectionedDocx(
       })
     );
     children.push(...bodyParagraphs(section.body));
+
+    if (diagram && section.heading === (diagramAfterHeading ?? sections[0]?.heading)) {
+      children.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_3,
+          children: [new TextRun({ text: "Architecture Diagram", color: BRAND_COLOR })],
+          spacing: { before: 100, after: 100 },
+        })
+      );
+      children.push(diagramParagraph(diagram));
+    }
   }
 
   const doc = new Document({ sections: [{ children }] });

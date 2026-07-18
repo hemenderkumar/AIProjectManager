@@ -52,6 +52,7 @@ export async function POST(
       type: body.type,
       title: body.title.trim(),
       content: body.content || null,
+      diagram: body.diagram || null,
       createdByAi: false,
       createdBy: user.name,
     })

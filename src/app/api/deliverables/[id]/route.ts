@@ -42,6 +42,7 @@ export async function PATCH(
   const update: Record<string, unknown> = { updatedAt: new Date() };
   if (body.title !== undefined) update.title = body.title;
   if (body.content !== undefined) update.content = body.content;
+  if (body.diagram !== undefined) update.diagram = body.diagram;
   if (body.status !== undefined) update.status = body.status;
   // Approval is a real moment worth recording, not just another status edit — always stamped
   // from the acting user server-side, never client-supplied, so it can't be spoofed.
