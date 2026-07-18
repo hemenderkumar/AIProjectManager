@@ -1,6 +1,28 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, ImageRun } from "docx";
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  BorderStyle,
+  AlignmentType,
+  ImageRun,
+  Header,
+  Footer,
+  PageNumber,
+  PageBreak,
+  TableOfContents,
+  TabStopType,
+  TabStopPosition,
+} from "docx";
 
 const BRAND_COLOR = "4F46E5"; // indigo-600, matching the app's accent color
+const MUTED = "64748B";
+const HAIRLINE = "E2E8F0";
 
 // A diagram rendered client-side (Mermaid needs a DOM — see lib/mermaidToImage.ts) and handed
 // to the server as both raw SVG and a rasterized PNG. docx supports embedding an SVG directly
@@ -8,6 +30,32 @@ const BRAND_COLOR = "4F46E5"; // indigo-600, matching the app's accent color
 // versions), so both get passed straight through to ImageRun below — no server-side rendering
 // of any kind is needed.
 export type DiagramImage = { svgBase64: string; pngBase64: string; width: number; height: number };
+
+// Everything about a document's identity and provenance that the old plain "title + subtitle"
+// couldn't carry — used to build the cover page, running header/footer, and revision-history
+// page. `companyName` is the whole branding decision: set (the project has a client company on
+// it) means the document is produced FOR that company and leads with their name; null (an
+// internal-only project) means it leads with Keel's own name instead. Nothing here requires a
+// schema change — every field is already on the project/deliverable/sow rows.
+export type DocMeta = {
+  documentType: string; // e.g. "Deliverable — Detailed Design" or "Statement of Work"
+  projectName: string;
+  companyName: string | null;
+  status: string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  approvedBy?: string | null;
+  approvedAt?: Date | null;
+};
+
+function fmtDate(d: Date | null | undefined): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+}
+
+function brandName(meta: DocMeta): string {
+  return meta.companyName?.trim() || "Keel";
+}
 
 function diagramParagraph(diagram: DiagramImage): Paragraph {
   const maxDocWidth = 500; // points — fits within a standard page's margins
@@ -42,27 +90,166 @@ function bodyParagraphs(text: string): Paragraph[] {
   );
 }
 
-function titleBlock(title: string, subtitle?: string): Paragraph[] {
-  const blocks = [
+function pageBreak(): Paragraph {
+  return new Paragraph({ children: [new PageBreak()] });
+}
+
+// The cover page — its own un-numbered, header/footer-free section so it reads as a title
+// page rather than "page 1" of the running document. Leads with the company's name when the
+// project has one, otherwise Keel's; either way a small "Prepared with Keel" credit keeps the
+// tool attributed without competing with whichever name is the actual headline.
+function coverPageChildren(title: string, subtitle: string, meta: DocMeta): Paragraph[] {
+  const brand = brandName(meta);
+  const confidentiality = meta.companyName
+    ? `Confidential — prepared for ${meta.companyName}`
+    : "Confidential — internal use only";
+
+  const children: Paragraph[] = [
+    new Paragraph({ spacing: { before: 1400 } }),
     new Paragraph({
-      children: [new TextRun({ text: "Keel", bold: true, color: BRAND_COLOR, size: 20 })],
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: brand, bold: true, color: BRAND_COLOR, size: 32 })],
+      spacing: { after: 320 },
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      heading: HeadingLevel.TITLE,
+      children: [new TextRun({ text: title })],
+      spacing: { after: 160 },
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: subtitle, color: MUTED, size: 24 })],
       spacing: { after: 80 },
     }),
     new Paragraph({
-      heading: HeadingLevel.TITLE,
-      children: [new TextRun({ text: title })],
-      spacing: { after: subtitle ? 60 : 240 },
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: meta.projectName, color: MUTED, size: 22 })],
+      spacing: { after: 640 },
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: confidentiality, italics: true, color: MUTED, size: 20 })],
+      spacing: { after: 60 },
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: `Generated ${fmtDate(new Date())}`, color: MUTED, size: 20 })],
     }),
   ];
-  if (subtitle) {
-    blocks.push(
+  if (meta.companyName) {
+    children.push(
       new Paragraph({
-        children: [new TextRun({ text: subtitle, color: "64748B", size: 20 })],
-        spacing: { after: 240 },
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 1000 },
+        children: [new TextRun({ text: "Prepared with Keel", color: "94A3B8", size: 16 })],
       })
     );
   }
-  return blocks;
+  return children;
+}
+
+// A real Word TOC field (not a hand-built list) — Word populates/updates it from the document's
+// Heading 1-3 paragraphs when the reader opens the file (or hits F9 / "Update Field"), which is
+// why every section heading below still uses HeadingLevel.HEADING_2: that's what the field scans.
+function tocChildren(): (Paragraph | TableOfContents)[] {
+  return [
+    new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "Table of Contents", color: BRAND_COLOR })] }),
+    new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-3" }),
+  ];
+}
+
+// A lightweight change/revision-history page built from timestamps and approval fields that
+// already exist on every deliverable/SOW row — no version-number column exists in the schema,
+// so this infers a sensible 2-3 row history (created, revised if meaningfully edited since,
+// approved) rather than requiring a migration to add real version tracking.
+function revisionHistoryChildren(meta: DocMeta): (Paragraph | Table)[] {
+  const rows: { version: string; date: string; note: string }[] = [];
+  if (meta.createdAt) rows.push({ version: "1.0", date: fmtDate(meta.createdAt), note: "Initial draft created" });
+  const revisedMeaningfully =
+    meta.updatedAt && meta.createdAt && meta.updatedAt.getTime() - meta.createdAt.getTime() > 60_000;
+  if (revisedMeaningfully) rows.push({ version: "1.x", date: fmtDate(meta.updatedAt), note: "Content revised" });
+  if (meta.approvedBy) rows.push({ version: "Final", date: fmtDate(meta.approvedAt), note: `Approved by ${meta.approvedBy}` });
+  if (rows.length === 0) rows.push({ version: "1.0", date: fmtDate(new Date()), note: "Initial draft created" });
+
+  const headerCell = (text: string) =>
+    new TableCell({
+      shading: { fill: "EEF2FF" },
+      children: [new Paragraph({ children: [new TextRun({ text, bold: true, size: 19 })] })],
+    });
+  const cell = (text: string) => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text, size: 19 })] })] });
+
+  const table = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      left: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      right: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+    },
+    rows: [
+      new TableRow({ tableHeader: true, children: ["Version", "Date", "Change"].map(headerCell) }),
+      ...rows.map((r) => new TableRow({ children: [cell(r.version), cell(r.date), cell(r.note)] })),
+    ],
+  });
+
+  return [
+    new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "Revision History", color: BRAND_COLOR })], spacing: { after: 160 } }),
+    table,
+  ];
+}
+
+function documentHeader(meta: DocMeta, title: string): Header {
+  return new Header({
+    children: [
+      new Paragraph({
+        tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+        border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: HAIRLINE, space: 4 } },
+        children: [
+          new TextRun({ text: brandName(meta), bold: true, color: BRAND_COLOR, size: 16 }),
+          new TextRun({ text: `\t${title}`, color: MUTED, size: 16 }),
+        ],
+      }),
+    ],
+  });
+}
+
+function documentFooter(meta: DocMeta): Footer {
+  return new Footer({
+    children: [
+      new Paragraph({
+        tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+        children: [
+          new TextRun({ text: meta.projectName, color: "94A3B8", size: 16 }),
+          new TextRun({ text: "\tPage ", color: "94A3B8", size: 16 }),
+          new TextRun({ children: [PageNumber.CURRENT], color: "94A3B8", size: 16 }),
+          new TextRun({ text: " of ", color: "94A3B8", size: 16 }),
+          new TextRun({ children: [PageNumber.TOTAL_PAGES], color: "94A3B8", size: 16 }),
+        ],
+      }),
+    ],
+  });
+}
+
+// Assembles the full formal shell — cover (own section, no header/footer/page number) followed
+// by one continuous, numbered section holding the TOC, revision history, and the actual content
+// passed in by the caller. This is what both buildSectionedDocx and buildTestCaseDocx build on.
+type DocChild = Paragraph | Table | TableOfContents;
+
+function formalDocument(title: string, subtitle: string, meta: DocMeta, contentChildren: DocChild[]): Document {
+  return new Document({
+    sections: [
+      { properties: {}, children: coverPageChildren(title, subtitle, meta) },
+      {
+        properties: { titlePage: false },
+        headers: { default: documentHeader(meta, title) },
+        footers: { default: documentFooter(meta) },
+        children: [...tocChildren(), pageBreak(), ...revisionHistoryChildren(meta), pageBreak(), ...contentChildren],
+      },
+    ],
+  });
 }
 
 // A plain document made of a title + a series of labeled sections — used for the SOW export
@@ -73,10 +260,11 @@ export async function buildSectionedDocx(
   title: string,
   subtitle: string,
   sections: { heading: string; body: string }[],
+  meta: DocMeta,
   diagram?: DiagramImage | null,
   diagramAfterHeading?: string
 ): Promise<Buffer> {
-  const children: (Paragraph | Table)[] = [...titleBlock(title, subtitle)];
+  const children: DocChild[] = [];
 
   for (const section of sections) {
     if (!section.body?.trim()) continue;
@@ -101,7 +289,7 @@ export async function buildSectionedDocx(
     }
   }
 
-  const doc = new Document({ sections: [{ children }] });
+  const doc = formalDocument(title, subtitle, meta, children);
   return Packer.toBuffer(doc);
 }
 
@@ -110,6 +298,7 @@ export async function buildSectionedDocx(
 export async function buildTestCaseDocx(
   title: string,
   subtitle: string,
+  meta: DocMeta,
   testCases: {
     sequence: number;
     scenario: string;
@@ -157,28 +346,22 @@ export async function buildTestCaseDocx(
   const table = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
-      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "E2E8F0" },
+      top: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      left: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      right: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
+      insideVertical: { style: BorderStyle.SINGLE, size: 1, color: HAIRLINE },
     },
     rows: [headerRow, ...rows],
   });
 
-  const children = [...titleBlock(title, subtitle)];
-  if (testCases.length === 0) {
-    children.push(new Paragraph({ children: [new TextRun({ text: "No test cases yet.", color: "94A3B8" })] }));
-  }
+  const children: DocChild[] =
+    testCases.length === 0
+      ? [new Paragraph({ children: [new TextRun({ text: "No test cases yet.", color: "94A3B8" })] })]
+      : [new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: "Test Cases", color: BRAND_COLOR })], spacing: { after: 100 } }), table];
 
-  const doc = new Document({
-    sections: [
-      {
-        children: testCases.length > 0 ? [...children, new Paragraph({ children: [], spacing: { after: 0 } }), table] : children,
-      },
-    ],
-  });
+  const doc = formalDocument(title, subtitle, meta, children);
   return Packer.toBuffer(doc);
 }
 

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { deliverables, deliverableTestCases } from "@/lib/db/schema";
+import { deliverables, deliverableTestCases, projects, organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
-import { buildSectionedDocx, buildTestCaseDocx, docxHeaders, type DiagramImage } from "@/lib/docxExport";
+import { buildSectionedDocx, buildTestCaseDocx, docxHeaders, type DiagramImage, type DocMeta } from "@/lib/docxExport";
 
 const TEST_TYPES = new Set(["FUNCTIONAL_TEST_SCRIPT", "UAT_SCRIPT"]);
 
@@ -18,14 +18,44 @@ const TYPE_LABELS: Record<string, string> = {
 
 type DeliverableRow = typeof deliverables.$inferSelect;
 
+// Company vs Keel branding: a project's organizationId is the client company it's for (null =
+// internal-only, per the schema comment on projects.organizationId) — that's the whole decision,
+// no separate "company" concept or logo/branding table exists. Resolved fresh per export rather
+// than cached, so renaming a company or moving a project to a different one is picked up
+// immediately without needing to regenerate anything by hand.
+async function loadDocMeta(d: DeliverableRow, typeLabel: string): Promise<DocMeta> {
+  const [project] = await db
+    .select({ name: projects.name, organizationId: projects.organizationId })
+    .from(projects)
+    .where(eq(projects.id, d.projectId));
+
+  let companyName: string | null = null;
+  if (project?.organizationId) {
+    const [org] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, project.organizationId));
+    companyName = org?.name ?? null;
+  }
+
+  return {
+    documentType: `Deliverable — ${typeLabel}`,
+    projectName: project?.name ?? "Untitled Project",
+    companyName,
+    status: d.status,
+    createdAt: d.createdAt,
+    updatedAt: d.updatedAt,
+    approvedBy: d.approvedBy,
+    approvedAt: d.approvedAt,
+  };
+}
+
 async function renderDocx(d: DeliverableRow, diagram: DiagramImage | null): Promise<{ buffer: Buffer; slug: string }> {
-  const subtitle = `${TYPE_LABELS[d.type] ?? d.type} — status: ${d.status.replace("_", " ")}`;
+  const typeLabel = TYPE_LABELS[d.type] ?? d.type;
+  const meta = await loadDocMeta(d, typeLabel);
   const slug = d.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "deliverable";
 
   let buffer: Buffer;
   if (TEST_TYPES.has(d.type)) {
     const testCases = await db.select().from(deliverableTestCases).where(eq(deliverableTestCases.deliverableId, d.id));
-    buffer = await buildTestCaseDocx(d.title, subtitle, testCases);
+    buffer = await buildTestCaseDocx(d.title, typeLabel, meta, testCases);
   } else {
     const sections = [
       { heading: "Content", body: d.content ?? "" },
@@ -34,7 +64,7 @@ async function renderDocx(d: DeliverableRow, diagram: DiagramImage | null): Prom
         body: d.approvedBy ? `Approved by ${d.approvedBy} on ${d.approvedAt?.toLocaleDateString()}` : "Not yet approved.",
       },
     ];
-    buffer = await buildSectionedDocx(d.title, subtitle, sections, diagram, "Content");
+    buffer = await buildSectionedDocx(d.title, typeLabel, sections, meta, diagram, "Content");
   }
   return { buffer, slug };
 }

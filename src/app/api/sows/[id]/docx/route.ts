@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sows } from "@/lib/db/schema";
+import { sows, projects, organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
-import { buildSectionedDocx, docxHeaders } from "@/lib/docxExport";
+import { buildSectionedDocx, docxHeaders, type DocMeta } from "@/lib/docxExport";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -13,7 +13,29 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const user = await requireProjectAccess("VIEWER", sow.projectId);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const subtitle = `Statement of Work with ${sow.vendorName} — status: ${sow.status.replace("_", " ")}`;
+  // Company vs Keel branding: a project's organizationId is the client company it's for (null =
+  // internal-only) — see the matching comment in the deliverables docx route.
+  const [project] = await db
+    .select({ name: projects.name, organizationId: projects.organizationId })
+    .from(projects)
+    .where(eq(projects.id, sow.projectId));
+  let companyName: string | null = null;
+  if (project?.organizationId) {
+    const [org] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, project.organizationId));
+    companyName = org?.name ?? null;
+  }
+  const meta: DocMeta = {
+    documentType: "Statement of Work",
+    projectName: project?.name ?? "Untitled Project",
+    companyName,
+    status: sow.status,
+    createdAt: sow.createdAt,
+    updatedAt: sow.updatedAt,
+    approvedBy: sow.approvedBy,
+    approvedAt: sow.approvedAt,
+  };
+
+  const subtitle = `Statement of Work with ${sow.vendorName}`;
   const sections = [
     { heading: "Scope", body: sow.scope ?? "" },
     { heading: "Deliverables", body: sow.deliverablesSummary ?? "" },
@@ -37,7 +59,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     },
   ];
 
-  const buffer = await buildSectionedDocx(sow.title, subtitle, sections);
+  const buffer = await buildSectionedDocx(sow.title, subtitle, sections, meta);
   const slug = sow.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "sow";
   return new NextResponse(new Uint8Array(buffer), { headers: docxHeaders(`${slug}.docx`) });
 }
