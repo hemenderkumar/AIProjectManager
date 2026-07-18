@@ -5,6 +5,7 @@ import { getAllProjectsWithMetrics } from "@/lib/portfolio";
 import { getCurrentUser } from "@/lib/auth";
 import { PlusCircle } from "lucide-react";
 import ExportButtons from "@/components/ExportButtons";
+import DownloadPdfLink from "@/components/DownloadPdfLink";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,12 @@ export default async function ProjectsPage() {
         subtitle={`${projects.length} total projects`}
         action={
           <div className="flex items-center gap-2">
+            <DownloadPdfLink
+              href="/api/deliverables/export-all"
+              filename={`keel-deliverables-${new Date().toISOString().slice(0, 10)}.zip`}
+              label="Export all deliverables (.zip)"
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            />
             <ExportButtons endpoint="/api/reports/projects" filenamePrefix="projects" />
             <Link
               href="/projects/new"
