@@ -21,6 +21,7 @@ type Registration = {
   email: string;
   companyName: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  resultingUserId: string | null;
   requestedAt: string;
 };
 
@@ -81,11 +82,14 @@ export default function AdminPage() {
     load();
   }
 
-  async function rejectRegistration(id: string) {
-    if (!confirm("Reject this registration request? They won't be able to log in.")) return;
-    setRegActionId(id);
+  async function rejectRegistration(reg: Registration) {
+    const confirmText = reg.resultingUserId
+      ? "This person already has an active account — reject will disable their login immediately. Continue?"
+      : "Reject this registration request? They won't be able to log in.";
+    if (!confirm(confirmText)) return;
+    setRegActionId(reg.id);
     setRegError(null);
-    const res = await fetch(`/api/admin/registrations/${id}/reject`, { method: "POST" });
+    const res = await fetch(`/api/admin/registrations/${reg.id}/reject`, { method: "POST" });
     setRegActionId(null);
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -315,10 +319,11 @@ export default function AdminPage() {
               </p>
             </div>
             <p className="text-xs text-slate-400 mb-3">
-              Requests submitted from the public sign-up page. Approving creates their login —
-              individuals get their own organization (you can remap them to a real company below
-              anytime); company owners get a new organization with them as its SUPER_USER. Add
-              them to specific projects afterward from that project&apos;s Team access section.
+              Individuals are auto-provisioned and can already log in — they can&apos;t see
+              anyone else&apos;s data until added to a project, so this list is for visibility
+              and catching anything that looks wrong, not a gate. Company-owner requests are
+              still fully gated: nothing is created (no organization, no login) until you
+              approve. Add anyone to specific projects from that project&apos;s Team access section.
             </p>
             {regError && <p className="text-xs text-rose-600 mb-3">{regError}</p>}
             <div className="space-y-2">
@@ -329,7 +334,12 @@ export default function AdminPage() {
                       {r.name}{" "}
                       <span className="text-xs font-normal text-slate-400">
                         ({r.type === "COMPANY_OWNER" ? `company owner — ${r.companyName}` : "individual"})
-                      </span>
+                      </span>{" "}
+                      {r.resultingUserId ? (
+                        <span className="text-xs font-medium bg-emerald-50 text-emerald-700 rounded-full px-2 py-0.5">Active — can log in</span>
+                      ) : (
+                        <span className="text-xs font-medium bg-amber-50 text-amber-700 rounded-full px-2 py-0.5">No login yet</span>
+                      )}
                     </p>
                     <p className="text-xs text-slate-400">
                       {r.email} · requested {new Date(r.requestedAt).toLocaleDateString()}
@@ -341,14 +351,14 @@ export default function AdminPage() {
                       disabled={regActionId === r.id}
                       className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                     >
-                      <Check size={13} /> Approve
+                      <Check size={13} /> {r.resultingUserId ? "Confirm" : "Approve"}
                     </button>
                     <button
-                      onClick={() => rejectRegistration(r.id)}
+                      onClick={() => rejectRegistration(r)}
                       disabled={regActionId === r.id}
                       className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-600 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
                     >
-                      <X size={13} /> Reject
+                      <X size={13} /> {r.resultingUserId ? "Disable" : "Reject"}
                     </button>
                   </div>
                 </div>

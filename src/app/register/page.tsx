@@ -47,19 +47,25 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
         {submitted ? (
           <div className="text-center py-2">
-            <p className="text-sm font-semibold text-slate-900 mb-2">Request submitted</p>
+            <p className="text-sm font-semibold text-slate-900 mb-2">
+              {type === "INDIVIDUAL" ? "You're in" : "Request submitted"}
+            </p>
             <p className="text-xs text-slate-500">
-              Thanks — an admin will review your request. You&apos;ll be able to log in once it&apos;s approved.
+              {type === "INDIVIDUAL"
+                ? "Your account is ready — log in now with the email and password you just set. An admin will still review the request, but that won't affect your access."
+                : "Thanks — an admin needs to review this before your company's account is created. You'll be able to log in once it's approved."}
             </p>
             <Link href="/login" className="inline-block mt-4 text-xs font-medium text-accent-600 hover:text-accent-700">
-              Back to login
+              {type === "INDIVIDUAL" ? "Log in now" : "Back to login"}
             </Link>
           </div>
         ) : (
           <>
             <p className="text-sm font-semibold text-slate-900 mb-1">Request access to Keel</p>
             <p className="text-xs text-slate-400 mb-4">
-              Your request goes to an admin for approval before you can log in.
+              {type === "INDIVIDUAL"
+                ? "You'll be able to log in right away — an admin reviews new individual accounts afterward, but it won't hold up your access."
+                : "Creating a company account needs admin approval first — you'll be able to log in once it's approved."}
             </p>
 
             <div className="flex rounded-lg border border-slate-200 p-0.5 mb-4 text-xs font-medium">

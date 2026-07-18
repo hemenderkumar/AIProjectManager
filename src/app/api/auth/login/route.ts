@@ -29,6 +29,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
+  if (user.disabledAt) {
+    return NextResponse.json(
+      { error: "This account has been disabled. Contact your Keel administrator if you think this is a mistake." },
+      { status: 403 }
+    );
+  }
+
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });

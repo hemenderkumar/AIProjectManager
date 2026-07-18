@@ -15,6 +15,7 @@ export async function GET() {
       email: registrationRequests.email,
       companyName: registrationRequests.companyName,
       status: registrationRequests.status,
+      resultingUserId: registrationRequests.resultingUserId,
       requestedAt: registrationRequests.requestedAt,
       reviewedAt: registrationRequests.reviewedAt,
       reviewedBy: registrationRequests.reviewedBy,

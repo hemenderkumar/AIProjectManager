@@ -20,6 +20,27 @@ export async function POST(
     return NextResponse.json({ error: "This request has already been reviewed." }, { status: 409 });
   }
 
+  // INDIVIDUAL requests already have their user + personal organization created at
+  // registration time (see /api/auth/register) — this row is only here for admin visibility.
+  // "Approving" one just marks it reviewed; there is no account left to create.
+  if (request.type === "INDIVIDUAL" && request.resultingUserId) {
+    await db
+      .update(registrationRequests)
+      .set({ status: "APPROVED", reviewedAt: new Date(), reviewedBy: admin.name })
+      .where(eq(registrationRequests.id, id));
+
+    await logAudit({
+      actor: admin,
+      action: "registration.approved",
+      entityType: "user",
+      entityId: request.resultingUserId,
+      organizationId: request.resultingOrganizationId,
+      detail: `${admin.name} reviewed and confirmed the auto-provisioned individual account for ${request.name} (${request.email}).`,
+    });
+
+    return NextResponse.json({ ok: true }, { status: 200 });
+  }
+
   const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, request.email));
   if (existingUser) {
     return NextResponse.json({ error: "An account with this email already exists. Reject this request instead." }, { status: 409 });

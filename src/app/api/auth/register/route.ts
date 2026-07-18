@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { registrationRequests, users } from "@/lib/db/schema";
+import { registrationRequests, users, organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 
-// Public — no login required. Submitting this never grants access by itself: it only queues
-// a request that an ADMIN must approve from the Admin page (see
-// /api/admin/registrations/[id]/approve) before any real `users` row exists.
+// Public — no login required.
+//
+// COMPANY_OWNER requests never grant access by themselves: this only queues a request that
+// an ADMIN must approve (see /api/admin/registrations/[id]/approve) before any real `users`
+// row — and the brand-new organization/tenant that comes with it — exists.
+//
+// INDIVIDUAL requests are auto-provisioned immediately: the resulting account can't see
+// anyone else's data until a PM/admin explicitly adds them to a project, so there is nothing
+// sensitive for a waiting period to protect. The request row still gets created (status
+// PENDING) purely so an admin can see it and, if it looks wrong, disable the account via
+// reject — but the person can log in right away.
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const type = body.type === "COMPANY_OWNER" ? "COMPANY_OWNER" : "INDIVIDUAL";
@@ -44,6 +52,25 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await hashPassword(password);
+
+  // INDIVIDUAL only: create the personal organization + real user row right now, same shape
+  // as the admin approve route creates for one — see the file-level comment for why this is
+  // safe to do without waiting on a human. A lightweight, invisible-to-them "personal"
+  // organization keeps organizationId non-null (isInternalStaff() in tenancy.ts treats
+  // organizationId === null as internal Keel staff, which would wrongly grant Resources/
+  // Rate Cards/Admin access). An admin can still re-map them to a real company later.
+  let resultingUserId: string | null = null;
+  let resultingOrganizationId: string | null = null;
+  if (type === "INDIVIDUAL") {
+    const [org] = await db.insert(organizations).values({ name: `${name} (Individual)` }).returning();
+    const [createdUser] = await db
+      .insert(users)
+      .values({ name, email, passwordHash, role: "CONTRIBUTOR", organizationId: org.id })
+      .returning({ id: users.id });
+    resultingUserId = createdUser.id;
+    resultingOrganizationId = org.id;
+  }
+
   const [created] = await db
     .insert(registrationRequests)
     .values({
@@ -52,6 +79,8 @@ export async function POST(req: NextRequest) {
       email,
       passwordHash,
       companyName: type === "COMPANY_OWNER" ? companyName : null,
+      resultingUserId,
+      resultingOrganizationId,
     })
     .returning({ id: registrationRequests.id });
 
@@ -60,17 +89,13 @@ export async function POST(req: NextRequest) {
   const admins = await db.select({ email: users.email }).from(users).where(eq(users.role, "ADMIN"));
   const summary =
     type === "COMPANY_OWNER"
-      ? `${name} (${email}) requested a company-owner account for "${companyName}".`
-      : `${name} (${email}) requested an individual account.`;
+      ? `${name} (${email}) requested a company-owner account for "${companyName}" and is awaiting approval.`
+      : `${name} (${email}) registered as an individual and can already log in — review it from Admin > Pending Registrations.`;
   await Promise.all(
     admins.map((a) =>
-      sendEmail(
-        a.email,
-        "New Keel registration awaiting approval",
-        `${summary}\n\nReview it from Admin > Pending Registrations.`
-      ).catch(() => false)
+      sendEmail(a.email, "New Keel registration", `${summary}\n\nReview it from Admin > Pending Registrations.`).catch(() => false)
     )
   );
 
-  return NextResponse.json({ id: created.id }, { status: 201 });
+  return NextResponse.json({ id: created.id, immediateAccess: type === "INDIVIDUAL" }, { status: 201 });
 }

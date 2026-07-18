@@ -509,13 +509,25 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   loginCount: integer("login_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Set when an admin rejects/disables this account after the fact — checked at login. Only
+  // meaningful path today: an INDIVIDUAL self-registration is auto-provisioned with an
+  // account immediately (see registrationRequests below), and an admin who later rejects
+  // that request needs a way to actually revoke the login they already have.
+  disabledAt: timestamp("disabled_at"),
+  disabledReason: text("disabled_reason"),
 });
 
-// A pending sign-up submitted through the public /register page. The password is hashed at
-// submission time (never stored in plain text) so approval only needs to copy it over into
-// the real `users` row rather than asking the person to set a password twice. Rejected/
-// pending rows never grant any access — only an APPROVED row (via the admin approve route)
-// results in a real login.
+// A sign-up submitted through the public /register page. The password is hashed at
+// submission time (never stored in plain text). Behavior differs by type:
+// - INDIVIDUAL: a low-risk request — the resulting account can't see anyone else's data
+//   until a PM/admin explicitly adds them to a project, so there's nothing sensitive for
+//   approval to gate. Their `users` row (and a personal organization) is created immediately
+//   at registration time so they can log in right away; this row stays PENDING for admin
+//   visibility/review, and a later rejection disables the account via users.disabledAt.
+// - COMPANY_OWNER: a real-tenant-creation request — approving it creates a brand-new
+//   organization with this person as its SUPER_USER, able to invite others and administer
+//   it. This stays fully gated: no `users` row (and no login) exists until an ADMIN
+//   explicitly approves it.
 export const registrationRequests = pgTable("registration_requests", {
   id: cuid(),
   type: registrationTypeEnum("type").notNull(),

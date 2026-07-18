@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { registrationRequests } from "@/lib/db/schema";
+import { registrationRequests, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -25,19 +25,34 @@ export async function POST(
     .set({ status: "REJECTED", reviewedAt: new Date(), reviewedBy: admin.name })
     .where(eq(registrationRequests.id, id));
 
+  // INDIVIDUAL requests already have a live, logged-in-capable account (auto-provisioned at
+  // registration time) — rejecting the request on its own wouldn't actually stop them from
+  // logging in, since login only checks the `users` table. Disable that account explicitly.
+  if (request.type === "INDIVIDUAL" && request.resultingUserId) {
+    await db
+      .update(users)
+      .set({ disabledAt: new Date(), disabledReason: `Registration rejected by ${admin.name}` })
+      .where(eq(users.id, request.resultingUserId));
+  }
+
   await logAudit({
     actor: admin,
     action: "registration.rejected",
     entityType: "registration_request",
     entityId: id,
-    detail: `${admin.name} rejected the registration request from ${request.name} (${request.email}).`,
+    detail:
+      request.type === "INDIVIDUAL" && request.resultingUserId
+        ? `${admin.name} rejected and disabled the account for ${request.name} (${request.email}).`
+        : `${admin.name} rejected the registration request from ${request.name} (${request.email}).`,
   });
 
   // Best-effort — a failed notification shouldn't undo the rejection.
   await sendEmail(
     request.email,
     "Your Keel access request",
-    `Hi ${request.name},\n\nYour registration request was not approved. If you think this is a mistake, please reach out to your Keel administrator.`
+    request.type === "INDIVIDUAL" && request.resultingUserId
+      ? `Hi ${request.name},\n\nYour Keel account access has been disabled. If you think this is a mistake, please reach out to your Keel administrator.`
+      : `Hi ${request.name},\n\nYour registration request was not approved. If you think this is a mistake, please reach out to your Keel administrator.`
   ).catch(() => false);
 
   return NextResponse.json({ ok: true }, { status: 200 });
