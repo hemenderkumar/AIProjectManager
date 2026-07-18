@@ -25,7 +25,10 @@ export default function AvatarAssistant() {
   const [caption, setCaption] = useState(GREETING);
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [muted, setMuted] = useState(false);
+  // Default to caption-only (no unsolicited audio) — the panel still proactively opens with
+  // the greeting text, but speech is opt-in via the mute/unmute button instead of playing out
+  // loud on every fresh browser tab, which read as jarring in a shared office/meeting setting.
+  const [muted, setMuted] = useState(true);
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
