@@ -9,8 +9,8 @@ html {
   --foreground: #0f172a;
 
   /* The app's single accent color, used everywhere (buttons, links, focus rings, active nav,
-     badge tints) via bg-accent-*/text-accent-*/border-accent-* etc. Defaults to the original
-     indigo scale so this is a no-op unless a theme is picked. A ThemeSwitcher (see Sidebar)
+     badge tints) via the bg-accent, text-accent, and border-accent utility families. Defaults
+     to the original indigo scale so this is a no-op unless a theme is picked. A ThemeSwitcher (see Sidebar)
      sets data-theme on <html>, which the blocks below override — swapping every one of those
      classes app-wide without touching a single component, since Tailwind's utilities all
      resolve through these custom properties instead of literal indigo values now. */
