@@ -697,12 +697,12 @@ function TestCaseTable({
             {(tc.executedBy || canEdit) && (
               <div className="flex items-center justify-between mt-1.5">
                 {tc.executedBy && (
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     Last run by {tc.executedBy}{tc.executedAt ? ` on ${new Date(tc.executedAt).toLocaleDateString()}` : ""}
                   </p>
                 )}
                 {canEdit && (
-                  <button onClick={() => onRemove(tc.id)} className="text-[10px] text-slate-400 hover:text-rose-600 ml-auto">
+                  <button onClick={() => onRemove(tc.id)} className="text-xs text-slate-400 hover:text-rose-600 ml-auto">
                     Remove
                   </button>
                 )}

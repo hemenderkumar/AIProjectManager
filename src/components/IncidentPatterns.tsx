@@ -109,19 +109,19 @@ export default function IncidentPatterns() {
           {patterns.map((pattern, i) => (
             <div key={i} className="border border-slate-200 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-50 text-rose-600">
+                <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-50 text-rose-600">
                   {pattern.count}x recurring
                 </span>
-                <span className="text-[10px] font-medium text-slate-400">{pattern.priority}</span>
+                <span className="text-xs font-medium text-slate-400">{pattern.priority}</span>
               </div>
               <p className="text-sm font-semibold text-slate-900">{pattern.name}</p>
               <p className="text-xs text-slate-600">{pattern.summary}</p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-xs text-slate-400">
                 <span className="font-medium text-slate-500">Incidents: </span>
                 {pattern.incidentTitles.join("; ")}
               </p>
               {pattern.projects.length > 0 && (
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-400">
                   <span className="font-medium text-slate-500">Projects: </span>
                   {pattern.projects.join(", ")}
                 </p>

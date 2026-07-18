@@ -337,7 +337,7 @@ export default function ResourcesPage() {
                     {(r.skills ?? []).length > 0 ? (
                       <div className="flex flex-wrap gap-1 max-w-xs">
                         {(r.skills ?? []).map((s) => (
-                          <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                          <span key={s} className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
                             {s}
                           </span>
                         ))}

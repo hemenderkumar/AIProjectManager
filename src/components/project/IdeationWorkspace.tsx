@@ -238,7 +238,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
         </Field>
       </div>
       {!p.ideaType && (
-        <p className="text-[11px] text-amber-600 flex items-center gap-1.5">
+        <p className="text-xs text-amber-600 flex items-center gap-1.5">
           <AlertTriangle size={12} /> Set an idea type — it shapes how AI brainstorming and the options
           comparison below work.
         </p>
@@ -327,7 +327,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
           </div>
           <AiWaitIndicator active={generatingOptions} messages={["Weighing different approaches...", "Writing up pros and cons..."]} className="mb-2" />
           {optionsError && <p className="text-xs text-rose-600 mb-2">{optionsError}</p>}
-          <p className="text-[11px] text-slate-400 mb-2">
+          <p className="text-xs text-slate-400 mb-2">
             Compare a few genuinely different approaches before committing to the proposed solution above.
           </p>
 
@@ -380,27 +380,27 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-xs font-semibold text-slate-800">
                       {o.name}
-                      {o.createdByAi && <span className="ml-1.5 text-[10px] text-indigo-500 align-middle">AI</span>}
+                      {o.createdByAi && <span className="ml-1.5 text-xs text-indigo-500 align-middle">AI</span>}
                     </p>
                     <div className="flex items-center gap-1.5">
-                      {o.isSelected && <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-0.5"><CheckCircle2 size={11} /> Selected</span>}
+                      {o.isSelected && <span className="text-xs text-emerald-700 font-medium flex items-center gap-0.5"><CheckCircle2 size={11} /> Selected</span>}
                       <button onClick={() => removeOption(o.id)} className="text-slate-400 hover:text-rose-600">
                         <Trash2 size={12} />
                       </button>
                     </div>
                   </div>
-                  {o.description && <p className="text-[11px] text-slate-600 mb-1.5">{o.description}</p>}
+                  {o.description && <p className="text-xs text-slate-600 mb-1.5">{o.description}</p>}
                   {(o.pros || o.cons) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-1.5">
-                      {o.pros && <p className="text-[10px] text-emerald-700"><span className="font-medium">Pros:</span> {o.pros}</p>}
-                      {o.cons && <p className="text-[10px] text-rose-700"><span className="font-medium">Cons:</span> {o.cons}</p>}
+                      {o.pros && <p className="text-xs text-emerald-700"><span className="font-medium">Pros:</span> {o.pros}</p>}
+                      {o.cons && <p className="text-xs text-rose-700"><span className="font-medium">Cons:</span> {o.cons}</p>}
                     </div>
                   )}
-                  {o.feasibilityNotes && <p className="text-[10px] text-slate-400 mb-2">{o.feasibilityNotes}</p>}
+                  {o.feasibilityNotes && <p className="text-xs text-slate-400 mb-2">{o.feasibilityNotes}</p>}
                   {!o.isSelected && (
                     <button
                       onClick={() => selectOption(o.id)}
-                      className="text-[11px] px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      className="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200"
                     >
                       Select this option
                     </button>
@@ -434,7 +434,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
             {p.recommendedTechnology ? "Re-run recommendation" : "Get recommendation"}
           </button>
         </div>
-        <p className="text-[11px] text-slate-400 mb-2">
+        <p className="text-xs text-slate-400 mb-2">
           AI proposes a specific technology direction and architecture diagram, grounded in the problem,
           solution options, and feasibility notes above. An enterprise architect reviews it before this
           moves to the charter.
@@ -451,13 +451,13 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
             <div className="rounded-lg border border-indigo-200 bg-indigo-50/60 p-3">
               <p className="text-xs font-semibold text-indigo-900 mb-1">{p.recommendedTechnology}</p>
               {p.technicalRecommendationRationale && (
-                <p className="text-[11px] text-indigo-800 whitespace-pre-wrap">{p.technicalRecommendationRationale}</p>
+                <p className="text-xs text-indigo-800 whitespace-pre-wrap">{p.technicalRecommendationRationale}</p>
               )}
             </div>
 
             {p.architectureDiagram && (
               <div>
-                <p className="text-[11px] font-medium text-slate-500 mb-1">Architecture diagram</p>
+                <p className="text-xs font-medium text-slate-500 mb-1">Architecture diagram</p>
                 <MermaidDiagram chart={p.architectureDiagram} />
               </div>
             )}
@@ -466,7 +466,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
               <div className="flex items-center gap-2 mb-2">
                 <ShieldCheck size={13} className="text-slate-500" />
                 <p className="text-xs font-semibold text-slate-700">Enterprise Architect Review</p>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TECH_REVIEW_STYLES[p.technicalReviewStatus ?? "PENDING"]}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TECH_REVIEW_STYLES[p.technicalReviewStatus ?? "PENDING"]}`}>
                   {TECH_REVIEW_LABELS[p.technicalReviewStatus ?? "PENDING"]}
                 </span>
               </div>
@@ -509,7 +509,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                 {savingReview ? "Saving..." : "Save review"}
               </button>
               {p.technicalReviewedAt && (
-                <p className="text-[10px] text-slate-400 mt-1.5">Last reviewed {formatDateTime(p.technicalReviewedAt)}</p>
+                <p className="text-xs text-slate-400 mt-1.5">Last reviewed {formatDateTime(p.technicalReviewedAt)}</p>
               )}
             </div>
           </div>

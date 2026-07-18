@@ -156,14 +156,14 @@ export default function AvatarAssistant() {
           <Avatar speaking={speaking} gender={gender} />
           <div>
             <p className="text-sm font-semibold text-slate-900">AI PM</p>
-            <p className="text-[11px] text-slate-400">{speaking ? "Speaking..." : "Ready"}</p>
+            <p className="text-xs text-slate-400">{speaking ? "Speaking..." : "Ready"}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
           {speaking && (
             <button
               onClick={stopSpeaking}
-              className="text-[11px] px-2 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 flex items-center gap-1"
+              className="text-xs px-2 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 flex items-center gap-1"
               title="Stop speaking"
             >
               <Square size={11} fill="currentColor" /> Stop
@@ -171,7 +171,7 @@ export default function AvatarAssistant() {
           )}
           <button
             onClick={() => setGender((g) => (g === "female" ? "male" : "female"))}
-            className="text-[11px] px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-500 hover:bg-slate-100"
+            className="text-xs px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-500 hover:bg-slate-100"
             title="Switch voice"
           >
             {gender === "female" ? "Female voice" : "Male voice"}

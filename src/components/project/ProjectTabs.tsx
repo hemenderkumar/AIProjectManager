@@ -18,6 +18,7 @@ import DeliverablesTab from "./DeliverablesTab";
 import QaTab from "./QaTab";
 import type { SessionUser } from "@/lib/auth";
 import type { RateCardEntry } from "@/lib/deliveryModel";
+import { Compass, Rocket, Receipt, BarChart3 } from "lucide-react";
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
 
@@ -47,6 +48,20 @@ const TABS = [
   "C-Level Report",
 ] as const;
 
+// 14 flat tabs in one row was overwhelming and hid how many were off-screen on a scroll.
+// Grouped by where they sit in an engagement's lifecycle, mirroring the sidebar's own
+// "Project Lifecycle" / "More" grouping so the mental model is consistent app-wide.
+const TAB_GROUPS: { label: string; icon: React.ReactNode; tabs: (typeof TABS)[number][] }[] = [
+  { label: "Plan", icon: <Compass size={14} />, tabs: ["Inception & Ideation", "Charter", "Milestones"] },
+  { label: "Execute", icon: <Rocket size={14} />, tabs: ["Tasks", "Resources", "Status Tracking", "Risks", "Communications"] },
+  { label: "Commercial", icon: <Receipt size={14} />, tabs: ["SOW", "Deliverables", "Delivery & Pricing", "Invoices"] },
+  { label: "Insights", icon: <BarChart3 size={14} />, tabs: ["Ask AI", "C-Level Report"] },
+];
+
+function groupFor(tab: (typeof TABS)[number]) {
+  return TAB_GROUPS.find((g) => g.tabs.includes(tab)) ?? TAB_GROUPS[0];
+}
+
 function resolveInitialTab(tabParam: string | null, autoPlan: boolean): (typeof TABS)[number] {
   if (autoPlan) return "Tasks";
   const match = TABS.find((t) => t.toLowerCase() === tabParam?.toLowerCase());
@@ -70,10 +85,28 @@ export default function ProjectTabs({
     resolveInitialTab(searchParams.get("tab"), autoPlan)
   );
 
+  const activeGroup = groupFor(active);
+
   return (
     <div>
+      <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-thin">
+        {TAB_GROUPS.map((group) => (
+          <button
+            key={group.label}
+            onClick={() => setActive(group.tabs[0])}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+              group.label === activeGroup.label
+                ? "bg-indigo-50 text-indigo-700"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            }`}
+          >
+            {group.icon}
+            {group.label}
+          </button>
+        ))}
+      </div>
       <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto scrollbar-thin">
-        {TABS.map((tab) => (
+        {activeGroup.tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActive(tab)}

@@ -149,13 +149,13 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         )}
         {p.ideationAlignment && (
           <div className="mb-2">
-            <p className="text-[11px] font-medium text-slate-500 mb-0.5">Why this direction was chosen</p>
+            <p className="text-xs font-medium text-slate-500 mb-0.5">Why this direction was chosen</p>
             <p className="text-xs text-slate-600 whitespace-pre-wrap">{p.ideationAlignment}</p>
           </div>
         )}
         {p.recommendedTechnology && (
           <div>
-            <p className="text-[11px] font-medium text-slate-500 mb-0.5">Why this technical solution was chosen</p>
+            <p className="text-xs font-medium text-slate-500 mb-0.5">Why this technical solution was chosen</p>
             <p className="text-xs text-slate-600"><span className="font-semibold">{p.recommendedTechnology}</span></p>
             {p.technicalRecommendationRationale && (
               <p className="text-xs text-slate-600 whitespace-pre-wrap mt-0.5">{p.technicalRecommendationRationale}</p>
@@ -340,7 +340,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-slate-200 rounded-lg p-2.5 text-center bg-white">
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-xs text-slate-400">{label}</p>
       <p className="text-sm font-semibold text-slate-800">{value}</p>
     </div>
   );

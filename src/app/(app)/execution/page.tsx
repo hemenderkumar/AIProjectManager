@@ -56,7 +56,7 @@ export default async function ExecutionPage() {
                       <Link href={`/projects/${p.id}`} className="text-sm font-medium text-slate-800 hover:text-indigo-600">
                         {p.name}
                       </Link>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-xs text-slate-400">
                         Est. budget ${(p.budgetPlanned ?? 0).toLocaleString()}
                         {p.sponsor ? ` · Sponsor: ${p.sponsor}` : ""}
                       </p>

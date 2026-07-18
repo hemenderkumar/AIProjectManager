@@ -220,7 +220,7 @@ function PreviewStat({ label, value, accent }: { label: string; value: string; a
   return (
     <div className="bg-slate-50 rounded-lg px-3 py-2.5">
       <p className={`text-lg font-semibold ${accent ?? "text-slate-900"}`}>{value}</p>
-      <p className="text-[11px] text-slate-500">{label}</p>
+      <p className="text-xs text-slate-500">{label}</p>
     </div>
   );
 }

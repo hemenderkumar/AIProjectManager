@@ -14,6 +14,15 @@ html {
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Bumped up from Tailwind's stock 12px/14px — the app leaned heavily on text-xs (and even
+     smaller one-off arbitrary sizes like text-[10px]/text-[11px], since consolidated into this
+     same tier) for table cells, badges, and metadata. That read as cramped rather than dense.
+     A ~1px lift across the whole xs/sm scale keeps density but stops it feeling sub-legible. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: calc(1.25 / 0.8125);
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: calc(1.375 / 0.9375);
 }
 
 body {

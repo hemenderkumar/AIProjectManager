@@ -176,7 +176,7 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
         <div className="mb-4 flex items-start justify-between">
           <div>
             {selectedSprint.goal && <p className="text-xs text-slate-500 mb-1">{selectedSprint.goal}</p>}
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs text-slate-400">
               {formatDate(selectedSprint.startDate)} — {formatDate(selectedSprint.endDate)}
             </p>
           </div>
@@ -226,7 +226,7 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
           {STATUS_COLUMNS.map((status) => (
             <div key={status} className="bg-slate-50 rounded-lg p-2 min-h-[120px]">
-              <p className="text-[11px] font-semibold text-slate-500 mb-2">{STATUS_LABELS[status]}</p>
+              <p className="text-xs font-semibold text-slate-500 mb-2">{STATUS_LABELS[status]}</p>
               <div className="space-y-1.5">
                 {sprintTasks
                   .filter((t) => t.status === status)
@@ -239,15 +239,15 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
                         </div>
                       )}
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400">{resourceName(t.assigneeId)}</span>
+                        <span className="text-xs text-slate-400">{resourceName(t.assigneeId)}</span>
                         {t.storyPoints != null && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium">{t.storyPoints} pts</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium">{t.storyPoints} pts</span>
                         )}
                       </div>
                       <select
                         value={t.status}
                         onChange={(e) => updateTask(t.id, { status: e.target.value })}
-                        className="mt-1.5 w-full text-[10px] border border-slate-200 rounded px-1 py-0.5 bg-white"
+                        className="mt-1.5 w-full text-xs border border-slate-200 rounded px-1 py-0.5 bg-white"
                       >
                         {STATUS_COLUMNS.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
                       </select>

@@ -32,7 +32,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 function StatusPill({ status }: { status: string }) {
   return (
-    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600"}`}>
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600"}`}>
       {status.replace("_", " ")}
     </span>
   );
@@ -320,7 +320,7 @@ const fieldCls = "w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[11px] font-medium text-slate-500 mb-1">{label}</span>
+      <span className="block text-xs font-medium text-slate-500 mb-1">{label}</span>
       {children}
     </label>
   );

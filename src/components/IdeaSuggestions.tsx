@@ -107,10 +107,10 @@ export default function IdeaSuggestions() {
                   <X size={14} />
                 </button>
                 <div className="flex items-center gap-2 pr-4">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">
+                  <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">
                     {TYPE_LABEL[idea.ideaType]}
                   </span>
-                  <span className="text-[10px] font-medium text-slate-400">{idea.priority}</span>
+                  <span className="text-xs font-medium text-slate-400">{idea.priority}</span>
                 </div>
                 <p className="text-sm font-semibold text-slate-900">{idea.name}</p>
                 <p className="text-xs text-slate-600">{idea.problemStatement}</p>
@@ -118,7 +118,7 @@ export default function IdeaSuggestions() {
                   <span className="font-medium text-slate-600">Proposed: </span>
                   {idea.proposedSolution}
                 </p>
-                <p className="text-[11px] text-slate-400 italic">Why: {idea.rationale}</p>
+                <p className="text-xs text-slate-400 italic">Why: {idea.rationale}</p>
                 <button
                   onClick={() => createFromIdea(idea, i)}
                   disabled={creatingIndex !== null}

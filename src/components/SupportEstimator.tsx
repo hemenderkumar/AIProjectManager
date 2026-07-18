@@ -144,7 +144,7 @@ export default function SupportEstimator({
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                   {SEVERITIES.map((sev) => (
                     <label key={sev} className="block">
-                      <span className="block text-[10px] font-medium text-slate-500 mb-0.5">{sev} tickets/mo</span>
+                      <span className="block text-xs font-medium text-slate-500 mb-0.5">{sev} tickets/mo</span>
                       <input
                         type="number"
                         min={0}
@@ -155,7 +155,7 @@ export default function SupportEstimator({
                     </label>
                   ))}
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-400">
                   ≈ {appResult ? appResult.hours.toFixed(1) : 0} support hours/mo · dedicated cost ≈ $
                   {appResult ? Math.round(appResult.dedicatedCost).toLocaleString() : 0}/mo
                 </p>
@@ -204,11 +204,11 @@ export default function SupportEstimator({
         {showAssumptions && (
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 rounded-lg p-3">
             <div>
-              <p className="text-[11px] font-medium text-slate-600 mb-1.5">Resolution hours per ticket</p>
+              <p className="text-xs font-medium text-slate-600 mb-1.5">Resolution hours per ticket</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SEVERITIES.map((sev) => (
                   <label key={sev} className="block">
-                    <span className="block text-[10px] text-slate-500">{sev}</span>
+                    <span className="block text-xs text-slate-500">{sev}</span>
                     <input
                       type="number"
                       min={0}
@@ -225,7 +225,7 @@ export default function SupportEstimator({
             </div>
             <div className="space-y-2">
               <label className="block">
-                <span className="block text-[10px] text-slate-500">Blended hourly rate ($)</span>
+                <span className="block text-xs text-slate-500">Blended hourly rate ($)</span>
                 <input
                   type="number"
                   min={0}
@@ -235,7 +235,7 @@ export default function SupportEstimator({
                 />
               </label>
               <label className="block">
-                <span className="block text-[10px] text-slate-500">Effective hours / FTE / month</span>
+                <span className="block text-xs text-slate-500">Effective hours / FTE / month</span>
                 <input
                   type="number"
                   min={1}
@@ -245,7 +245,7 @@ export default function SupportEstimator({
                 />
               </label>
               <label className="block">
-                <span className="block text-[10px] text-slate-500">Shared-support efficiency discount (%)</span>
+                <span className="block text-xs text-slate-500">Shared-support efficiency discount (%)</span>
                 <input
                   type="number"
                   min={0}
@@ -277,12 +277,12 @@ export default function SupportEstimator({
               <p className="text-slate-500">Shared (pooled team)</p>
               <p className="text-base font-semibold text-emerald-700">${Math.round(result.sharedMonthlyCost).toLocaleString()}/mo</p>
               {result.savingsFromSharing > 0 && (
-                <p className="text-[11px] text-emerald-600 mt-0.5">Saves ${Math.round(result.savingsFromSharing).toLocaleString()}/mo vs. dedicated</p>
+                <p className="text-xs text-emerald-600 mt-0.5">Saves ${Math.round(result.savingsFromSharing).toLocaleString()}/mo vs. dedicated</p>
               )}
             </div>
           </div>
         )}
-        <p className="text-[11px] text-slate-400 mb-3">
+        <p className="text-xs text-slate-400 mb-3">
           Annualized: ${Math.round(result.selectedMonthlyCost * 12).toLocaleString()}/yr. This is a baseline
           planning estimate from the assumptions above, not a vendor quote.
         </p>
@@ -313,7 +313,7 @@ export default function SupportEstimator({
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className="border border-slate-200 rounded-lg p-3 text-center">
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-xs text-slate-400">{label}</p>
       <p className={`text-lg font-semibold mt-0.5 ${highlight ? "text-indigo-600" : "text-slate-800"}`}>{value}</p>
     </div>
   );

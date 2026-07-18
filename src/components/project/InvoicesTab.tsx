@@ -15,7 +15,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 function StatusPill({ status }: { status: string }) {
   return (
-    <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600"}`}>
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600"}`}>
       {status.charAt(0) + status.slice(1).toLowerCase()}
     </span>
   );
@@ -179,7 +179,7 @@ export default function InvoicesTab({ detail }: { detail: ProjectDetail }) {
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-slate-200 rounded-lg p-2.5 text-center bg-white">
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-xs text-slate-400">{label}</p>
       <p className="text-sm font-semibold text-slate-800">{value}</p>
     </div>
   );

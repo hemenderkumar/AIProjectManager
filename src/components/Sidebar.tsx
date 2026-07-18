@@ -41,7 +41,7 @@ function NavLink({ href, icon, children, pathname }: { href: string; icon: React
 function NavSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="px-3 pt-3 pb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+      <p className="px-3 pt-3 pb-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
       {children}
     </div>
   );
@@ -114,7 +114,7 @@ export default function Sidebar({ user, open }: { user: SessionUser | null; open
           <PlusCircle size={16} />
           New Project
         </Link>
-        <div className="flex items-center gap-2 px-1 text-[10px] text-slate-300">
+        <div className="flex items-center gap-2 px-1 text-xs text-slate-300">
           <Link href="/privacy" className="hover:text-slate-500">Privacy</Link>
           <span>·</span>
           <Link href="/terms" className="hover:text-slate-500">Terms</Link>
@@ -123,7 +123,7 @@ export default function Sidebar({ user, open }: { user: SessionUser | null; open
           <div className="flex items-center justify-between px-1">
             <div>
               <p className="text-xs font-medium text-slate-700">{user.name}</p>
-              <p className="text-[10px] text-slate-400">{user.role}</p>
+              <p className="text-xs text-slate-400">{user.role}</p>
             </div>
             <LogoutButton />
           </div>

@@ -214,8 +214,8 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
                 <tr key={row.id} className="border-b border-slate-50 last:border-0 align-top">
                   <td className="py-2.5 font-medium text-slate-800">
                     {row.role}
-                    {row.createdByAi && <p className="text-[10px] text-indigo-500 font-normal">AI suggested</p>}
-                    {row.rationale && <p className="text-[10px] text-slate-400 font-normal max-w-xs">{row.rationale}</p>}
+                    {row.createdByAi && <p className="text-xs text-indigo-500 font-normal">AI suggested</p>}
+                    {row.rationale && <p className="text-xs text-slate-400 font-normal max-w-xs">{row.rationale}</p>}
                   </td>
                   <td className="py-2.5 text-right">
                     <input
@@ -255,7 +255,7 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
                       onBlur={(e) => updateRow(row.id, { contractorPercent: Number(e.target.value) })}
                       className="w-16 text-right text-sm border border-slate-200 rounded px-1.5 py-1"
                     />
-                    {mixSum !== 100 && <p className="text-[10px] text-amber-600 mt-0.5">Sums to {mixSum}%</p>}
+                    {mixSum !== 100 && <p className="text-xs text-amber-600 mt-0.5">Sums to {mixSum}%</p>}
                   </td>
                   <td className="py-2.5 text-right text-slate-600">${rate.toFixed(0)}/hr</td>
                   <td className="py-2.5 text-right text-slate-800 font-medium">${Math.round(cost).toLocaleString()}</td>
@@ -286,7 +286,7 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
 function SummaryStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div className={`border rounded-lg p-2.5 text-center ${highlight ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white"}`}>
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-xs text-slate-400">{label}</p>
       <p className={`text-sm font-semibold ${highlight ? "text-emerald-700" : "text-slate-800"}`}>{value}</p>
     </div>
   );

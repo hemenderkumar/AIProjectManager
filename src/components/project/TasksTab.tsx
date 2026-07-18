@@ -524,17 +524,17 @@ export default function TasksTab({
                       {approach.trim() ? "Approach" : "AI-recommended approach"}: {preview.approach.summary}
                     </p>
                     {preview.approach.details && (
-                      <p className="text-[11px] text-indigo-700">
+                      <p className="text-xs text-indigo-700">
                         {Object.entries(preview.approach.details)
                           .map(([label, value]) => `${label}: ${value}`)
                           .join(" · ")}
                       </p>
                     )}
                     {preview.approach.rationale && (
-                      <p className="text-[11px] text-indigo-600 mt-1">{preview.approach.rationale}</p>
+                      <p className="text-xs text-indigo-600 mt-1">{preview.approach.rationale}</p>
                     )}
                     {!approach.trim() && (
-                      <p className="text-[10px] text-indigo-500 mt-1.5">
+                      <p className="text-xs text-indigo-500 mt-1.5">
                         Don&apos;t agree? Set a preferred approach above and click Generate plan again.
                       </p>
                     )}
@@ -554,7 +554,7 @@ export default function TasksTab({
                     <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
                   </Field>
                 </div>
-                <p className="text-[11px] text-slate-400 -mt-2">
+                <p className="text-xs text-slate-400 -mt-2">
                   Dates are auto-calculated from total effort vs. team capacity — adjust if needed.
                 </p>
 
@@ -580,7 +580,7 @@ export default function TasksTab({
                             {r.requiredSkills.length ? (
                               <div className="flex flex-wrap gap-1 max-w-[180px]">
                                 {r.requiredSkills.map((s) => (
-                                  <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                  <span key={s} className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
                                     {s}
                                   </span>
                                 ))}
@@ -611,9 +611,9 @@ export default function TasksTab({
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
                     {preview.phaseBreakdown.map((p) => (
                       <div key={p.phase} className="border border-slate-200 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-slate-400">{phaseLabel(p.phase)}</p>
+                        <p className="text-xs text-slate-400">{phaseLabel(p.phase)}</p>
                         <p className="text-sm font-semibold text-slate-800">{p.taskCount} tasks</p>
-                        <p className="text-[10px] text-slate-500">{p.hours}h · ${p.cost.toLocaleString()}</p>
+                        <p className="text-xs text-slate-500">{p.hours}h · ${p.cost.toLocaleString()}</p>
                       </div>
                     ))}
                   </div>
@@ -649,12 +649,12 @@ export default function TasksTab({
                           <td className="py-1.5 text-slate-500">
                             <div className="flex flex-wrap items-center gap-1 max-w-[220px]">
                               {(t.requiredSkills ?? []).map((s) => (
-                                <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                <span key={s} className="text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
                                   {s}
                                 </span>
                               ))}
                               {t.requiredExperienceYears != null && (
-                                <span className="text-[10px] text-slate-400">{t.requiredExperienceYears}+ yrs</span>
+                                <span className="text-xs text-slate-400">{t.requiredExperienceYears}+ yrs</span>
                               )}
                               {!(t.requiredSkills ?? []).length && t.requiredExperienceYears == null && "—"}
                             </div>
@@ -668,7 +668,7 @@ export default function TasksTab({
                                   (e.target.value || undefined) as PlanTask["executionSource"]
                                 )
                               }
-                              className={`text-[11px] border rounded px-1 py-0.5 ${
+                              className={`text-xs border rounded px-1 py-0.5 ${
                                 t.executionSource ? EXECUTION_SOURCE_STYLES[t.executionSource] : "border-slate-200 bg-white text-slate-500"
                               }`}
                             >
@@ -723,7 +723,7 @@ export default function TasksTab({
                     </p>
                     <button
                       onClick={addMaterialCost}
-                      className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
                     >
                       <Plus size={12} /> Add item
                     </button>
@@ -790,9 +790,9 @@ export default function TasksTab({
                       </table>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-400">No material costs — add licenses, servers, or other costs if needed.</p>
+                    <p className="text-xs text-slate-400">No material costs — add licenses, servers, or other costs if needed.</p>
                   )}
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     Amounts shown as a total for the project duration, even for recurring items. Included in the total
                     project budget above (before contingency).
                   </p>
@@ -822,10 +822,10 @@ export default function TasksTab({
                   </div>
                   <div className="mt-2">
                     <div className="flex items-center justify-between mb-1">
-                      <p className="text-[11px] font-medium text-slate-600">Support roles needed</p>
+                      <p className="text-xs font-medium text-slate-600">Support roles needed</p>
                       <button
                         onClick={addOngoingRole}
-                        className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                        className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
                       >
                         <Plus size={12} /> Add role
                       </button>
@@ -845,14 +845,14 @@ export default function TasksTab({
                           onChange={(e) => updateOngoingRole(i, "hoursPerWeek", Number(e.target.value))}
                           className="w-20 text-right text-xs border border-slate-200 rounded px-1.5 py-1"
                         />
-                        <span className="text-[10px] text-slate-400">hrs/wk</span>
+                        <span className="text-xs text-slate-400">hrs/wk</span>
                         <button onClick={() => removeOngoingRole(i)} className="text-slate-400 hover:text-rose-600">
                           <X size={13} />
                         </button>
                       </div>
                     ))}
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     Tracked as an ongoing operational cost, separate from the one-time project budget above.
                   </p>
                 </div>
@@ -874,7 +874,7 @@ export default function TasksTab({
                   active={confirming}
                   messages={["Creating tasks, milestones, and sprints...", "Saving the budget and staffing plan...", "Almost done..."]}
                 />
-                <p className="text-[10px] text-slate-400">
+                <p className="text-xs text-slate-400">
                   Cost estimates use your team&apos;s actual hourly rates where a role is matched, and a
                   market-rate guess for roles you haven&apos;t staffed yet — treat this as a planning estimate,
                   not a quote.
@@ -1003,7 +1003,7 @@ export default function TasksTab({
               <div key={phase} className="border border-slate-200 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <p className="text-xs font-semibold text-slate-700">{phaseLabel(phase)}</p>
-                  <p className="text-[11px] text-slate-400">{done}/{phaseTasks.length} done</p>
+                  <p className="text-xs text-slate-400">{done}/{phaseTasks.length} done</p>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2">
                   <div
@@ -1052,7 +1052,7 @@ export default function TasksTab({
                     <td className="py-2.5 font-medium text-slate-800 max-w-[220px]">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span>{t.title}</span>
-                        {t.createdByAi && <span className="text-[10px] text-indigo-500 align-middle">AI</span>}
+                        {t.createdByAi && <span className="text-xs text-indigo-500 align-middle">AI</span>}
                         {t.executionSource === "AI" && <ExecutionSourceBadge source="AI" />}
                       </div>
                       <div className="mt-1">
@@ -1074,7 +1074,7 @@ export default function TasksTab({
                       <select
                         value={t.executionSource ?? ""}
                         onChange={(e) => updateExecutionSource(t.id, e.target.value)}
-                        className={`text-[11px] border rounded-md px-1.5 py-1 ${EXECUTION_SOURCE_STYLES[t.executionSource ?? ""] ?? "border-slate-200 bg-white text-slate-500"}`}
+                        className={`text-xs border rounded-md px-1.5 py-1 ${EXECUTION_SOURCE_STYLES[t.executionSource ?? ""] ?? "border-slate-200 bg-white text-slate-500"}`}
                       >
                         <option value="">Not classified</option>
                         <option value="AI">AI</option>
@@ -1156,7 +1156,7 @@ export default function TasksTab({
                         </div>
                         {entries.length > 0 ? (
                           <div className="overflow-x-auto">
-                          <table className="w-full text-[11px]">
+                          <table className="w-full text-xs">
                             <thead>
                               <tr className="text-left text-slate-400 border-b border-slate-200">
                                 <th className="py-1 font-medium">Date</th>
@@ -1182,7 +1182,7 @@ export default function TasksTab({
                             </table>
         </div>
                         ) : (
-                          <p className="text-[11px] text-slate-400">No time logged yet for this task.</p>
+                          <p className="text-xs text-slate-400">No time logged yet for this task.</p>
                         )}
                       </td>
                     </tr>
@@ -1209,7 +1209,7 @@ export default function TasksTab({
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-slate-200 rounded-lg p-2.5 text-center bg-white">
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-xs text-slate-400">{label}</p>
       <p className="text-sm font-semibold text-slate-800">{value}</p>
     </div>
   );
