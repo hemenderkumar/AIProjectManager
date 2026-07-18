@@ -10,6 +10,7 @@ import {
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
 import { renderMermaidToImages } from "@/lib/mermaidToImage";
+import AiEditChat from "./AiEditChat";
 
 type TestCase = {
   id: string;
@@ -568,6 +569,17 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                         <p className="text-xs text-slate-400">No signed copy attached yet.</p>
                       )}
                     </div>
+
+                    {canEdit && !typeInfo?.isTest && (
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <AiEditChat
+                          entityType="deliverable"
+                          entityId={d.id}
+                          onApplied={() => load()}
+                          placeholder='e.g. "make the tone more formal" or "add a section on rollback"'
+                        />
+                      </div>
+                    )}
 
                     {traceable && canEdit && (
                       <div className="mt-3 pt-3 border-t border-slate-100">

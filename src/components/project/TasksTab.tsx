@@ -8,6 +8,7 @@ import { formatDate, formatDateInput } from "@/lib/format";
 import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid, List } from "lucide-react";
 import SprintBoard from "./SprintBoard";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+import AiEditChat from "./AiEditChat";
 
 type Resource = { id: string; name: string };
 
@@ -1048,11 +1049,19 @@ export default function TasksTab({
               return (
                 <Fragment key={t.id}>
                   <tr className="border-b border-slate-50 last:border-0">
-                    <td className="py-2.5 font-medium text-slate-800">
+                    <td className="py-2.5 font-medium text-slate-800 max-w-[220px]">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span>{t.title}</span>
                         {t.createdByAi && <span className="text-[10px] text-indigo-500 align-middle">AI</span>}
                         {t.executionSource === "AI" && <ExecutionSourceBadge source="AI" />}
+                      </div>
+                      <div className="mt-1">
+                        <AiEditChat
+                          entityType="task"
+                          entityId={t.id}
+                          onApplied={() => router.refresh()}
+                          placeholder='e.g. "push this out a week and mark it high priority"'
+                        />
                       </div>
                     </td>
                     <td className="py-2.5 text-slate-600">{resourceName(t.assigneeId)}</td>

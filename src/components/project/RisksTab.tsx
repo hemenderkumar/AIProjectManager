@@ -6,6 +6,7 @@ import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge } from "@/components/badges";
 import { Plus, Sparkles, Loader2 } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+import AiEditChat from "./AiEditChat";
 
 export default function RisksTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -141,9 +142,12 @@ export default function RisksTab({ detail }: { detail: ProjectDetail }) {
           <tbody>
             {detail.risks.map((r) => (
               <tr key={r.id} className="border-b border-slate-50 last:border-0 align-top">
-                <td className="py-2.5 pr-2">
+                <td className="py-2.5 pr-2 max-w-xs">
                   <p className="font-medium text-slate-800">{r.description}</p>
                   {r.mitigation && <p className="text-xs text-slate-500 mt-0.5">Mitigation: {r.mitigation}</p>}
+                  <div className="mt-1.5">
+                    <AiEditChat entityType="risk" entityId={r.id} onApplied={() => router.refresh()} placeholder='e.g. "bump this to high impact and add a mitigation"' />
+                  </div>
                 </td>
                 <td className="py-2.5"><PriorityBadge priority={r.impact} /></td>
                 <td className="py-2.5"><PriorityBadge priority={r.likelihood} /></td>

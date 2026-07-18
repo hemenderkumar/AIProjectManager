@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/auth";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { Plus, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, FileText, Gauge, CheckCircle2, AlertTriangle, XCircle, FileDown, Upload, Paperclip, X } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+import AiEditChat from "./AiEditChat";
 
 type DriftResult = {
   status: "ON_TRACK" | "MINOR_DRIFT" | "SIGNIFICANT_DRIFT";
@@ -460,6 +461,17 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                       </div>
                     )}
                   </div>
+
+                  {canManage && (
+                    <div className="mt-2 pt-2 border-t border-slate-100">
+                      <AiEditChat
+                        entityType="sow"
+                        entityId={s.id}
+                        onApplied={() => load()}
+                        placeholder='e.g. "extend the timeline by a month"'
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

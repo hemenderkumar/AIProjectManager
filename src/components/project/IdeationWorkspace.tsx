@@ -7,6 +7,7 @@ import { formatDateTime, formatDateInput } from "@/lib/format";
 import { Sparkles, Loader2, Plus, Trash2, CheckCircle2, Lightbulb, AlertTriangle, Cpu, ShieldCheck } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
+import AiEditChat from "./AiEditChat";
 
 const IDEATION_STATUS_LABELS: Record<string, string> = {
   EXPLORING: "Exploring",
@@ -404,6 +405,14 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
                       Select this option
                     </button>
                   )}
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <AiEditChat
+                      entityType="solutionOption"
+                      entityId={o.id}
+                      onApplied={() => router.refresh()}
+                      placeholder='e.g. "strengthen the cons with the licensing cost risk"'
+                    />
+                  </div>
                 </div>
               ))}
             </div>

@@ -8,6 +8,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
 import DownloadPdfLink from "@/components/DownloadPdfLink";
+import AiEditChat from "./AiEditChat";
 
 export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -53,6 +54,23 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  // The AI-edit-chat below patches the project directly via /api/projects/[id] — merge
+  // whichever of its changed keys happen to overlap this form's local state (most do,
+  // e.g. businessCase/objectives/risks) so the fields update immediately without waiting
+  // on a full page reload, then refresh so any read-only rollups elsewhere pick it up too.
+  function handleCharterAiApplied(changes: Record<string, unknown>) {
+    setForm((f) => {
+      const next = { ...f };
+      for (const key of Object.keys(changes)) {
+        if (key in next) {
+          (next as Record<string, unknown>)[key] = changes[key];
+        }
+      }
+      return next;
+    });
+    router.refresh();
   }
 
   async function save() {
@@ -177,6 +195,12 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           <AiWaitIndicator
             active={generating}
             messages={["Reading the project context...", "Drafting scope and requirements...", "Working out costs and internal needs..."]}
+          />
+          <AiEditChat
+            entityType="project"
+            entityId={p.id}
+            onApplied={handleCharterAiApplied}
+            placeholder='e.g. "tighten the scope to exclude mobile" or "add a risk about vendor lock-in"'
           />
           <Field label="Business case">
             <textarea value={form.businessCase} onChange={(e) => update("businessCase", e.target.value)} className={inputCls} rows={2} />
