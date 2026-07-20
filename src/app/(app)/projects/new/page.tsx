@@ -250,7 +250,7 @@ function NewProjectForm() {
             disabled={saving}
             className="px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
           >
-            {saving ? "Creating..." : "Create Project"}
+            {saving ? "Creating..." : isIdeaIntent ? "Create Idea" : "Create Project"}
           </button>
           {submitError && <span className="text-xs text-red-600">{submitError}</span>}
         </div>
