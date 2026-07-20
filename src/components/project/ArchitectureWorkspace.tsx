@@ -43,15 +43,44 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
     router.refresh();
   }
 
-  async function regenerateDiagram() {
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Generates the diagram, the high-level architecture description, and the pros/cons together
+  // in one AI call (they're one coherent design, not three separate things) — see
+  // api/ai/technical-recommendation. That route writes straight to the DB, same as the
+  // recommendedTechnology/diagram it already produced; the diagram and approval fields below
+  // read directly from `p` so router.refresh() alone updates them, but highLevelArchitecture/
+  // architectureProsCons are bound to local, editable `form` state, so those need to be synced
+  // explicitly from the response or the textareas would keep showing stale/empty values until
+  // an unrelated re-render happened to reset them.
+  async function generateWithAi() {
     setRegenerating(true);
-    await fetch("/api/ai/technical-recommendation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: p.id }),
-    });
-    setRegenerating(false);
-    router.refresh();
+    setAiError(null);
+    try {
+      const res = await fetch("/api/ai/technical-recommendation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: p.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAiError(data?.error ?? "Couldn't generate the architecture with AI.");
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        highLevelArchitecture: data.project?.highLevelArchitecture ?? f.highLevelArchitecture,
+        architectureProsCons: data.project?.architectureProsCons ?? f.architectureProsCons,
+        // A fresh recommendation clears any prior approval server-side (see the route) — reflect
+        // that here too so the "Architecture approved by..." banner doesn't keep showing a
+        // sign-off that no longer applies to the design now on screen.
+        architectureApprovedBy: "",
+        architectureApprovedAt: "",
+      }));
+      router.refresh();
+    } finally {
+      setRegenerating(false);
+    }
   }
 
   const approved = Boolean(p.architectureApprovedAt);
@@ -68,7 +97,7 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
         title="Architecture diagram"
         action={
           <button
-            onClick={regenerateDiagram}
+            onClick={generateWithAi}
             disabled={regenerating}
             className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
           >
@@ -78,6 +107,7 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
         }
       >
         <AiWaitIndicator active={regenerating} messages={["Reading the architecture description...", "Drawing the diagram..."]} className="mb-2" />
+        {aiError && <p className="text-xs text-rose-600 mb-2">{aiError}</p>}
         {p.architectureDiagram ? (
           <MermaidDiagram chart={p.architectureDiagram} />
         ) : (
@@ -87,7 +117,23 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
         )}
       </Card>
 
-      <Card title="Design details">
+      <Card
+        title="Design details"
+        action={
+          <button
+            onClick={generateWithAi}
+            disabled={regenerating}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
+          >
+            {regenerating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {regenerating ? "Generating..." : form.highLevelArchitecture ? "Regenerate with AI" : "Fill with AI"}
+          </button>
+        }
+      >
+        <p className="text-xs text-slate-400 mb-3">
+          AI drafts both fields below from the problem, proposed solution, and feasibility notes — review and
+          edit before saving. This is the same generation as the diagram above; either button runs it.
+        </p>
         <Field label="High-level architecture">
           <textarea
             value={form.highLevelArchitecture}
