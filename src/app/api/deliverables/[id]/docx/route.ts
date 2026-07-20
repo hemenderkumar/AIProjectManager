@@ -58,8 +58,15 @@ async function renderDocx(d: DeliverableRow, diagram: DiagramImage | null): Prom
     const testCases = await db.select().from(deliverableTestCases).where(eq(deliverableTestCases.deliverableId, d.id));
     buffer = await buildTestCaseDocx(d.title, typeLabel, meta, testCases);
   } else {
+    // Component List / Architecture Highlights / Pros / Cons are DESIGN-only structured
+    // fields (see schema.ts) — buildSectionedDocx already skips any section with an empty
+    // body, so listing them unconditionally is safe for every other deliverable type too.
     const sections = [
       { heading: "Content", body: d.content ?? "" },
+      { heading: "Component List", body: d.componentList ?? "" },
+      { heading: "Architecture Highlights", body: d.architectureHighlights ?? "" },
+      { heading: "Pros", body: d.pros ?? "" },
+      { heading: "Cons", body: d.cons ?? "" },
       {
         heading: "Approval",
         body: d.approvedBy ? `Approved by ${d.approvedBy} on ${d.approvedAt?.toLocaleDateString()}` : "Not yet approved.",

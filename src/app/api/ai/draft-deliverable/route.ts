@@ -33,24 +33,36 @@ Respond as JSON: { "title": string, "content": string (the full document as plai
 headers: "Functional Requirements" and "Non-Functional Requirements" with sub-headers per NFR category) }.`,
 
   DESIGN: `You are writing a Detailed Design document for the CONFIRMED scope of a project, based on its
-charter, recommended technology, and task plan below. Identify the key components/modules that need to be
-built, each with: its responsibility, how it interacts with other components, and key data it owns or
-processes. Ground this in the project's own scope, recommended technology, and architecture notes — do not
-invent an unrelated tech stack or components with no basis in the given context.
+charter, recommended technology, and task plan below. Ground everything in the project's own scope,
+recommended technology, and architecture notes — do not invent an unrelated tech stack or components with
+no basis in the given context. Produce these as SEPARATE pieces (they render as distinct, individually
+editable sections, not one long document):
 
-Then produce a simple Mermaid diagram (flowchart TD syntax) showing those same key components/layers and
-how they connect — e.g. client, API/backend, database, external integrations, based on the recommended
-technology. Keep it to 5-12 nodes with short labels and simple arrows (A --> B). Use only valid Mermaid
-"flowchart TD" syntax with alphanumeric node ids and labels in square brackets, e.g.:
+1. content: a short overview paragraph plus a brief data-flow summary — how a request/piece of data
+moves through the components end to end. Do not repeat the component-by-component breakdown here; that
+belongs in componentList.
+2. componentList: the key components/modules that need to be built, one per line, formatted as
+"ComponentName: responsibility — how it interacts with other components — key data it owns or processes".
+3. architectureHighlights: 3-6 bullet points (one per line, starting with "- ") on the key architecture
+decisions and why they matter — e.g. why this pattern/technology fits this project's scale, constraints,
+or requirements.
+4. pros: 3-5 bullet points (one per line, starting with "- ") on why this architecture is a sound choice
+for this specific project.
+5. cons: 2-4 bullet points (one per line, starting with "- ") on real trade-offs, risks, or limitations of
+this architecture — don't invent generic caveats that don't actually apply here.
+6. diagram: a simple Mermaid diagram (flowchart TD syntax) showing the SAME components listed in
+componentList and how they connect — e.g. client, API/backend, database, external integrations, based on
+the recommended technology. Keep it to 5-12 nodes with short labels and simple arrows (A --> B). Use only
+valid Mermaid "flowchart TD" syntax with alphanumeric node ids and labels in square brackets, e.g.:
 flowchart TD
   A[Web Client] --> B[API Server]
   B --> C[(Database)]
-Do not include markdown code fences, just the raw Mermaid syntax starting with "flowchart TD". The diagram
-must depict the SAME components described in the content below — don't introduce new ones only in one place.
+Do not include markdown code fences, just the raw Mermaid syntax starting with "flowchart TD". Don't
+introduce components in the diagram that aren't in componentList, or vice versa.
 
-Respond as JSON: { "title": string, "content": string (the full document as plain text: an overview paragraph,
-then one section per key component with its responsibility/interactions/data, then a brief data flow
-summary), "diagram": string (raw Mermaid flowchart TD syntax, no code fences) }.`,
+Respond as JSON: { "title": string, "content": string, "componentList": string, "architectureHighlights":
+string, "pros": string, "cons": string, "diagram": string (raw Mermaid flowchart TD syntax, no code
+fences) }.`,
 
   FUNCTIONAL_TEST_SCRIPT: `You are writing a Functional Test Script for the CONFIRMED scope of a project, based
 on its requirements/scope and task list below. Produce concrete, executable test cases that verify the
@@ -156,9 +168,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ...created, testCases }, { status: 201 });
   }
 
-  const { data, error } = await askClaudeJSON<{ title: string; content: string; diagram?: string }>(system, userPrompt, 6000);
+  const { data, error } = await askClaudeJSON<{
+    title: string;
+    content: string;
+    diagram?: string;
+    componentList?: string;
+    architectureHighlights?: string;
+    pros?: string;
+    cons?: string;
+  }>(system, userPrompt, 6000);
   if (error || !data) return NextResponse.json({ error: error || "No response from the AI model" }, { status: 502 });
 
+  const isDesign = deliverableType === "DESIGN";
   const [created] = await db
     .insert(deliverables)
     .values({
@@ -166,7 +187,11 @@ export async function POST(req: NextRequest) {
       type: deliverableType,
       title: data.title || DEFAULT_TITLES[deliverableType],
       content: data.content,
-      diagram: deliverableType === "DESIGN" ? data.diagram || null : null,
+      diagram: isDesign ? data.diagram || null : null,
+      componentList: isDesign ? data.componentList || null : null,
+      architectureHighlights: isDesign ? data.architectureHighlights || null : null,
+      pros: isDesign ? data.pros || null : null,
+      cons: isDesign ? data.cons || null : null,
       createdByAi: true,
       createdBy: user.name,
     })

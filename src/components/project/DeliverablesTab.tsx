@@ -31,6 +31,10 @@ type Deliverable = {
   title: string;
   content: string | null;
   diagram: string | null;
+  componentList: string | null;
+  architectureHighlights: string | null;
+  pros: string | null;
+  cons: string | null;
   status: string;
   createdByAi: boolean;
   createdBy: string | null;
@@ -166,7 +170,10 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
     }
   }
 
-  async function updateDeliverable(id: string, patch: Partial<Pick<Deliverable, "title" | "content" | "status">>) {
+  async function updateDeliverable(
+    id: string,
+    patch: Partial<Pick<Deliverable, "title" | "content" | "status" | "componentList" | "architectureHighlights" | "pros" | "cons">>
+  ) {
     setDeliverables((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
     await fetch(`/api/deliverables/${id}`, {
       method: "PATCH",
@@ -515,6 +522,50 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                             )}
                           </div>
                         )}
+                        {d.type === "DESIGN" && (
+                          <DesignField
+                            label="Component List"
+                            value={d.componentList}
+                            canEdit={canEdit}
+                            placeholder="AI lists key components here when you generate this deliverable — each with its responsibility, interactions, and data owned."
+                            onChange={(v) => setDeliverables((prev) => prev.map((x) => (x.id === d.id ? { ...x, componentList: v } : x)))}
+                            onBlur={(v) => updateDeliverable(d.id, { componentList: v })}
+                          />
+                        )}
+                        {d.type === "DESIGN" && (
+                          <DesignField
+                            label="Architecture Highlights"
+                            value={d.architectureHighlights}
+                            canEdit={canEdit}
+                            placeholder="Key architecture decisions and why they matter for this project."
+                            onChange={(v) => setDeliverables((prev) => prev.map((x) => (x.id === d.id ? { ...x, architectureHighlights: v } : x)))}
+                            onBlur={(v) => updateDeliverable(d.id, { architectureHighlights: v })}
+                          />
+                        )}
+                        {d.type === "DESIGN" && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                            <DesignField
+                              label="Pros"
+                              value={d.pros}
+                              canEdit={canEdit}
+                              placeholder="Why this architecture is a sound choice."
+                              rows={5}
+                              onChange={(v) => setDeliverables((prev) => prev.map((x) => (x.id === d.id ? { ...x, pros: v } : x)))}
+                              onBlur={(v) => updateDeliverable(d.id, { pros: v })}
+                              noBottomMargin
+                            />
+                            <DesignField
+                              label="Cons"
+                              value={d.cons}
+                              canEdit={canEdit}
+                              placeholder="Real trade-offs or risks of this architecture."
+                              rows={5}
+                              onChange={(v) => setDeliverables((prev) => prev.map((x) => (x.id === d.id ? { ...x, cons: v } : x)))}
+                              onBlur={(v) => updateDeliverable(d.id, { cons: v })}
+                              noBottomMargin
+                            />
+                          </div>
+                        )}
                         <p className="text-xs font-medium text-slate-500 mb-1 flex items-center gap-1"><FileText size={12} /> Content</p>
                         {canEdit ? (
                           <textarea
@@ -636,6 +687,50 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
           )}
         </div>
       </Card>
+    </div>
+  );
+}
+
+// Component List / Architecture Highlights / Pros / Cons all share this same shape: an
+// AI-fillable, user-editable text block with a label — broken out of one long `content`
+// field so each reads as its own distinct, individually-editable section (see schema.ts
+// comment on deliverables.componentList).
+function DesignField({
+  label,
+  value,
+  canEdit,
+  placeholder,
+  rows = 4,
+  noBottomMargin,
+  onChange,
+  onBlur,
+}: {
+  label: string;
+  value: string | null;
+  canEdit: boolean;
+  placeholder: string;
+  rows?: number;
+  noBottomMargin?: boolean;
+  onChange: (value: string) => void;
+  onBlur: (value: string) => void;
+}) {
+  return (
+    <div className={noBottomMargin ? "" : "mb-3"}>
+      <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+      {canEdit ? (
+        <textarea
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={(e) => onBlur(e.target.value)}
+          className={inputCls}
+          rows={rows}
+          placeholder={placeholder}
+        />
+      ) : value ? (
+        <pre className="whitespace-pre-wrap font-sans text-xs text-slate-600 bg-slate-50 rounded-lg p-3">{value}</pre>
+      ) : (
+        <p className="text-xs text-slate-400">Not yet filled in.</p>
+      )}
     </div>
   );
 }

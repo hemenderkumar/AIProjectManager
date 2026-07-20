@@ -1090,6 +1090,15 @@ export const deliverables = pgTable("deliverables", {
   // DESIGN deliverables so the key components and how they interact can be shown as an actual
   // picture, not just described in prose. Nullable/unused for every other type.
   diagram: text("diagram"),
+  // The next four are DESIGN-specific structured sections, broken out of `content` so they
+  // read as distinct, individually-editable pieces instead of one long prose blob: which
+  // components make up the design, why this architecture was chosen, and its trade-offs.
+  // AI drafts all four alongside content/diagram in draft-deliverable; nullable/unused for
+  // every other deliverable type.
+  componentList: text("component_list"),
+  architectureHighlights: text("architecture_highlights"),
+  pros: text("pros"),
+  cons: text("cons"),
   status: deliverableStatusEnum("status").notNull().default("DRAFT"),
   createdByAi: boolean("created_by_ai").notNull().default(false),
   createdBy: text("created_by"),
