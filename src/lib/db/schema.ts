@@ -36,6 +36,38 @@ export const ideationStatusEnum = pgEnum("ideation_status", [
   "READY_FOR_CHARTER",
 ]);
 
+// Gated Plan sequence: the Ideation + Charter tabs are merged into one "Plan" tab with 5
+// sub-tabs, each locked until the previous one's gate is satisfied. Replaces the old
+// free-form `stage` dropdown as the thing that actually drives progress — `stage` itself
+// becomes computed from this instead of being directly editable (see project reads/writes
+// in portfolio.ts). Existing projects already past IDEATION when this shipped are
+// grandfathered straight to READY_FOR_EXECUTION rather than retroactively gated — see the
+// backfill in add-ideation-gates.sql.
+export const ideationSubStageEnum = pgEnum("ideation_sub_stage", [
+  "IDEA_ALIGNMENT",
+  "TECHNICAL_FEASIBILITY",
+  "ARCHITECTURE_REVIEW",
+  "CHARTER",
+  "RESOURCING_DECISION",
+  "READY_FOR_EXECUTION",
+]);
+
+// Unanimous approval gate for Idea & Alignment: everyone invited to weigh in on an idea
+// must explicitly approve it (not just a majority, not just the PM) before it can advance
+// to Technical Feasibility. Mirrors the SOW/deliverable approval pattern already in the
+// app rather than a free-text "what the team decided" box.
+export const ideaReviewDecisionEnum = pgEnum("idea_review_decision", [
+  "PENDING",
+  "APPROVED",
+  "CHANGES_REQUESTED",
+]);
+
+// Set once, right after Charter approval, in the Resourcing Decision sub-tab: INTERNAL
+// routes the PM to the existing Resources/skills-matching workflow, VENDOR auto-creates a
+// draft RFP pre-filled from the charter. Delivery & Pricing (the ongoing tab, used
+// throughout execution for adjusting role mix/pricing) is unaffected either way.
+export const deliveryModeEnum = pgEnum("delivery_mode", ["INTERNAL", "VENDOR"]);
+
 export const priorityEnum = pgEnum("priority", [
   "LOW",
   "MEDIUM",
@@ -233,9 +265,37 @@ export const projects = pgTable("projects", {
   ideaType: ideaTypeEnum("idea_type"),
   ideationStatus: ideationStatusEnum("ideation_status").notNull().default("EXPLORING"),
 
-  // Technical evaluation & feasibility (Ideation step 2)
+  // Drives which Plan sub-tab is unlocked — see ideationSubStageEnum above. `stage` is
+  // derived from this (see stageForSubStage() in lib/portfolio.ts) rather than PM-editable.
+  ideationSubStage: ideationSubStageEnum("ideation_sub_stage").notNull().default("IDEA_ALIGNMENT"),
+  // Stamped the moment every invited idea_reviewers row reaches APPROVED (see
+  // api/projects/[id]/idea-reviewers) — the record of when the group actually aligned,
+  // distinct from ideationAlignment's free-text summary of what was decided.
+  ideaConfirmedAt: timestamp("idea_confirmed_at"),
+
+  // Technical evaluation & feasibility (Plan sub-tab 2)
   feasibilityScore: integer("feasibility_score"),
   feasibilityNotes: text("feasibility_notes"),
+  // What the team is actually running today — filled in by hand, or by AI (defaulting to
+  // "assume a typical current stack for this kind of problem") when left blank at the time
+  // feasibility is confirmed. Distinct from recommendedTechnology below, which is the
+  // proposed *future* state.
+  currentTechLandscape: text("current_tech_landscape"),
+
+  // Architecture approval (Plan sub-tab 3) — separate from the Technical Feasibility
+  // review above: feasibility confirms the direction is sound, this confirms the specific
+  // diagram/design is sound. An "architect" role isn't modeled separately from PM/ADMIN
+  // today, so this reuses the same PM+ gate as every other approval stamp in the app.
+  architectureProsCons: text("architecture_pros_cons"),
+  architectureApprovedBy: text("architecture_approved_by"),
+  architectureApprovedAt: timestamp("architecture_approved_at"),
+  architectureReviewNotes: text("architecture_review_notes"),
+
+  // Resourcing decision (Plan sub-tab 5, right after Charter is approved) — INTERNAL routes
+  // into the existing Resources/skills-matching workflow, VENDOR auto-creates a draft RFP.
+  deliveryMode: deliveryModeEnum("delivery_mode"),
+  deliveryModeDecidedBy: text("delivery_mode_decided_by"),
+  deliveryModeDecidedAt: timestamp("delivery_mode_decided_at"),
 
   // Ideation -> Execution approval gate (Ideation step 5)
   stageApprovedBy: text("stage_approved_by"),
@@ -720,6 +780,31 @@ export const solutionOptions = pgTable("solution_options", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// People invited to weigh in on an idea before it can advance out of Idea & Alignment —
+// always existing Keel users (same organization as the project, or fellow internal staff
+// for an internal-only project; see api/projects/[id]/idea-reviewers). The idea is
+// "confirmed" only once every row here is APPROVED — no majority, no single sign-off.
+export const ideaReviewers = pgTable(
+  "idea_reviewers",
+  {
+    id: cuid(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    invitedBy: text("invited_by"),
+    invitedAt: timestamp("invited_at").notNull().defaultNow(),
+    decision: ideaReviewDecisionEnum("decision").notNull().default("PENDING"),
+    comment: text("comment"),
+    respondedAt: timestamp("responded_at"),
+  },
+  (t) => ({
+    uq: uniqueIndex("idea_reviewer_uq").on(t.projectId, t.userId),
+  })
+);
+
 // Per-project sourcing breakdown for the Delivery & Pricing tab: one row per role,
 // with what % of that role's hours are onsite vs offshore vs contractor. Hours and
 // percentages are deterministic/editable; only the initial split + rationale come from
@@ -1169,6 +1254,17 @@ export const solutionOptionsRelations = relations(solutionOptions, ({ one }) => 
   project: one(projects, {
     fields: [solutionOptions.projectId],
     references: [projects.id],
+  }),
+}));
+
+export const ideaReviewersRelations = relations(ideaReviewers, ({ one }) => ({
+  project: one(projects, {
+    fields: [ideaReviewers.projectId],
+    references: [projects.id],
+  }),
+  user: one(users, {
+    fields: [ideaReviewers.userId],
+    references: [users.id],
   }),
 }));
 

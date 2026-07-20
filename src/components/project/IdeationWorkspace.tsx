@@ -3,11 +3,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Field, inputCls } from "./ui";
-import { formatDateTime, formatDateInput } from "@/lib/format";
-import { Sparkles, Loader2, Plus, Trash2, CheckCircle2, Lightbulb, AlertTriangle, Cpu, ShieldCheck } from "lucide-react";
+import { formatDateTime } from "@/lib/format";
+import { Sparkles, Loader2, Plus, Trash2, CheckCircle2, Lightbulb, AlertTriangle } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
-import MermaidDiagram from "@/components/MermaidDiagram";
 import AiEditChat from "./AiEditChat";
+import IdeaReviewersPanel from "./IdeaReviewersPanel";
+import type { SessionUser } from "@/lib/auth";
 
 const IDEATION_STATUS_LABELS: Record<string, string> = {
   EXPLORING: "Exploring",
@@ -15,21 +16,39 @@ const IDEATION_STATUS_LABELS: Record<string, string> = {
   READY_FOR_CHARTER: "Ready for Charter",
 };
 
-const TECH_REVIEW_LABELS: Record<string, string> = {
-  PENDING: "Pending Review",
-  APPROVED: "Approved",
-  CHANGES_REQUESTED: "Changes Requested",
-};
+// Duplicated (not imported) on purpose — see the matching comment in OverviewTab.tsx.
+function roleAtLeast(role: SessionUser["role"], min: SessionUser["role"]) {
+  const order = { VIEWER: 0, CONTRIBUTOR: 1, PM: 2, SUPER_USER: 3, ADMIN: 4 };
+  return order[role] >= order[min];
+}
 
-const TECH_REVIEW_STYLES: Record<string, string> = {
-  PENDING: "bg-amber-50 text-amber-700",
-  APPROVED: "bg-emerald-50 text-emerald-700",
-  CHANGES_REQUESTED: "bg-rose-50 text-rose-700",
-};
-
-export default function IdeationWorkspace({ detail }: { detail: ProjectDetail }) {
+export default function IdeationWorkspace({ detail, user }: { detail: ProjectDetail; user: SessionUser | null }) {
   const router = useRouter();
   const p = detail.project;
+
+  const [ideaForm, setIdeaForm] = useState({
+    problemStatement: p.problemStatement ?? "",
+    proposedSolution: p.proposedSolution ?? "",
+    expectedBenefits: p.expectedBenefits ?? "",
+    ideationNotes: p.ideationNotes ?? "",
+    ideationAlignment: p.ideationAlignment ?? "",
+  });
+  const [savingIdea, setSavingIdea] = useState(false);
+
+  function updateIdea<K extends keyof typeof ideaForm>(key: K, value: (typeof ideaForm)[K]) {
+    setIdeaForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function saveIdea() {
+    setSavingIdea(true);
+    await fetch(`/api/projects/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ideaForm),
+    });
+    setSavingIdea(false);
+    router.refresh();
+  }
 
   const [savingMeta, setSavingMeta] = useState(false);
   const [manualNote, setManualNote] = useState("");
@@ -43,15 +62,6 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
   const [showManualOption, setShowManualOption] = useState(false);
   const [draftingOption, setDraftingOption] = useState(false);
   const [optionDraftError, setOptionDraftError] = useState<string | null>(null);
-
-  const [recommending, setRecommending] = useState(false);
-  const [recommendError, setRecommendError] = useState<string | null>(null);
-  const [reviewForm, setReviewForm] = useState({
-    technicalReviewStatus: detail.project.technicalReviewStatus ?? "",
-    technicalReviewedBy: detail.project.technicalReviewedBy ?? "",
-    technicalReviewNotes: detail.project.technicalReviewNotes ?? "",
-  });
-  const [savingReview, setSavingReview] = useState(false);
 
   async function updateMeta(key: "ideaType" | "ideationStatus", value: string) {
     setSavingMeta(true);
@@ -174,44 +184,43 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
     router.refresh();
   }
 
-  async function getTechnicalRecommendation() {
-    setRecommending(true);
-    setRecommendError(null);
-    const res = await fetch("/api/ai/technical-recommendation", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectId: p.id }),
-    });
-    setRecommending(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setRecommendError(data?.error ?? "Couldn't generate a technical recommendation.");
-      return;
-    }
-    router.refresh();
-  }
-
-  async function saveReview() {
-    setSavingReview(true);
-    await fetch(`/api/projects/${p.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        technicalReviewStatus: reviewForm.technicalReviewStatus || null,
-        technicalReviewedBy: reviewForm.technicalReviewedBy || null,
-        technicalReviewNotes: reviewForm.technicalReviewNotes || null,
-        technicalReviewedAt: formatDateInput(new Date()),
-      }),
-    });
-    setSavingReview(false);
-    router.refresh();
-  }
-
   const isProblem = p.ideaType === "PROBLEM";
+  const canInvite = user ? roleAtLeast(user.role, "PM") : false;
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-3">
+        <Field label="Problem statement">
+          <textarea value={ideaForm.problemStatement} onChange={(e) => updateIdea("problemStatement", e.target.value)} className={inputCls} rows={2} />
+        </Field>
+        <Field label="Proposed solution">
+          <textarea value={ideaForm.proposedSolution} onChange={(e) => updateIdea("proposedSolution", e.target.value)} className={inputCls} rows={2} />
+        </Field>
+        <Field label="Expected benefits">
+          <textarea value={ideaForm.expectedBenefits} onChange={(e) => updateIdea("expectedBenefits", e.target.value)} className={inputCls} rows={2} />
+        </Field>
+        <Field label="Ideation notes">
+          <textarea value={ideaForm.ideationNotes} onChange={(e) => updateIdea("ideationNotes", e.target.value)} className={inputCls} rows={2} />
+        </Field>
+        <Field label="Alignment summary — what the team decided to take forward, and why">
+          <textarea
+            value={ideaForm.ideationAlignment}
+            onChange={(e) => updateIdea("ideationAlignment", e.target.value)}
+            className={inputCls}
+            rows={2}
+            placeholder="e.g. Aligned on building in-house rather than buying — cost and integration control outweigh speed."
+          />
+        </Field>
+        <button
+          onClick={saveIdea}
+          disabled={savingIdea}
+          className="text-xs px-3 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 font-medium disabled:opacity-50"
+        >
+          {savingIdea ? "Saving..." : "Save"}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-200 pt-4">
         <Field label="Idea type">
           <select
             value={p.ideaType ?? ""}
@@ -420,103 +429,7 @@ export default function IdeationWorkspace({ detail }: { detail: ProjectDetail })
         </div>
       )}
 
-      <div className="border-t border-slate-200 pt-4">
-        <div className="flex items-center justify-between mb-1.5">
-          <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-            <Cpu size={13} className="text-accent-500" /> Technical Recommendation &amp; Architecture
-          </p>
-          <button
-            onClick={getTechnicalRecommendation}
-            disabled={recommending}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
-          >
-            {recommending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-            {p.recommendedTechnology ? "Re-run recommendation" : "Get recommendation"}
-          </button>
-        </div>
-        <p className="text-xs text-slate-400 mb-2">
-          AI proposes a specific technology direction and architecture diagram, grounded in the problem,
-          solution options, and feasibility notes above. An enterprise architect reviews it before this
-          moves to the charter.
-        </p>
-        <AiWaitIndicator
-          active={recommending}
-          messages={["Reviewing the problem and options...", "Working out a technical approach...", "Drafting the architecture diagram..."]}
-          className="mb-2"
-        />
-        {recommendError && <p className="text-xs text-rose-600 mb-2">{recommendError}</p>}
-
-        {p.recommendedTechnology ? (
-          <div className="space-y-3">
-            <div className="rounded-lg border border-accent-200 bg-accent-50/60 p-3">
-              <p className="text-xs font-semibold text-accent-900 mb-1">{p.recommendedTechnology}</p>
-              {p.technicalRecommendationRationale && (
-                <p className="text-xs text-accent-800 whitespace-pre-wrap">{p.technicalRecommendationRationale}</p>
-              )}
-            </div>
-
-            {p.architectureDiagram && (
-              <div>
-                <p className="text-xs font-medium text-slate-500 mb-1">Architecture diagram</p>
-                <MermaidDiagram chart={p.architectureDiagram} />
-              </div>
-            )}
-
-            <div className="rounded-lg border border-slate-200 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <ShieldCheck size={13} className="text-slate-500" />
-                <p className="text-xs font-semibold text-slate-700">Enterprise Architect Review</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TECH_REVIEW_STYLES[p.technicalReviewStatus ?? "PENDING"]}`}>
-                  {TECH_REVIEW_LABELS[p.technicalReviewStatus ?? "PENDING"]}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
-                <Field label="Review status">
-                  <select
-                    value={reviewForm.technicalReviewStatus}
-                    onChange={(e) => setReviewForm((f) => ({ ...f, technicalReviewStatus: e.target.value }))}
-                    className={inputCls}
-                  >
-                    <option value="">Not yet reviewed</option>
-                    <option value="PENDING">Pending Review</option>
-                    <option value="APPROVED">Approved</option>
-                    <option value="CHANGES_REQUESTED">Changes Requested</option>
-                  </select>
-                </Field>
-                <Field label="Reviewed by">
-                  <input
-                    value={reviewForm.technicalReviewedBy}
-                    onChange={(e) => setReviewForm((f) => ({ ...f, technicalReviewedBy: e.target.value }))}
-                    className={inputCls}
-                    placeholder="Enterprise architect name"
-                  />
-                </Field>
-              </div>
-              <Field label="Review notes">
-                <textarea
-                  value={reviewForm.technicalReviewNotes}
-                  onChange={(e) => setReviewForm((f) => ({ ...f, technicalReviewNotes: e.target.value }))}
-                  className={inputCls}
-                  rows={2}
-                  placeholder="Concerns, conditions, or confirmation of the recommended direction"
-                />
-              </Field>
-              <button
-                onClick={saveReview}
-                disabled={savingReview}
-                className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 font-medium disabled:opacity-50"
-              >
-                {savingReview ? "Saving..." : "Save review"}
-              </button>
-              {p.technicalReviewedAt && (
-                <p className="text-xs text-slate-400 mt-1.5">Last reviewed {formatDateTime(p.technicalReviewedAt)}</p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-slate-400">No technical recommendation yet.</p>
-        )}
-      </div>
+      <IdeaReviewersPanel projectId={p.id} reviewers={detail.ideaReviewers} currentUser={user} canInvite={canInvite} />
     </div>
   );
 }

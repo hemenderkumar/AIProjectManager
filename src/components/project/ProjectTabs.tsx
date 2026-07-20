@@ -2,8 +2,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { getProjectDetail } from "@/lib/portfolio";
-import OverviewTab from "./OverviewTab";
-import CharterTab from "./CharterTab";
+import PlanTab from "./PlanTab";
 import TasksTab from "./TasksTab";
 import ResourcesTab from "./ResourcesTab";
 import StatusTab from "./StatusTab";
@@ -32,8 +31,7 @@ type Resource = {
 };
 
 const TABS = [
-  "Inception & Ideation",
-  "Charter",
+  "Plan",
   "Tasks",
   "Resources",
   "Status Tracking",
@@ -52,7 +50,7 @@ const TABS = [
 // Grouped by where they sit in an engagement's lifecycle, mirroring the sidebar's own
 // "Project Lifecycle" / "More" grouping so the mental model is consistent app-wide.
 const TAB_GROUPS: { label: string; icon: React.ReactNode; tabs: (typeof TABS)[number][] }[] = [
-  { label: "Plan", icon: <Compass size={14} />, tabs: ["Inception & Ideation", "Charter", "Milestones"] },
+  { label: "Plan", icon: <Compass size={14} />, tabs: ["Plan", "Milestones"] },
   { label: "Execute", icon: <Rocket size={14} />, tabs: ["Tasks", "Resources", "Status Tracking", "Risks", "Communications"] },
   { label: "Commercial", icon: <Receipt size={14} />, tabs: ["SOW", "Deliverables", "Delivery & Pricing", "Invoices"] },
   { label: "Insights", icon: <BarChart3 size={14} />, tabs: ["Ask AI", "C-Level Report"] },
@@ -65,7 +63,7 @@ function groupFor(tab: (typeof TABS)[number]) {
 function resolveInitialTab(tabParam: string | null, autoPlan: boolean): (typeof TABS)[number] {
   if (autoPlan) return "Tasks";
   const match = TABS.find((t) => t.toLowerCase() === tabParam?.toLowerCase());
-  return match ?? "Inception & Ideation";
+  return match ?? "Plan";
 }
 
 export default function ProjectTabs({
@@ -121,14 +119,13 @@ export default function ProjectTabs({
         ))}
       </div>
 
-      {active === "Inception & Ideation" && (
-        <OverviewTab
+      {active === "Plan" && (
+        <PlanTab
           detail={detail}
           user={user ?? null}
           onNavigate={(tab) => setActive(tab)}
         />
       )}
-      {active === "Charter" && <CharterTab detail={detail} />}
       {active === "Tasks" && <TasksTab detail={detail} allResources={allResources} autoPlan={autoPlan} />}
       {active === "Resources" && (
         <ResourcesTab detail={detail} allResources={allResources} isInternal={!!user && user.organizationId == null} />

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints } from "./db/schema";
+import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints, ideaReviewers, users } from "./db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { computeAutoRag, scheduleVarianceDays, budgetVariancePercent, isOverdueTask, riskScore, ProjectForHealth } from "./kpi";
 import { filterProjectsForUser } from "./tenancy";
@@ -78,7 +78,7 @@ export async function getProjectDetail(id: string) {
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) return null;
 
-  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices, projectBrainstormEntries, projectSolutionOptions, projectDeliveryRoleMix, projectSprints] =
+  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices, projectBrainstormEntries, projectSolutionOptions, projectDeliveryRoleMix, projectSprints, projectIdeaReviewers] =
     await Promise.all([
       db.select().from(tasks).where(eq(tasks.projectId, id)),
       db.select().from(riskItems).where(eq(riskItems.projectId, id)),
@@ -105,6 +105,21 @@ export async function getProjectDetail(id: string) {
       db.select().from(solutionOptions).where(eq(solutionOptions.projectId, id)),
       db.select().from(deliveryRoleMix).where(eq(deliveryRoleMix.projectId, id)),
       db.select().from(sprints).where(eq(sprints.projectId, id)),
+      db
+        .select({
+          id: ideaReviewers.id,
+          userId: ideaReviewers.userId,
+          name: users.name,
+          email: users.email,
+          invitedBy: ideaReviewers.invitedBy,
+          invitedAt: ideaReviewers.invitedAt,
+          decision: ideaReviewers.decision,
+          comment: ideaReviewers.comment,
+          respondedAt: ideaReviewers.respondedAt,
+        })
+        .from(ideaReviewers)
+        .innerJoin(users, eq(ideaReviewers.userId, users.id))
+        .where(eq(ideaReviewers.projectId, id)),
     ]);
 
   const taskIds = projectTasks.map((t) => t.id);
@@ -142,6 +157,7 @@ export async function getProjectDetail(id: string) {
     solutionOptions: projectSolutionOptions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
     deliveryRoleMix: projectDeliveryRoleMix,
     sprints: projectSprints.sort((a, b) => (a.startDate?.getTime() ?? 0) - (b.startDate?.getTime() ?? 0)),
+    ideaReviewers: projectIdeaReviewers.sort((a, b) => a.invitedAt.getTime() - b.invitedAt.getTime()),
   };
 }
 

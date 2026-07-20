@@ -5,29 +5,20 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
-import { Sparkles, Loader2, CheckCircle2, Lock, Trash2, Boxes } from "lucide-react";
-import IdeationWorkspace from "./IdeationWorkspace";
+import { Loader2, Trash2, Boxes } from "lucide-react";
 import CountryStateFields from "@/components/CountryStateFields";
+import { SUB_STAGE_LABELS } from "@/lib/ideationGates";
 
 type Stakeholder = { id: string; name: string; title: string | null; divisionId: string | null };
 type OrgOption = { id: string; name: string };
 
-// Duplicated (not imported) on purpose: "@/lib/auth" pulls in next/headers, which breaks
+// Duplicated (not imported) on purpose — "@/lib/auth" pulls in next/headers, which breaks
 // the build if a value (non-type) import from it ends up in a "use client" component's
 // bundle. This is the same tiny role-order check as roleAtLeast() in lib/auth.ts.
 function roleAtLeast(role: SessionUser["role"], min: SessionUser["role"]) {
   const order = { VIEWER: 0, CONTRIBUTOR: 1, PM: 2, SUPER_USER: 3, ADMIN: 4 };
   return order[role] >= order[min];
 }
-
-type FeasibilityResult = {
-  technicalApproach: string;
-  feasibilityScore: number;
-  feasibilityRating: string;
-  keyRisks: string[];
-  openQuestions: string[];
-  assumptions: string[];
-};
 
 type SimilarProjectsResult = {
   similarProjects: { name: string; whySimilar: string }[];
@@ -37,15 +28,11 @@ type SimilarProjectsResult = {
   note?: string;
 };
 
-export default function OverviewTab({
-  detail,
-  user,
-  onNavigate,
-}: {
-  detail: ProjectDetail;
-  user: SessionUser | null;
-  onNavigate: (tab: "Charter" | "Tasks") => void;
-}) {
+// Project metadata + housekeeping — everything that ISN'T part of the gated Plan sequence
+// (that's the 5 sub-tabs above this, in PlanTab.tsx). Stage itself is no longer editable
+// here: it's derived from ideationSubStage as each Plan gate is satisfied, shown below as a
+// read-only badge instead of a dropdown.
+export default function OverviewTab({ detail, user }: { detail: ProjectDetail; user: SessionUser | null }) {
   const router = useRouter();
   const p = detail.project;
   const [saving, setSaving] = useState(false);
@@ -55,7 +42,6 @@ export default function OverviewTab({
     sponsor: p.sponsor ?? "",
     sponsorStakeholderId: p.sponsorStakeholderId ?? "",
     projectManager: p.projectManager ?? "",
-    stage: p.stage,
     priority: p.priority,
     startDate: formatDateInput(p.startDate),
     targetEndDate: formatDateInput(p.targetEndDate),
@@ -65,21 +51,7 @@ export default function OverviewTab({
     country: p.country ?? "",
     stateProvince: p.stateProvince ?? "",
     program: p.program ?? "",
-    problemStatement: p.problemStatement ?? "",
-    proposedSolution: p.proposedSolution ?? "",
-    expectedBenefits: p.expectedBenefits ?? "",
-    ideationNotes: p.ideationNotes ?? "",
-    ideationAlignment: p.ideationAlignment ?? "",
-    feasibilityScore: p.feasibilityScore ?? undefined,
-    feasibilityNotes: p.feasibilityNotes ?? "",
   });
-
-  const [assessing, setAssessing] = useState(false);
-  const [feasibilityError, setFeasibilityError] = useState<string | null>(null);
-  const [feasibilityResult, setFeasibilityResult] = useState<FeasibilityResult | null>(null);
-
-  const [approving, setApproving] = useState(false);
-  const [approveError, setApproveError] = useState<string | null>(null);
 
   const [findingSimilar, setFindingSimilar] = useState(false);
   const [similarError, setSimilarError] = useState<string | null>(null);
@@ -150,52 +122,6 @@ export default function OverviewTab({
     router.refresh();
   }
 
-  async function assessFeasibility() {
-    setAssessing(true);
-    setFeasibilityError(null);
-    setFeasibilityResult(null);
-    try {
-      const res = await fetch("/api/ai/feasibility", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId: p.id }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFeasibilityError(data.error ?? "Couldn't assess feasibility right now.");
-        return;
-      }
-      setFeasibilityResult(data);
-      setForm((f) => ({ ...f, feasibilityScore: data.feasibilityScore, feasibilityNotes: data.technicalApproach }));
-    } finally {
-      setAssessing(false);
-    }
-  }
-
-  async function approve() {
-    setApproving(true);
-    setApproveError(null);
-    try {
-      const res = await fetch(`/api/projects/${p.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stage: "EXECUTION",
-          stageApprovedBy: user?.name ?? "Unknown",
-          stageApprovedAt: new Date().toISOString(),
-        }),
-      });
-      if (!res.ok) {
-        setApproveError("Couldn't approve — try again.");
-        return;
-      }
-      router.refresh();
-      onNavigate("Tasks");
-    } finally {
-      setApproving(false);
-    }
-  }
-
   async function deleteProject() {
     setDeleting(true);
     setDeleteError(null);
@@ -213,16 +139,12 @@ export default function OverviewTab({
     }
   }
 
-  const canApprove = user ? roleAtLeast(user.role, "PM") : false;
   const canDelete = user ? roleAtLeast(user.role, "PM") : false;
-  const hasCharter = Boolean(p.businessCase?.trim() || p.objectives?.trim());
-  const hasEstimate = (p.budgetPlanned ?? 0) > 0;
-  const alreadyApproved = Boolean(p.stageApprovedAt);
-  const readyToApprove = p.stage === "CHARTER" || p.stage === "EXECUTION";
+  const closedOut = p.stage === "CLOSING" || p.stage === "CLOSED";
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <Card title="Inception">
+      <Card title="Project Details">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Project Name">
             <input value={form.name} onChange={(e) => update("name", e.target.value)} className={inputCls} />
@@ -238,11 +160,9 @@ export default function OverviewTab({
             </Field>
           )}
           <Field label="Stage">
-            <select value={form.stage} onChange={(e) => update("stage", e.target.value as typeof form.stage)} className={inputCls}>
-              {["INCEPTION", "IDEATION", "CHARTER", "EXECUTION", "CLOSING", "CLOSED"].map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            <div className={`${inputCls} bg-slate-50 text-slate-600`}>
+              {p.stage}{!closedOut && ` · ${SUB_STAGE_LABELS[p.ideationSubStage]}`}
+            </div>
           </Field>
           <Field label="Sponsor">
             {stakeholders.length > 0 ? (
@@ -301,42 +221,48 @@ export default function OverviewTab({
             <textarea value={form.description} onChange={(e) => update("description", e.target.value)} className={inputCls} rows={2} />
           </Field>
         </div>
-      </Card>
-
-      <Card
-        title="Step 1 — Idea Generation, Brainstorming & Alignment"
-      >
-        <div className="space-y-4">
-          <Field label="Problem statement">
-            <textarea value={form.problemStatement} onChange={(e) => update("problemStatement", e.target.value)} className={inputCls} rows={2} />
-          </Field>
-          <Field label="Proposed solution">
-            <textarea value={form.proposedSolution} onChange={(e) => update("proposedSolution", e.target.value)} className={inputCls} rows={2} />
-          </Field>
-          <Field label="Expected benefits">
-            <textarea value={form.expectedBenefits} onChange={(e) => update("expectedBenefits", e.target.value)} className={inputCls} rows={2} />
-          </Field>
-          <Field label="Ideation notes">
-            <textarea value={form.ideationNotes} onChange={(e) => update("ideationNotes", e.target.value)} className={inputCls} rows={3} />
-          </Field>
-        </div>
-
-        <div className="border-t border-slate-200 mt-4 pt-4">
-          <IdeationWorkspace detail={detail} />
-        </div>
-
-        <div className="mt-4">
-          <Field label="Alignment — what the team decided to take forward, and why">
-            <textarea
-              value={form.ideationAlignment}
-              onChange={(e) => update("ideationAlignment", e.target.value)}
+        {canDelete && closedOut && (
+          <Field label="Close-out stage">
+            <select
+              value={p.stage}
+              onChange={async (e) => {
+                await fetch(`/api/projects/${p.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ stage: e.target.value }),
+                });
+                router.refresh();
+              }}
               className={inputCls}
-              rows={2}
-              placeholder="e.g. Aligned on building in-house rather than buying — cost and integration control outweigh speed."
-            />
+            >
+              <option value="CLOSING">CLOSING</option>
+              <option value="CLOSED">CLOSED</option>
+            </select>
           </Field>
-        </div>
+        )}
       </Card>
+
+      <div className="flex items-center gap-3">
+        <PrimaryButton onClick={save} disabled={saving}>
+          {saving ? "Saving..." : "Save Changes"}
+        </PrimaryButton>
+        <AutoHealthNote detail={detail} />
+        {canDelete && p.ideationSubStage === "READY_FOR_EXECUTION" && !closedOut && (
+          <button
+            onClick={async () => {
+              await fetch(`/api/projects/${p.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ stage: "CLOSING" }),
+              });
+              router.refresh();
+            }}
+            className="text-xs text-slate-400 hover:text-slate-600"
+          >
+            Begin close-out
+          </button>
+        )}
+      </div>
 
       <Card
         title="Similar past projects & patterns"
@@ -396,125 +322,6 @@ export default function OverviewTab({
           </div>
         )}
       </Card>
-
-      <Card
-        title="Step 2 — Technical Evaluation & Feasibility"
-        action={
-          <button
-            onClick={assessFeasibility}
-            disabled={assessing}
-            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
-          >
-            {assessing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-            Assess Feasibility with AI
-          </button>
-        }
-      >
-        {feasibilityError && <p className="text-xs text-rose-600 mb-2">{feasibilityError}</p>}
-        {feasibilityResult && (
-          <div className="border border-slate-200 bg-slate-50 rounded-lg p-3 mb-3 space-y-2">
-            <p className="text-xs text-slate-700">{feasibilityResult.technicalApproach}</p>
-            <div>
-              <p className="text-xs font-semibold text-slate-700 mb-1">Key risks</p>
-              <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5">
-                {feasibilityResult.keyRisks.map((r, i) => <li key={i}>{r}</li>)}
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-700 mb-1">Open questions</p>
-              <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5">
-                {feasibilityResult.openQuestions.map((q, i) => <li key={i}>{q}</li>)}
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-700 mb-1">Assumptions (limited-info caveats)</p>
-              <ul className="list-disc list-inside text-xs text-slate-500 space-y-0.5">
-                {feasibilityResult.assumptions.map((a, i) => <li key={i}>{a}</li>)}
-              </ul>
-            </div>
-          </div>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Field label="Feasibility score (0-100)">
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={form.feasibilityScore ?? ""}
-              onChange={(e) => update("feasibilityScore", e.target.value === "" ? undefined : Number(e.target.value))}
-              className={inputCls}
-            />
-          </Field>
-          <div className="col-span-2">
-            <Field label="Feasibility notes">
-              <textarea value={form.feasibilityNotes} onChange={(e) => update("feasibilityNotes", e.target.value)} className={inputCls} rows={2} />
-            </Field>
-          </div>
-        </div>
-      </Card>
-
-      <Card title="Step 3 — Estimates">
-        <p className="text-sm text-slate-500 mb-3">
-          {hasEstimate
-            ? `Current planned budget: $${(p.budgetPlanned ?? 0).toLocaleString()}. Refine cost, schedule, and staffing estimates in the Tasks tab.`
-            : "No cost/schedule estimate yet — run the AI planner in the Tasks tab to generate a realistic, effort-based estimate before moving forward."}
-        </p>
-        <button
-          onClick={() => onNavigate("Tasks")}
-          className="text-xs px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 font-medium"
-        >
-          Go to Tasks — Plan with AI
-        </button>
-      </Card>
-
-      <Card title="Step 4 — Project Charter">
-        <p className="text-sm text-slate-500 mb-3">
-          {hasCharter
-            ? "Charter is drafted. Review and refine it in the Charter tab."
-            : "No charter yet — draft it with AI or write it directly in the Charter tab."}
-        </p>
-        <button
-          onClick={() => onNavigate("Charter")}
-          className="text-xs px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 font-medium"
-        >
-          Go to Charter
-        </button>
-      </Card>
-
-      <Card title="Step 5 — Approval">
-        {alreadyApproved ? (
-          <p className="text-sm text-emerald-700 flex items-center gap-1.5">
-            <CheckCircle2 size={15} /> Approved by {p.stageApprovedBy} — this project has moved to execution.
-          </p>
-        ) : !readyToApprove ? (
-          <p className="text-sm text-slate-400">
-            Complete the charter (Step 4) before this idea is ready to approve for execution.
-          </p>
-        ) : !canApprove ? (
-          <p className="text-sm text-slate-400 flex items-center gap-1.5">
-            <Lock size={14} /> Only a PM or Admin can approve this idea to move into execution.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-sm text-slate-500">
-              Approving moves this project from Ideation into Project Execution — everything already
-              captured (charter, estimate, resources) carries forward as-is.
-            </p>
-            {approveError && <p className="text-xs text-rose-600">{approveError}</p>}
-            <PrimaryButton onClick={approve} disabled={approving} className="flex items-center gap-1.5">
-              {approving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-              {approving ? "Approving..." : "Approve & Move to Execution"}
-            </PrimaryButton>
-          </div>
-        )}
-      </Card>
-
-      <div className="flex items-center gap-3">
-        <PrimaryButton onClick={save} disabled={saving}>
-          {saving ? "Saving..." : "Save Changes"}
-        </PrimaryButton>
-        <AutoHealthNote detail={detail} />
-      </div>
 
       {canDelete && (
         <Card title="Danger Zone">

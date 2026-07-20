@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
+import { roleAtLeast } from "@/lib/auth";
+import { STAGE_FOR_SUB_STAGE } from "@/lib/ideationGates";
 
 export async function GET(
   _req: NextRequest,
@@ -28,7 +30,7 @@ export async function PATCH(
   const body = await req.json();
 
   const allowed = [
-    "name", "description", "sponsor", "sponsorStakeholderId", "projectManager", "stage", "priority",
+    "name", "description", "sponsor", "sponsorStakeholderId", "projectManager", "priority",
     "country", "stateProvince", "program",
     "ragStatus", "startDate", "targetEndDate", "actualEndDate", "budgetPlanned",
     "budgetActual", "percentComplete", "problemStatement", "proposedSolution",
@@ -37,16 +39,20 @@ export async function PATCH(
     "stakeholders", "assumptionsRisks", "risks", "totalFundingRequired",
     "integratedSystems", "highLevelArchitecture", "roiExpected",
     "charterApprovedBy", "charterApprovedAt",
-    "feasibilityScore", "feasibilityNotes", "stageApprovedBy", "stageApprovedAt",
+    "feasibilityScore", "feasibilityNotes", "currentTechLandscape", "stageApprovedBy", "stageApprovedAt",
     "ongoingSupportMonthlyCost", "ongoingSupportPlan", "contingencyPercent",
     "pricingModel", "fixedBidPrice", "deliveryRationale", "deliveryRecommendedAt",
     "executionMethodology",
     "recommendedTechnology", "technicalRecommendationRationale", "technicalReviewStatus",
     "technicalReviewedBy", "technicalReviewedAt", "technicalReviewNotes",
     "highLevelRequirements", "architectureDiagram", "internalSupportNeeds",
+    "architectureProsCons", "architectureApprovedBy", "architectureApprovedAt", "architectureReviewNotes",
   ];
 
-  const dateFields = ["startDate", "targetEndDate", "actualEndDate", "charterApprovedAt", "stageApprovedAt", "deliveryRecommendedAt", "technicalReviewedAt"];
+  const dateFields = [
+    "startDate", "targetEndDate", "actualEndDate", "charterApprovedAt", "stageApprovedAt",
+    "deliveryRecommendedAt", "technicalReviewedAt", "architectureApprovedAt",
+  ];
   const numericFields = ["budgetPlanned", "budgetActual", "percentComplete", "totalFundingRequired", "feasibilityScore", "ongoingSupportMonthlyCost", "contingencyPercent", "fixedBidPrice"];
 
   const update: Record<string, unknown> = { updatedAt: new Date() };
@@ -64,6 +70,40 @@ export async function PATCH(
       } else {
         update[key] = v;
       }
+    }
+  }
+
+  // `stage` used to be a free-form dropdown; it's now derived from ideationSubStage as each
+  // Plan gate is satisfied (idea confirmed, feasibility approved, architecture approved,
+  // charter approved, resourcing decided — see the transitions below and
+  // api/projects/[id]/resourcing-decision). The one thing still manually settable here is
+  // closing a project out (CLOSING/CLOSED) — that's a separate lifecycle event this gated
+  // sequence doesn't model, and needs PM tier or above, same bar as deleting a project.
+  if ("stage" in body) {
+    if (!roleAtLeast(_authUser.role, "PM")) {
+      return NextResponse.json({ error: "Only a PM or above can change a project's stage." }, { status: 403 });
+    }
+    if (body.stage !== "CLOSING" && body.stage !== "CLOSED") {
+      return NextResponse.json(
+        { error: "Stage now follows the Plan tab's gates automatically and can no longer be set directly — the only exception is marking a project CLOSING or CLOSED." },
+        { status: 400 }
+      );
+    }
+    update.stage = body.stage;
+  }
+
+  // Gate transitions: each only fires once, moving forward exactly one step, and only when
+  // the project is actually sitting at the sub-stage that gate belongs to — so replaying an
+  // old PATCH (e.g. re-saving an already-approved review) can't push things out of order.
+  const [current] = await db.select({ ideationSubStage: projects.ideationSubStage }).from(projects).where(eq(projects.id, id));
+  if (current) {
+    if (current.ideationSubStage === "TECHNICAL_FEASIBILITY" && update.technicalReviewStatus === "APPROVED") {
+      update.ideationSubStage = "ARCHITECTURE_REVIEW";
+    } else if (current.ideationSubStage === "ARCHITECTURE_REVIEW" && "architectureApprovedAt" in update && update.architectureApprovedAt) {
+      update.ideationSubStage = "CHARTER";
+      update.stage = STAGE_FOR_SUB_STAGE.CHARTER;
+    } else if (current.ideationSubStage === "CHARTER" && "charterApprovedAt" in update && update.charterApprovedAt) {
+      update.ideationSubStage = "RESOURCING_DECISION";
     }
   }
 
@@ -144,6 +184,12 @@ export async function PATCH(
     await logAudit({
       actor: _authUser, action: "technical_review.decided", entityType: "project", entityId: id,
       organizationId: updated.organizationId, detail: `Technical review for "${updated.name}" set to ${updated.technicalReviewStatus} by ${updated.technicalReviewedBy ?? _authUser.name}.`,
+    });
+  }
+  if ("architectureApprovedAt" in body && body.architectureApprovedAt) {
+    await logAudit({
+      actor: _authUser, action: "architecture.approved", entityType: "project", entityId: id,
+      organizationId: updated.organizationId, detail: `Architecture approved by ${updated.architectureApprovedBy ?? _authUser.name} for "${updated.name}".`,
     });
   }
 
