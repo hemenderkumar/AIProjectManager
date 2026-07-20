@@ -35,13 +35,27 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
     internalSupportNeeds: p.internalSupportNeeds ?? "",
     roiExpected: p.roiExpected ?? "",
     totalFundingRequired: p.totalFundingRequired ?? 0,
+    // Falls back to the itemized cost-items total (from the Tasks-tab plan wizard) until
+    // someone edits or AI-drafts this project-level figure directly — after that, this
+    // column is the source of truth for what Cost Summary shows, so existing data isn't
+    // lost but a fresh save always wins.
+    materialCostEstimate:
+      p.materialCostEstimate ?? detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0),
+    budgetPlanned: p.budgetPlanned ?? 0,
+    ongoingSupportMonthlyCost: p.ongoingSupportMonthlyCost ?? 0,
+    contingencyPercent: p.contingencyPercent ?? 10,
     charterApprovedBy: p.charterApprovedBy ?? "",
     charterApprovedAt: formatDateInput(p.charterApprovedAt),
   });
 
-  const materialCost = detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
-  const implementationCost = p.budgetPlanned ?? 0;
-  const ongoingSupportCost = p.ongoingSupportMonthlyCost ?? 0;
+  // Applied to both cost and effort so the buffer shows up wherever someone is sizing the
+  // project, not just in the dollar total — a schedule built off "best case" hours alone is
+  // exactly what a contingency margin exists to protect against.
+  const costSubtotal = (form.materialCostEstimate || 0) + (form.budgetPlanned || 0);
+  const contingencyAmount = Math.round((costSubtotal * (form.contingencyPercent || 0)) / 100);
+  const totalWithContingency = costSubtotal + contingencyAmount;
+  const totalEstimateHours = detail.tasks.reduce((s, t) => s + (t.estimateHours ?? 0), 0);
+  const effortWithContingency = totalEstimateHours * (1 + (form.contingencyPercent || 0) / 100);
 
   const [downloadingWord, setDownloadingWord] = useState(false);
 
@@ -147,6 +161,9 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           highLevelArchitecture: sections["High-Level Architecture"] ?? f.highLevelArchitecture,
           internalSupportNeeds: sections["Internal Support Needs"] ?? f.internalSupportNeeds,
           roiExpected: sections["ROI to Be Achieved"] ?? f.roiExpected,
+          materialCostEstimate: parseFundingNumber(sections["Material Cost Estimate"]) ?? f.materialCostEstimate,
+          budgetPlanned: parseFundingNumber(sections["Implementation Cost Estimate"]) ?? f.budgetPlanned,
+          ongoingSupportMonthlyCost: parseFundingNumber(sections["Ongoing Support Cost Estimate (Monthly)"]) ?? f.ongoingSupportMonthlyCost,
           totalFundingRequired: parseFundingNumber(sections["Total Funding Required"]) ?? f.totalFundingRequired,
         }));
       }
@@ -194,14 +211,79 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         )}
       </Card>
 
-      <Card title="Cost Summary">
+      <Card
+        title="Cost Summary"
+        action={
+          <button
+            onClick={generateDraft}
+            disabled={generating}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
+          >
+            {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            Estimate with AI
+          </button>
+        }
+      >
         <p className="text-xs text-slate-500 mb-3">
-          Rolled up from the Tasks (implementation) and Ongoing Support estimates — edit those to change these numbers.
+          Editable directly here, or estimated by AI from the project&apos;s scope and technology — save the
+          Charter below once you&apos;re happy with the numbers.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <SummaryStat label="Material cost" value={`$${materialCost.toLocaleString()}`} />
-          <SummaryStat label="Implementation cost" value={`$${implementationCost.toLocaleString()}`} />
-          <SummaryStat label="Ongoing support (monthly)" value={`$${ongoingSupportCost.toLocaleString()}`} />
+        <AiWaitIndicator active={generating} messages={["Reading the scope and technology...", "Estimating costs..."]} className="mb-2" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+          <Field label="Material cost ($)">
+            <input
+              type="number"
+              min={0}
+              value={form.materialCostEstimate}
+              onChange={(e) => update("materialCostEstimate", Number(e.target.value))}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Implementation cost ($)">
+            <input
+              type="number"
+              min={0}
+              value={form.budgetPlanned}
+              onChange={(e) => update("budgetPlanned", Number(e.target.value))}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Ongoing support ($/month)">
+            <input
+              type="number"
+              min={0}
+              value={form.ongoingSupportMonthlyCost}
+              onChange={(e) => update("ongoingSupportMonthlyCost", Number(e.target.value))}
+              className={inputCls}
+            />
+          </Field>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <Field label="Contingency (%)">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={form.contingencyPercent}
+              onChange={(e) => update("contingencyPercent", Number(e.target.value))}
+              className={inputCls}
+            />
+          </Field>
+          <div className="flex flex-col justify-end pb-0.5">
+            <p className="text-xs text-slate-400">
+              Applied as a buffer on top of both the cost above and the total effort estimate below — not
+              AI-drafted, this is a policy call for whoever owns the budget to set.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <SummaryStat label="Cost subtotal" value={`$${costSubtotal.toLocaleString()}`} />
+          <SummaryStat label={`Contingency (${form.contingencyPercent}%)`} value={`$${contingencyAmount.toLocaleString()}`} />
+          <SummaryStat label="Total incl. contingency" value={`$${totalWithContingency.toLocaleString()}`} />
+          <SummaryStat
+            label="Total effort incl. contingency"
+            value={totalEstimateHours > 0 ? `${Math.round(effortWithContingency).toLocaleString()} hrs` : "No tasks yet"}
+          />
         </div>
       </Card>
 

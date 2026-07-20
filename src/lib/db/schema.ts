@@ -251,6 +251,12 @@ export const projects = pgTable("projects", {
   targetEndDate: timestamp("target_end_date"),
   actualEndDate: timestamp("actual_end_date"),
   budgetPlanned: real("budget_planned").default(0),
+  // Charter-level, editable/AI-draftable rough estimate of one-time material/license/hardware
+  // cost — distinct from the itemized `costItems` rows the Tasks-tab plan wizard produces
+  // (those stay the detailed breakdown; this is the single top-line figure the Charter's own
+  // Cost Summary shows and lets someone override directly, same idea as budgetPlanned already
+  // being both auto-computed and manually editable).
+  materialCostEstimate: real("material_cost_estimate"),
   budgetActual: real("budget_actual").default(0),
   percentComplete: integer("percent_complete").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

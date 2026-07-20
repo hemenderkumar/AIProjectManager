@@ -149,7 +149,10 @@ export default function TasksTab({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [confirming, setConfirming] = useState(false);
-  const [contingencyPercent, setContingencyPercent] = useState(10);
+  // Defaults to whatever's already saved on the project (itself defaulting to 10% at the
+  // schema level for any new project), so re-opening the planner doesn't silently reset a
+  // contingency someone already set — see the matching field on the Charter's Cost Summary.
+  const [contingencyPercent, setContingencyPercent] = useState(detail.project.contingencyPercent ?? 10);
   const [materialCosts, setMaterialCosts] = useState<MaterialCostItem[]>([]);
   const [ongoingSupport, setOngoingSupport] = useState<OngoingSupportPlan>({ summary: "", monthlyCost: 0, roles: [] });
 
@@ -299,6 +302,9 @@ export default function TasksTab({
   const materialCostTotal = materialCosts.reduce((sum, m) => sum + (m.amount ?? 0), 0);
   const contingencyAmount = Math.round(((laborCost + materialCostTotal) * contingencyPercent) / 100);
   const totalProjectBudget = Math.round(laborCost + materialCostTotal + contingencyAmount);
+  // Same buffer, applied to hours rather than dollars -- a schedule sized off "best case"
+  // effort alone is exactly what the contingency margin exists to protect against.
+  const effortWithContingency = editedTotalHours * (1 + contingencyPercent / 100);
 
   function updateMaterialCost<K extends keyof MaterialCostItem>(index: number, key: K, value: MaterialCostItem[K]) {
     setMaterialCosts((prev) => prev.map((m, i) => (i === index ? { ...m, [key]: value } : m)));
@@ -701,6 +707,10 @@ export default function TasksTab({
                     <SummaryStat label="Material costs" value={`$${materialCostTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
                     <SummaryStat label={`Contingency (${contingencyPercent}%)`} value={`$${contingencyAmount.toLocaleString()}`} />
                     <SummaryStat label="Total budget" value={`$${totalProjectBudget.toLocaleString()}`} />
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                    <SummaryStat label="Total effort" value={`${editedTotalHours.toLocaleString()} hrs`} />
+                    <SummaryStat label={`Effort incl. contingency (${contingencyPercent}%)`} value={`${Math.round(effortWithContingency).toLocaleString()} hrs`} />
                   </div>
                   <div className="mt-2 max-w-[200px]">
                     <Field label="Contingency %">
