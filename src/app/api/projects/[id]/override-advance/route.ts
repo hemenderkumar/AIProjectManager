@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { SUB_STAGE_ORDER, SUB_STAGE_LABELS, STAGE_FOR_SUB_STAGE, subStageIndex } from "@/lib/ideationGates";
 
@@ -16,6 +17,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  // Distinguish "not logged in / session expired" from "logged in but not authorized" --
+  // requireProjectAccess collapses both into a single null, which previously surfaced the
+  // same "Only a company owner or administrator..." message even when the real problem was
+  // simply an expired session (SESSION_MAX_AGE_SECONDS is 1 hour), misleading someone who
+  // actually does have the right role into thinking their account was downgraded.
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Your session has expired — log in again and retry." }, { status: 401 });
+  }
   const user = await requireProjectAccess("SUPER_USER", id);
   if (!user) return NextResponse.json({ error: "Only a company owner or administrator can override a gate." }, { status: 403 });
 
