@@ -130,6 +130,14 @@ export type ThemeId = (typeof VALID_THEMES)[number];
 export async function getCurrentTheme(): Promise<ThemeId> {
   const user = await getCurrentUser();
   if (!user) return "indigo";
-  const [row] = await db.select({ theme: users.theme }).from(users).where(eq(users.id, user.id));
-  return (row?.theme as ThemeId) ?? "indigo";
+  try {
+    // This runs in the root layout on every single authenticated page load, before anything
+    // else renders. It's purely cosmetic, so a transient DB hiccup here (e.g. the connection
+    // pool being briefly exhausted) must never take down the entire app -- fall back to the
+    // default rather than let it bubble into an unhandled render-time crash.
+    const [row] = await db.select({ theme: users.theme }).from(users).where(eq(users.id, user.id));
+    return (row?.theme as ThemeId) ?? "indigo";
+  } catch {
+    return "indigo";
+  }
 }
