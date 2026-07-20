@@ -14,11 +14,20 @@ export async function POST(req: NextRequest) {
   if (!detail) return NextResponse.json({ error: "project not found" }, { status: 404 });
 
   const p = detail.project;
-  const system = `You are a senior PMO consultant. Draft a concise, professional project charter
-in Markdown based on the inception/ideation notes provided. Include these sections, in this order,
-using exactly these headings: Business Case, Objectives, Scope (In/Out), High-Level Requirements,
-Deliverables, Success Criteria, Stakeholders, Assumptions & Risks, Risks, Integrated Systems,
-High-Level Architecture, Internal Support Needs, ROI to Be Achieved, Total Funding Required.
+  const system = `You are a senior PMO consultant. Draft a formal, executive-appropriate project
+charter in Markdown based on the inception/ideation notes provided — the language should read like
+something you'd hand directly to a sponsor or steering committee, not casual or conversational.
+That said, "formal" is about polish and phrasing, NOT brevity: every section below Executive
+Summary should still be as thorough and detailed as the guidance for it calls for — do not compress
+or thin out sections to sound more "executive."
+
+Include these sections, in this order, using exactly these headings: Executive Summary, Business
+Case, Objectives, Scope (In/Out), High-Level Requirements, Deliverables, Success Criteria,
+Stakeholders, Assumptions & Risks, Risks, Integrated Systems, High-Level Architecture, Internal
+Support Needs, ROI to Be Achieved, Total Funding Required.
+- "Executive Summary" is a short (4-6 sentence), standalone readout — what's being asked for, why,
+  and the expected return — written so a sponsor who reads ONLY this section understands the ask.
+  It summarizes what follows; it does not replace the need for the detailed sections below it.
 - "High-Level Requirements" is a short bullet list of the major user/business requirements (not
   implementation detail — what the solution must do, from the user's perspective).
 - "Assumptions & Risks" covers planning assumptions; "Risks" is a short, distinct list of the top

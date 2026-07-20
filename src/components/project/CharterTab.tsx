@@ -4,11 +4,12 @@ import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, FileDown } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
 import DownloadPdfLink from "@/components/DownloadPdfLink";
 import AiEditChat from "./AiEditChat";
+import { renderMermaidToImages } from "@/lib/mermaidToImage";
 
 export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const [generating, setGenerating] = useState(false);
   const [regeneratingDiagram, setRegeneratingDiagram] = useState(false);
   const [form, setForm] = useState({
+    executiveSummary: p.executiveSummary ?? "",
     businessCase: p.businessCase ?? "",
     objectives: p.objectives ?? "",
     scopeInScope: p.scopeInScope ?? "",
@@ -40,6 +42,33 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const materialCost = detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
   const implementationCost = p.budgetPlanned ?? 0;
   const ongoingSupportCost = p.ongoingSupportMonthlyCost ?? 0;
+
+  const [downloadingWord, setDownloadingWord] = useState(false);
+
+  async function downloadCharterWord() {
+    setDownloadingWord(true);
+    try {
+      const diagram = p.architectureDiagram?.trim() ? await renderMermaidToImages(p.architectureDiagram) : null;
+      const res = await fetch(`/api/projects/${p.id}/charter-docx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diagram }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const slug = (p.name || "charter").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "project";
+      a.download = `${slug}-charter.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingWord(false);
+    }
+  }
 
   async function regenerateDiagram() {
     setRegeneratingDiagram(true);
@@ -104,6 +133,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         const sections = parseMarkdownSections(data.draft);
         setForm((f) => ({
           ...f,
+          executiveSummary: sections["Executive Summary"] ?? f.executiveSummary,
           businessCase: sections["Business Case"] ?? f.businessCase,
           objectives: sections["Objectives"] ?? f.objectives,
           scopeInScope: sections["Scope"] ? sections["Scope"] : f.scopeInScope,
@@ -181,6 +211,14 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           <div className="flex items-center gap-2">
             <DownloadPdfLink href={`/api/projects/${p.id}/charter-pdf`} filename={`${p.name || "charter"}.pdf`} />
             <button
+              onClick={downloadCharterWord}
+              disabled={downloadingWord}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+            >
+              {downloadingWord ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />}
+              Word
+            </button>
+            <button
               onClick={generateDraft}
               disabled={generating}
               className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
@@ -202,6 +240,15 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
             onApplied={handleCharterAiApplied}
             placeholder='e.g. "tighten the scope to exclude mobile" or "add a risk about vendor lock-in"'
           />
+          <Field label="Executive summary">
+            <textarea
+              value={form.executiveSummary}
+              onChange={(e) => update("executiveSummary", e.target.value)}
+              className={inputCls}
+              rows={3}
+              placeholder="A short, standalone readout for a sponsor or steering committee — what's being asked for, why, and the expected return."
+            />
+          </Field>
           <Field label="Business case">
             <textarea value={form.businessCase} onChange={(e) => update("businessCase", e.target.value)} className={inputCls} rows={2} />
           </Field>

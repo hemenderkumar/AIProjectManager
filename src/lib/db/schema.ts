@@ -302,6 +302,10 @@ export const projects = pgTable("projects", {
   stageApprovedAt: timestamp("stage_approved_at"),
 
   // Charter
+  // A short, sponsor/executive-facing readout distinct from the detailed sections below it —
+  // AI-drafted alongside the rest in generate-charter, but written to stand alone (someone
+  // should be able to read just this and understand the ask, without the full document).
+  executiveSummary: text("executive_summary"),
   businessCase: text("business_case"),
   objectives: text("objectives"),
   scopeInScope: text("scope_in_scope"),
@@ -1022,6 +1026,9 @@ export const sows = pgTable("sows", {
   vendorContactEmail: text("vendor_contact_email"),
   status: sowStatusEnum("status").notNull().default("DRAFT"),
 
+  // Same idea as projects.executiveSummary — a short, standalone readout for whoever signs
+  // off on the contract, broken out of `content` (the full document) rather than buried in it.
+  executiveSummary: text("executive_summary"),
   scope: text("scope"),
   deliverablesSummary: text("deliverables_summary"),
   timeline: text("timeline"),
@@ -1086,6 +1093,10 @@ export const deliverables = pgTable("deliverables", {
   // release documentation, other). The two test-script types instead use structured rows in
   // deliverableTestCases below, since those are meant to actually be executed, not just read.
   content: text("content"),
+  // Short, standalone readout for the narrative types (requirements/NFR, design, release
+  // documentation) — same idea as projects.executiveSummary. Unused for test-script types,
+  // which are working artifacts for a tester, not something presented to a sponsor.
+  executiveSummary: text("executive_summary"),
   // Mermaid diagram syntax (same convention as projects.architectureDiagram) — populated for
   // DESIGN deliverables so the key components and how they interact can be shown as an actual
   // picture, not just described in prose. Nullable/unused for every other type.
