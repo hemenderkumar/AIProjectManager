@@ -41,6 +41,7 @@ export async function PATCH(
   const body = await req.json();
   const update: Record<string, unknown> = { updatedAt: new Date() };
   if (body.title !== undefined) update.title = body.title;
+  if (body.executiveSummary !== undefined) update.executiveSummary = body.executiveSummary;
   if (body.content !== undefined) update.content = body.content;
   if (body.diagram !== undefined) update.diagram = body.diagram;
   if (body.componentList !== undefined) update.componentList = body.componentList;

@@ -23,34 +23,46 @@ const DEFAULT_TITLES: Record<DeliverableType, string> = {
 // the project doesn't already imply.
 const SYSTEM_PROMPTS: Record<DeliverableType, string> = {
   REQUIREMENTS_NFR: `You are writing a Detailed Requirements & Non-Functional Requirements (NFR) document for the
-CONFIRMED scope of a software/business project, based on its charter and task plan below. Produce:
+CONFIRMED scope of a software/business project, based on its charter and task plan below. Write in a formal,
+executive-appropriate register throughout — this is a document a sponsor or reviewer will read — but "formal"
+is about polish and phrasing, NOT brevity: every section should still be as thorough and detailed as the
+guidance below calls for; do not compress or thin out sections to sound more formal. Produce:
 1) Functional requirements: specific, testable statements (one per line, "The system shall...") derived from
 the scope, proposed solution, and task list — do not invent features outside the given scope.
 2) Non-functional requirements across: performance, scalability, availability/reliability, security,
 compliance/regulatory (if implied by country/industry context), usability, and maintainability — only include
 categories that are actually relevant given what's known about this project.
-Respond as JSON: { "title": string, "content": string (the full document as plain text with clear section
-headers: "Functional Requirements" and "Non-Functional Requirements" with sub-headers per NFR category) }.`,
+Respond as JSON: { "title": string,
+"executiveSummary": string (3-5 sentences, standalone — what this document specifies and why, written so
+  someone who reads ONLY this understands the scope of requirements at a glance; it summarizes what follows,
+  it does not replace the detailed sections below it),
+"content": string (the full document as plain text with clear section headers: "Functional Requirements" and
+"Non-Functional Requirements" with sub-headers per NFR category) }.`,
 
   DESIGN: `You are writing a Detailed Design document for the CONFIRMED scope of a project, based on its
 charter, recommended technology, and task plan below. Ground everything in the project's own scope,
 recommended technology, and architecture notes — do not invent an unrelated tech stack or components with
-no basis in the given context. Produce these as SEPARATE pieces (they render as distinct, individually
-editable sections, not one long document):
+no basis in the given context. Write in a formal, executive-appropriate register throughout, but "formal" is
+about polish and phrasing, NOT brevity: every piece should still be as thorough and detailed as its guidance
+calls for; do not compress or thin out sections to sound more formal. Produce these as SEPARATE pieces (they
+render as distinct, individually editable sections, not one long document):
 
-1. content: a short overview paragraph plus a brief data-flow summary — how a request/piece of data
+1. executiveSummary: 3-5 sentences, standalone — what's being built and the key architectural approach,
+written so someone who reads ONLY this understands the design at a glance; it summarizes what follows, it
+does not replace the detailed sections below it.
+2. content: a short overview paragraph plus a brief data-flow summary — how a request/piece of data
 moves through the components end to end. Do not repeat the component-by-component breakdown here; that
 belongs in componentList.
-2. componentList: the key components/modules that need to be built, one per line, formatted as
+3. componentList: the key components/modules that need to be built, one per line, formatted as
 "ComponentName: responsibility — how it interacts with other components — key data it owns or processes".
-3. architectureHighlights: 3-6 bullet points (one per line, starting with "- ") on the key architecture
+4. architectureHighlights: 3-6 bullet points (one per line, starting with "- ") on the key architecture
 decisions and why they matter — e.g. why this pattern/technology fits this project's scale, constraints,
 or requirements.
-4. pros: 3-5 bullet points (one per line, starting with "- ") on why this architecture is a sound choice
+5. pros: 3-5 bullet points (one per line, starting with "- ") on why this architecture is a sound choice
 for this specific project.
-5. cons: 2-4 bullet points (one per line, starting with "- ") on real trade-offs, risks, or limitations of
+6. cons: 2-4 bullet points (one per line, starting with "- ") on real trade-offs, risks, or limitations of
 this architecture — don't invent generic caveats that don't actually apply here.
-6. diagram: a simple Mermaid diagram (flowchart TD syntax) showing the SAME components listed in
+7. diagram: a simple Mermaid diagram (flowchart TD syntax) showing the SAME components listed in
 componentList and how they connect — e.g. client, API/backend, database, external integrations, based on
 the recommended technology. Keep it to 5-12 nodes with short labels and simple arrows (A --> B). Use only
 valid Mermaid "flowchart TD" syntax with alphanumeric node ids and labels in square brackets, e.g.:
@@ -60,9 +72,9 @@ flowchart TD
 Do not include markdown code fences, just the raw Mermaid syntax starting with "flowchart TD". Don't
 introduce components in the diagram that aren't in componentList, or vice versa.
 
-Respond as JSON: { "title": string, "content": string, "componentList": string, "architectureHighlights":
-string, "pros": string, "cons": string, "diagram": string (raw Mermaid flowchart TD syntax, no code
-fences) }.`,
+Respond as JSON: { "title": string, "executiveSummary": string, "content": string, "componentList": string,
+"architectureHighlights": string, "pros": string, "cons": string, "diagram": string (raw Mermaid flowchart TD
+syntax, no code fences) }.`,
 
   FUNCTIONAL_TEST_SCRIPT: `You are writing a Functional Test Script for the CONFIRMED scope of a project, based
 on its requirements/scope and task list below. Produce concrete, executable test cases that verify the
@@ -82,13 +94,19 @@ perspective), "steps": string (what the user does, numbered, plain language), "e
 (what the user should see/experience if this is working) }] } with 5-10 test cases.`,
 
   RELEASE_DOCUMENTATION: `You are writing Release Activities & Documentation for a project nearing or at
-deployment, based on its scope/timeline/technology below. Cover: pre-release checklist, deployment/rollout
-steps, rollback plan, required sign-offs, and a documentation checklist (release notes, runbook/support
-handoff notes, end-user training materials) — only include items that make sense given what's known about
-this project (e.g. don't invent infrastructure specifics that were never mentioned).
-Respond as JSON: { "title": string, "content": string (the full document as plain text with clear section
-headers: "Pre-Release Checklist", "Deployment Steps", "Rollback Plan", "Sign-offs Required",
-"Documentation Checklist") }.`,
+deployment, based on its scope/timeline/technology below. Write in a formal, executive-appropriate register
+throughout, but "formal" is about polish and phrasing, NOT brevity: every section should still be as thorough
+and detailed as its guidance calls for; do not compress or thin out sections to sound more formal. Cover:
+pre-release checklist, deployment/rollout steps, rollback plan, required sign-offs, and a documentation
+checklist (release notes, runbook/support handoff notes, end-user training materials) — only include items
+that make sense given what's known about this project (e.g. don't invent infrastructure specifics that were
+never mentioned).
+Respond as JSON: { "title": string,
+"executiveSummary": string (3-5 sentences, standalone — what's being released and the overall readiness
+  posture, written so someone who reads ONLY this understands where things stand at a glance; it summarizes
+  what follows, it does not replace the detailed sections below it),
+"content": string (the full document as plain text with clear section headers: "Pre-Release Checklist",
+"Deployment Steps", "Rollback Plan", "Sign-offs Required", "Documentation Checklist") }.`,
 };
 
 type ProjectDetailResult = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
@@ -170,6 +188,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await askClaudeJSON<{
     title: string;
+    executiveSummary?: string;
     content: string;
     diagram?: string;
     componentList?: string;
@@ -186,6 +205,7 @@ export async function POST(req: NextRequest) {
       projectId,
       type: deliverableType,
       title: data.title || DEFAULT_TITLES[deliverableType],
+      executiveSummary: data.executiveSummary || null,
       content: data.content,
       diagram: isDesign ? data.diagram || null : null,
       componentList: isDesign ? data.componentList || null : null,

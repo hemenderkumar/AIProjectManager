@@ -44,6 +44,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const subtitle = `Statement of Work with ${sow.vendorName}`;
   const sections = [
+    { heading: "Executive Summary", body: sow.executiveSummary ?? "" },
     { heading: "Scope", body: sow.scope ?? "" },
     { heading: "Deliverables", body: sow.deliverablesSummary ?? "" },
     { heading: "Timeline", body: sow.timeline ?? "" },

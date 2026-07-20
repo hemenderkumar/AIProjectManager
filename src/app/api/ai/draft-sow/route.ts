@@ -8,6 +8,7 @@ import { requireProjectAccess } from "@/lib/tenancy";
 
 type DraftSowResult = {
   title: string;
+  executiveSummary: string;
   scope: string;
   deliverablesSummary: string;
   timeline: string;
@@ -40,9 +41,16 @@ export async function POST(req: NextRequest) {
   const system = `You are drafting a Statement of Work (SOW) between a company and a vendor for a project that
 already has an approved charter and plan. Ground every section ONLY in the project details given below — do
 not invent scope, budget figures, or commitments not implied by them. If a vendor's own proposal (cost/timeline)
-is given, use it as the starting point for funding/timeline rather than re-deriving your own number.
+is given, use it as the starting point for funding/timeline rather than re-deriving your own number. Write in a
+formal, contract-appropriate register throughout — this is a document both parties sign — but "formal" is about
+polish and phrasing, NOT brevity: every section should still be as thorough and detailed as its guidance calls
+for; do not compress or thin out sections to sound more formal.
 
-Respond as JSON: { "title": string, "scope": string (2-4 sentences, what the vendor is engaged to deliver),
+Respond as JSON: { "title": string,
+"executiveSummary": string (3-5 sentences, standalone — what the vendor is engaged to do, the funding
+  commitment, and the timeline, written so someone who reads ONLY this understands the engagement at a glance;
+  it summarizes what follows, it does not replace the detailed sections below it),
+"scope": string (2-4 sentences, what the vendor is engaged to deliver),
 "deliverablesSummary": string (bulleted-style summary as plain text, one line per deliverable),
 "timeline": string (narrative, e.g. phase breakdown), "fundingAmount": number or null,
 "fundingTerms": string (e.g. payment schedule/milestones-based/net terms), "risks": string (contract-specific
@@ -77,6 +85,7 @@ Vendor's proposed timeline: ${vendor.proposedTimelineWeeks ? `${vendor.proposedT
 
   return NextResponse.json({
     title: data.title,
+    executiveSummary: data.executiveSummary,
     vendorName: vendor?.name ?? "",
     vendorContactName: vendor?.contactName ?? "",
     vendorContactEmail: vendor?.contactEmail ?? "",

@@ -43,6 +43,7 @@ export async function POST(
       vendorName: body.vendorName.trim(),
       vendorContactName: body.vendorContactName || null,
       vendorContactEmail: body.vendorContactEmail || null,
+      executiveSummary: body.executiveSummary || null,
       scope: body.scope || null,
       deliverablesSummary: body.deliverablesSummary || null,
       timeline: body.timeline || null,

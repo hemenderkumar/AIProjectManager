@@ -29,6 +29,7 @@ type Sow = {
   vendorContactName: string | null;
   vendorContactEmail: string | null;
   status: string;
+  executiveSummary: string | null;
   scope: string | null;
   deliverablesSummary: string | null;
   timeline: string | null;
@@ -65,7 +66,7 @@ function fileToBase64(file: File): Promise<string> {
 
 const emptyForm = {
   title: "", vendorName: "", vendorContactName: "", vendorContactEmail: "",
-  scope: "", deliverablesSummary: "", timeline: "", fundingAmount: "", fundingTerms: "",
+  executiveSummary: "", scope: "", deliverablesSummary: "", timeline: "", fundingAmount: "", fundingTerms: "",
   risks: "", issues: "", content: "",
 };
 
@@ -126,6 +127,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
         vendorName: data.vendorName ?? "",
         vendorContactName: data.vendorContactName ?? "",
         vendorContactEmail: data.vendorContactEmail ?? "",
+        executiveSummary: data.executiveSummary ?? "",
         scope: data.scope ?? "",
         deliverablesSummary: data.deliverablesSummary ?? "",
         timeline: data.timeline ?? "",
@@ -284,6 +286,15 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                 <input value={form.vendorContactEmail} onChange={(e) => setForm((f) => ({ ...f, vendorContactEmail: e.target.value }))} className={inputCls} />
               </Field>
             </div>
+            <Field label="Executive summary">
+              <textarea
+                value={form.executiveSummary}
+                onChange={(e) => setForm((f) => ({ ...f, executiveSummary: e.target.value }))}
+                className={inputCls}
+                rows={3}
+                placeholder="A short, standalone readout for whoever signs off — what the vendor is engaged to do, the funding commitment, and the timeline."
+              />
+            </Field>
             <Field label="Scope">
               <textarea value={form.scope} onChange={(e) => setForm((f) => ({ ...f, scope: e.target.value }))} className={inputCls} rows={2} />
             </Field>
@@ -374,6 +385,11 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                   {s.approvedBy && (
                     <p className="flex items-center gap-1 text-emerald-700">
                       <CheckCircle2 size={12} /> Approved by {s.approvedBy}{s.approvedAt ? ` on ${new Date(s.approvedAt).toLocaleDateString()}` : ""}
+                    </p>
+                  )}
+                  {s.executiveSummary && (
+                    <p className="bg-accent-50/60 border border-accent-100 rounded-lg p-2.5">
+                      <span className="font-medium text-slate-700">Executive summary: </span>{s.executiveSummary}
                     </p>
                   )}
                   {s.scope && <p><span className="font-medium text-slate-700">Scope: </span>{s.scope}</p>}

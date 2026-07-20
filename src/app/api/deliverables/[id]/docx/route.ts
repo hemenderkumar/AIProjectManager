@@ -62,6 +62,7 @@ async function renderDocx(d: DeliverableRow, diagram: DiagramImage | null): Prom
     // fields (see schema.ts) — buildSectionedDocx already skips any section with an empty
     // body, so listing them unconditionally is safe for every other deliverable type too.
     const sections = [
+      { heading: "Executive Summary", body: d.executiveSummary ?? "" },
       { heading: "Content", body: d.content ?? "" },
       { heading: "Component List", body: d.componentList ?? "" },
       { heading: "Architecture Highlights", body: d.architectureHighlights ?? "" },

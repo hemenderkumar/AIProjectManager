@@ -29,6 +29,7 @@ type Deliverable = {
   id: string;
   type: string;
   title: string;
+  executiveSummary: string | null;
   content: string | null;
   diagram: string | null;
   componentList: string | null;
@@ -172,7 +173,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
 
   async function updateDeliverable(
     id: string,
-    patch: Partial<Pick<Deliverable, "title" | "content" | "status" | "componentList" | "architectureHighlights" | "pros" | "cons">>
+    patch: Partial<Pick<Deliverable, "title" | "executiveSummary" | "content" | "status" | "componentList" | "architectureHighlights" | "pros" | "cons">>
   ) {
     setDeliverables((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
     await fetch(`/api/deliverables/${id}`, {
@@ -510,6 +511,15 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                       />
                     ) : (
                       <div>
+                        <DesignField
+                          label="Executive Summary"
+                          value={d.executiveSummary}
+                          canEdit={canEdit}
+                          placeholder="AI drafts a short, standalone readout here when you generate this deliverable — what this document covers, written so a reviewer who reads only this understands it at a glance."
+                          rows={3}
+                          onChange={(v) => setDeliverables((prev) => prev.map((x) => (x.id === d.id ? { ...x, executiveSummary: v } : x)))}
+                          onBlur={(v) => updateDeliverable(d.id, { executiveSummary: v })}
+                        />
                         {d.type === "DESIGN" && (
                           <div className="mb-3">
                             <p className="text-xs font-medium text-slate-500 mb-1">Architecture diagram</p>

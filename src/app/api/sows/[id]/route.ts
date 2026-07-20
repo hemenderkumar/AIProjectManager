@@ -7,7 +7,7 @@ import { logAudit } from "@/lib/audit";
 
 const editableFields = [
   "title", "vendorName", "vendorContactName", "vendorContactEmail", "status",
-  "scope", "deliverablesSummary", "timeline", "fundingAmount", "fundingTerms",
+  "executiveSummary", "scope", "deliverablesSummary", "timeline", "fundingAmount", "fundingTerms",
   "risks", "issues", "content", "signedBy",
 ] as const;
 
