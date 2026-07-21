@@ -2,6 +2,7 @@
 import { useEffect, useState, use as usePromise } from "react";
 import Topbar from "@/components/Topbar";
 import { ChevronDown, ChevronRight, Send } from "lucide-react";
+import AiEditChat from "@/components/project/AiEditChat";
 
 type Project = {
   id: string;
@@ -196,6 +197,16 @@ export default function KeelConnectProjectDetailPage({ params }: { params: Promi
             <button onClick={() => updateProjectStatus("CANCELLED")} className="mt-4 ml-2 px-3 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-xs font-medium hover:bg-rose-50">
               Cancel project
             </button>
+          )}
+          {(isClientOwner || isPlatform) && (
+            <div className="mt-4 pt-3 border-t border-slate-100">
+              <AiEditChat
+                entityType="scProject"
+                entityId={project.id}
+                onApplied={() => load()}
+                placeholder='e.g. "raise the budget to 15000 and mention it needs SOC 2 experience"'
+              />
+            </div>
           )}
         </div>
 

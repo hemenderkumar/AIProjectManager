@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { askClaudeJSON } from "@/lib/ai";
 import { ENTITY_CONFIG, describeSnapshot, type EntityType } from "@/lib/aiEditEntities";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { requireScOrgRole } from "@/lib/keelconnect/access";
 
 type EditProposal = { changes: Record<string, string | number | boolean | null>; explanation: string };
 
@@ -25,7 +26,13 @@ export async function POST(req: NextRequest) {
   const loaded = await config.load(entityId);
   if (!loaded) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const user = await requireProjectAccess(config.minRole, loaded.projectId);
+  // Two entirely separate access-control systems share this one endpoint -- see the comment
+  // on ENTITY_CONFIG in aiEditEntities.ts. KeelConnect entities are scoped to an org + a set
+  // of KeelConnect roles; every other (Deliver) entity is scoped to a project + a Deliver role.
+  const user =
+    config.system === "keelconnect"
+      ? (await requireScOrgRole(loaded.scOrganizationId!, config.scRoles!))?.user ?? null
+      : await requireProjectAccess(config.minRole!, loaded.projectId!);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const snapshot = describeSnapshot(config.fields, loaded.row);

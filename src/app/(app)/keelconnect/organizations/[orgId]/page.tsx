@@ -2,6 +2,7 @@
 import { useEffect, useState, use as usePromise } from "react";
 import Topbar from "@/components/Topbar";
 import { Plus, Trash2, ShieldCheck, ShieldX, Clock, KeyRound } from "lucide-react";
+import AiEditChat from "@/components/project/AiEditChat";
 
 type Organization = {
   id: string;
@@ -200,6 +201,16 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
               This is the overall org determination a Platform Admin/Compliance Officer makes after reviewing
               the compliance records below — it does not update automatically.
             </p>
+          )}
+          {isOrgAdmin && (
+            <div className="mt-4 pt-3 border-t border-slate-100">
+              <AiEditChat
+                entityType="scOrganization"
+                entityId={org.id}
+                onApplied={() => load()}
+                placeholder='e.g. "we are based in Germany now, update the profile to mention our EU data residency"'
+              />
+            </div>
           )}
         </div>
 

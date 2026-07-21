@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
-import { sows, deliverables, riskItems, tasks, solutionOptions, projects } from "./db/schema";
+import { sows, deliverables, riskItems, tasks, solutionOptions, projects, scOrganizations, scProjects } from "./db/schema";
 import type { SessionUser } from "./auth";
+import type { ScRole } from "./keelconnect/access";
 
-export type EntityType = "sow" | "deliverable" | "risk" | "task" | "solutionOption" | "project";
+export type EntityType = "sow" | "deliverable" | "risk" | "task" | "solutionOption" | "project" | "scOrganization" | "scProject";
 
 export type FieldDef = {
   key: string;
@@ -18,14 +19,21 @@ export type FieldDef = {
 // signedAt/completedAt auto-stamps, the single-selected-option invariant, etc.) still applies
 // exactly as if the user had edited the field by hand — this endpoint only PROPOSES which
 // fields should change, grounded to a fixed whitelist per type.
+//
+// Two entirely separate access-control systems share this one registry: Keel Deliver's
+// per-project role check (requireProjectAccess + minRole) and KeelConnect's per-org role
+// check (requireScOrgRole + scRoles). `system` picks which one /api/ai/edit-entity uses;
+// entries that omit it default to "deliver" (every entry that predates KeelConnect support).
 export const ENTITY_CONFIG: Record<
   EntityType,
   {
     label: string;
-    minRole: SessionUser["role"];
+    system?: "deliver" | "keelconnect";
+    minRole?: SessionUser["role"];
+    scRoles?: ScRole[];
     fields: FieldDef[];
-    load: (entityId: string) => Promise<{ row: Record<string, unknown>; projectId: string } | null>;
-    patchUrl: (entityId: string, projectId: string) => string;
+    load: (entityId: string) => Promise<{ row: Record<string, unknown>; projectId?: string; scOrganizationId?: string } | null>;
+    patchUrl: (entityId: string, projectId?: string) => string;
   }
 > = {
   sow: {
@@ -147,6 +155,48 @@ export const ENTITY_CONFIG: Record<
       return row ? { row, projectId: row.id } : null;
     },
     patchUrl: (id) => `/api/projects/${id}`,
+  },
+
+  scOrganization: {
+    label: "KeelConnect Organization",
+    system: "keelconnect",
+    scRoles: ["CLIENT_ORG_ADMIN", "VENDOR_ORG_ADMIN"],
+    fields: [
+      { key: "name", label: "Company name", kind: "text" },
+      { key: "companyProfile", label: "Company profile", kind: "text" },
+      { key: "taxId", label: "Tax ID", kind: "text" },
+      { key: "primaryCountry", label: "Primary country", kind: "text" },
+      // verificationStatus deliberately excluded -- only a Platform Admin/Compliance
+      // Officer can set that (see /api/keelconnect/organizations/[orgId] PATCH), so an org
+      // can't use this chat to self-declare "VERIFIED".
+    ],
+    load: async (id) => {
+      const [row] = await db.select().from(scOrganizations).where(eq(scOrganizations.id, id));
+      return row ? { row, scOrganizationId: row.id } : null;
+    },
+    patchUrl: (id) => `/api/keelconnect/organizations/${id}`,
+  },
+
+  scProject: {
+    label: "KeelConnect Project Posting",
+    system: "keelconnect",
+    scRoles: ["CLIENT_ORG_ADMIN", "CLIENT_REQUESTER"],
+    fields: [
+      { key: "title", label: "Title", kind: "text" },
+      { key: "description", label: "Description", kind: "text" },
+      { key: "category", label: "Category", kind: "text" },
+      { key: "targetBudget", label: "Target budget", kind: "number" },
+      { key: "currency", label: "Currency", kind: "text" },
+      { key: "engagementModel", label: "Engagement model", kind: "enum", options: ["MARKETPLACE", "MEDIATOR"] },
+      { key: "locationRequirement", label: "Location requirement", kind: "enum", options: ["GLOBAL", "RESTRICTED"] },
+      // status deliberately excluded -- posting/cancelling a project has its own dedicated
+      // action with transition validation (see PATCH route), not a free-text AI edit.
+    ],
+    load: async (id) => {
+      const [row] = await db.select().from(scProjects).where(eq(scProjects.id, id));
+      return row ? { row, scOrganizationId: row.clientOrgId } : null;
+    },
+    patchUrl: (id) => `/api/keelconnect/projects/${id}`,
   },
 };
 

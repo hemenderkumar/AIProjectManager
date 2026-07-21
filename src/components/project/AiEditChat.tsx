@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Sparkles, Loader2, Check, X, MessageSquarePlus } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 
-export type AiEditEntityType = "sow" | "deliverable" | "risk" | "task" | "solutionOption" | "project";
+export type AiEditEntityType = "sow" | "deliverable" | "risk" | "task" | "solutionOption" | "project" | "scOrganization" | "scProject";
 
 type Proposal = {
   changes: Record<string, string | number | boolean | null>;
