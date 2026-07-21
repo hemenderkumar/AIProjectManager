@@ -9,8 +9,13 @@ import {
   Sparkles,
   FileSearch,
   FileBarChart,
+  Globe2,
+  ShieldCheck,
+  FileText,
+  KeyRound,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { getScMemberships } from "@/lib/keelconnect/access";
 import MyRateCard from "@/components/MyRateCard";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +23,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const user = await getCurrentUser();
   const isInternal = !!user && user.organizationId == null;
+  const isKeelConnectMember = user ? (await getScMemberships(user.id)).length > 0 : false;
 
   return (
     <div>
@@ -25,34 +31,67 @@ export default async function HomePage() {
       <div className="p-8">
         <MyRateCard />
         <div className="max-w-5xl bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 mb-6">
-          <p className="text-xs font-semibold tracking-wide uppercase text-accent-600 mb-1.5">What Keel does</p>
+          <p className="text-xs font-semibold tracking-wide uppercase text-accent-600 mb-1.5">What Keel Deliver does</p>
           <p className="text-sm text-slate-600 mb-4">
-            Keel is your AI-driven project and portfolio tracker: it plans work, drafts charters and RFPs, watches
-            budgets and risk, and turns your whole portfolio into board-ready reports.
+            Keel Deliver is your AI-driven project and portfolio tracker: it plans work, drafts charters and RFPs,
+            watches budgets and risk, and turns your whole portfolio into board-ready reports.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             <AboutChip icon={<Rocket size={16} />} label="Full project lifecycle" />
             <AboutChip icon={<Sparkles size={16} />} label="An AI project manager" />
             <AboutChip icon={<FileSearch size={16} />} label="Vendor evaluation" />
             <AboutChip icon={<FileBarChart size={16} />} label="Board-ready reports" />
           </div>
+          <p className="text-xs font-semibold tracking-wide uppercase text-accent-600 mb-1.5 pt-4 border-t border-slate-100">What KeelConnect does</p>
+          <p className="text-sm text-slate-600 mb-4">
+            KeelConnect is the B2B marketplace layer: post a project, receive bids from vetted Vendor
+            organizations, and let Keel generate the agreement and manage milestone payments.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <AboutChip icon={<Globe2 size={16} />} label="Sealed bidding marketplace" />
+            <AboutChip icon={<ShieldCheck size={16} />} label="KYC/KYB compliance" />
+            <AboutChip icon={<FileText size={16} />} label="Auto-generated agreements" />
+            <AboutChip icon={<KeyRound size={16} />} label="Enterprise SSO + MFA" />
+          </div>
         </div>
 
-        <Link
-          href="/dashboard"
-          className="group max-w-5xl flex items-center justify-between gap-4 bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 rounded-xl px-6 py-5 mb-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="h-11 w-11 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
-              <LayoutDashboard size={22} />
+        <div className="max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <Link
+            href="/dashboard"
+            className="group flex items-center justify-between gap-4 bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 rounded-xl px-6 py-5"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-11 w-11 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                <LayoutDashboard size={22} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Go to the Tracker</p>
+                <p className="text-xs text-accent-100">Portfolio dashboard — status, budgets, and risk across every project.</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold">Go to the Tracker</p>
-              <p className="text-xs text-accent-100">Open the portfolio dashboard — status, budgets, and risk across every project.</p>
+            <ArrowRight size={18} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+
+          <Link
+            href="/keelconnect"
+            className="group flex items-center justify-between gap-4 bg-slate-900 text-white shadow-sm shadow-slate-900/20 transition-colors hover:bg-slate-800 rounded-xl px-6 py-5"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-11 w-11 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                <Globe2 size={22} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">{isKeelConnectMember ? "Go to KeelConnect" : "Explore KeelConnect"}</p>
+                <p className="text-xs text-slate-300">
+                  {isKeelConnectMember
+                    ? "Browse projects, manage bids, and track your organizations."
+                    : "Register a Client or Vendor organization to post or bid on work."}
+                </p>
+              </div>
             </div>
-          </div>
-          <ArrowRight size={18} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
-        </Link>
+            <ArrowRight size={18} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </div>
 
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 max-w-5xl">Or start something new</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl">

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import LoginCard from "@/components/LoginCard";
-import { Rocket, Sparkles, FileSearch, FileBarChart } from "lucide-react";
+import { Rocket, Sparkles, FileSearch, FileBarChart, Globe2, ShieldCheck, FileText, KeyRound, ArrowRight } from "lucide-react";
 
 const PREVIEW_PROJECTS = [
   { name: "Core Platform Migration", stage: "Execution", pct: 62, rag: "GREEN" as const },
@@ -41,8 +41,9 @@ export default async function HomePage() {
             <span className="text-sm font-semibold text-slate-900">Keel</span>
           </div>
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-500">
+            <a href="#keel-deliver" className="hover:text-slate-900 transition-colors">Keel Deliver</a>
+            <a href="#keelconnect" className="hover:text-slate-900 transition-colors">KeelConnect</a>
             <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How it works</a>
-            <a href="#features" className="hover:text-slate-900 transition-colors">What you get</a>
           </nav>
           {user ? (
             <Link
@@ -66,16 +67,17 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
           <div>
             <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-5">
-              Built for boutique IT consultancies
+              One platform, two ways to deliver
             </p>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-slate-900 leading-tight tracking-tight mb-5">
-              One place to run every engagement, from idea to ongoing support.
+              Run delivery in-house, or source it from vetted vendors — same tracker, either way.
             </h1>
             <p className="text-base text-slate-600 mb-8 max-w-lg">
-              Keel is an AI-driven project and portfolio tracker: it plans work, drafts charters and
-              RFPs, watches budgets and risk, briefs you out loud, and turns your whole portfolio into
-              board-ready reports — so your team spends less time updating trackers and more time
-              delivering.
+              <span className="font-medium text-slate-800">Keel Deliver</span> is an AI-driven project and
+              portfolio tracker for running your own team&apos;s engagements end to end.{" "}
+              <span className="font-medium text-slate-800">KeelConnect</span> is the B2B marketplace layer
+              on top — post a project, receive bids from vetted vendors, and let Keel handle the
+              agreement and payments, without ever leaving the platform.
             </p>
             <a
               href="#how-it-works"
@@ -110,10 +112,46 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="max-w-5xl mx-auto px-6 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div id="keel-deliver" className="scroll-mt-16 rounded-xl border border-slate-200 p-6">
+            <div className="h-9 w-9 rounded-lg bg-accent-50 flex items-center justify-center mb-4">
+              <Rocket size={18} className="text-accent-600" />
+            </div>
+            <p className="text-base font-semibold text-slate-900 mb-1">Keel Deliver</p>
+            <p className="text-xs text-slate-400 mb-3">Run your own team&apos;s delivery</p>
+            <p className="text-sm text-slate-600 leading-relaxed mb-4">
+              Ideation, AI-drafted charters, sprints or waterfall phases, risk and budget tracking, and
+              board-ready reports — one tracker from first idea to steady-state support.
+            </p>
+            <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
+              See how it works <ArrowRight size={14} />
+            </a>
+          </div>
+          <div id="keelconnect" className="scroll-mt-16 relative rounded-xl border-2 border-accent-600 p-6">
+            <span className="absolute -top-2.5 left-5 bg-accent-600 text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full">
+              New
+            </span>
+            <div className="h-9 w-9 rounded-lg bg-accent-50 flex items-center justify-center mb-4">
+              <Globe2 size={18} className="text-accent-600" />
+            </div>
+            <p className="text-base font-semibold text-slate-900 mb-1">KeelConnect</p>
+            <p className="text-xs text-slate-400 mb-3">Source work from vetted vendors</p>
+            <p className="text-sm text-slate-600 leading-relaxed mb-4">
+              Post a project, receive bids from verified vendor organizations, negotiate terms, and let
+              Keel generate the agreement and manage milestone payments.
+            </p>
+            <a href="#features" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
+              Explore the marketplace <ArrowRight size={14} />
+            </a>
+          </div>
+        </div>
+      </section>
+
       <section className="max-w-5xl mx-auto px-6 pb-16">
         <div className="rounded-xl border border-slate-200 shadow-sm shadow-slate-200/60 overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-900">Portfolio Dashboard</p>
+            <p className="text-sm font-semibold text-slate-900">Keel Deliver: Portfolio Dashboard</p>
             <p className="text-xs text-slate-400">Sample data shown</p>
           </div>
           <div className="p-5">
@@ -148,7 +186,7 @@ export default async function HomePage() {
       </section>
 
       <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-16 scroll-mt-16">
-        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">How it works</p>
+        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">How Keel Deliver works</p>
         <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">From a first idea to a board-ready report, in four steps.</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Step
@@ -177,28 +215,54 @@ export default async function HomePage() {
       <section id="features" className="bg-slate-50 border-y border-slate-200 scroll-mt-16">
         <div className="max-w-5xl mx-auto px-6 py-16">
           <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">What you get</p>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything a boutique consultancy needs to run delivery, in one tracker.</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2">
-            <FeatureRow
-              icon={<Rocket size={16} />}
-              title="Full project lifecycle"
-              description="Ideation, charters, sprints or waterfall phases, tasks, risks, budgets, and ongoing support — one tracker from first idea to steady-state."
-            />
-            <FeatureRow
-              icon={<Sparkles size={16} />}
-              title="An AI project manager"
-              description="Drafts charters and plans, estimates effort, suggests assignments, briefs you out loud, and answers questions about your whole portfolio."
-            />
-            <FeatureRow
-              icon={<FileSearch size={16} />}
-              title="Vendor evaluation, built in"
-              description="Draft an RFP from a project charter, invite vendors with a no-login link, and let AI score responses against your own weighted rubric."
-            />
-            <FeatureRow
-              icon={<FileBarChart size={16} />}
-              title="Reports that look the part"
-              description="Branded, board-ready PDF and PowerPoint exports for status reports, steering committee decks, and executive one-pagers — generated on demand."
-            />
+          <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything a boutique consultancy needs, whether you&apos;re delivering or sourcing the work.</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10">
+            <div>
+              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide mb-1">Keel Deliver</p>
+              <FeatureRow
+                icon={<Rocket size={16} />}
+                title="Full project lifecycle"
+                description="Ideation, charters, sprints or waterfall phases, tasks, risks, budgets, and ongoing support — one tracker from first idea to steady-state."
+              />
+              <FeatureRow
+                icon={<Sparkles size={16} />}
+                title="An AI project manager"
+                description="Drafts charters and plans, estimates effort, suggests assignments, briefs you out loud, and answers questions about your whole portfolio."
+              />
+              <FeatureRow
+                icon={<FileSearch size={16} />}
+                title="Vendor evaluation, built in"
+                description="Draft an RFP from a project charter, invite vendors with a no-login link, and let AI score responses against your own weighted rubric."
+              />
+              <FeatureRow
+                icon={<FileBarChart size={16} />}
+                title="Reports that look the part"
+                description="Branded, board-ready PDF and PowerPoint exports for status reports, steering committee decks, and executive one-pagers — generated on demand."
+              />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide mb-1">KeelConnect</p>
+              <FeatureRow
+                icon={<Globe2 size={16} />}
+                title="A sealed bidding marketplace"
+                description="Post a project as open or restricted to certain countries, and let vetted Vendor organizations submit and negotiate bids privately."
+              />
+              <FeatureRow
+                icon={<ShieldCheck size={16} />}
+                title="KYC/KYB compliance, built in"
+                description="Every organization is verified before it can transact — KYC, KYB, sanctions screening, and tax forms, reviewed by Keel's compliance team."
+              />
+              <FeatureRow
+                icon={<FileText size={16} />}
+                title="Agreements generated automatically"
+                description="Accepting a bid generates the right contract for the engagement — a single Client-Vendor agreement, or Keel-mediated agreements on both sides."
+              />
+              <FeatureRow
+                icon={<KeyRound size={16} />}
+                title="Enterprise SSO and MFA"
+                description="SAML single sign-on for enterprise Client organizations, with two-factor authentication enforced for Finance Approvers and platform staff."
+              />
+            </div>
           </div>
         </div>
       </section>
