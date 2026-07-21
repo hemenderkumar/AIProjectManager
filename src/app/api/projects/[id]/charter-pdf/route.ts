@@ -138,7 +138,19 @@ function generateCharterPdf(detail: ProjectDetail, diagram: DiagramImage | null)
         h = Math.round((h / w) * maxWidth);
         w = maxWidth;
       }
-      doc.image(Buffer.from(diagram.pngBase64, "base64"), { fit: [maxWidth, h], align: "center" });
+      // pdfkit's doc.image() does NOT advance the text cursor (doc.y) the way doc.text() does --
+      // without manually moving past the drawn image, every section written afterward starts
+      // back at the same y and renders on top of the picture. Push to a fresh page first if the
+      // image wouldn't fit in the remaining space, then explicitly advance doc.y past it.
+      const bottom = doc.page.height - doc.page.margins.bottom;
+      if (doc.y + h > bottom) {
+        doc.addPage();
+      }
+      const imgX = doc.page.margins.left;
+      const imgY = doc.y;
+      doc.image(Buffer.from(diagram.pngBase64, "base64"), imgX, imgY, { fit: [maxWidth, h] });
+      doc.x = doc.page.margins.left;
+      doc.y = imgY + h;
       doc.moveDown(1);
     }
     section("Internal Support Needs", project.internalSupportNeeds);
