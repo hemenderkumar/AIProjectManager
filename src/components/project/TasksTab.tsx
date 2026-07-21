@@ -1,14 +1,16 @@
 "use client";
 import { Fragment, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge, ExecutionSourceBadge } from "@/components/badges";
 import { formatDate, formatDateInput } from "@/lib/format";
-import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid, List } from "lucide-react";
+import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid, List, Globe2 } from "lucide-react";
 import SprintBoard from "./SprintBoard";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import AiEditChat from "./AiEditChat";
+import PostToKeelConnectModal from "./PostToKeelConnectModal";
 
 type Resource = { id: string; name: string };
 
@@ -131,6 +133,7 @@ export default function TasksTab({
   const [taskDraftNote, setTaskDraftNote] = useState("");
   const [draftingTask, setDraftingTask] = useState(false);
   const [taskDraftError, setTaskDraftError] = useState<string | null>(null);
+  const [postingTask, setPostingTask] = useState<ProjectDetail["tasks"][number] | null>(null);
 
   const [showPlanner, setShowPlanner] = useState(autoPlan ?? false);
   const [goal, setGoal] = useState(
@@ -1091,6 +1094,23 @@ export default function TasksTab({
                         <option value="INTERNAL">Internal</option>
                         <option value="VENDOR">Vendor</option>
                       </select>
+                      {t.executionSource === "VENDOR" && (
+                        t.scProjectId ? (
+                          <Link
+                            href={`/keelconnect/projects/${t.scProjectId}`}
+                            className="flex items-center gap-1 mt-1 text-xs text-accent-600 hover:text-accent-700"
+                          >
+                            <Globe2 size={11} /> Posted
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => setPostingTask(t)}
+                            className="flex items-center gap-1 mt-1 text-xs text-slate-500 hover:text-accent-600"
+                          >
+                            <Globe2 size={11} /> Post to KeelConnect
+                          </button>
+                        )
+                      )}
                     </td>
                     <td className="py-2.5">
                       <select
@@ -1211,6 +1231,18 @@ export default function TasksTab({
 
       {methodology !== "WATERFALL" && (
         <SprintBoard detail={detail} allResources={allResources} />
+      )}
+
+      {postingTask && (
+        <PostToKeelConnectModal
+          projectId={detail.project.id}
+          task={postingTask}
+          onClose={() => setPostingTask(null)}
+          onPosted={() => {
+            setPostingTask(null);
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );
