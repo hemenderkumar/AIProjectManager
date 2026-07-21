@@ -4,10 +4,33 @@ import { requireProjectAccess } from "@/lib/tenancy";
 import { isDownloadBlocked, getCurrentUser } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { BRAND, createKeelPdf, finalizeKeelPdf, coverMasthead, sectionTitle } from "@/lib/brand";
+import type { DiagramImage } from "@/lib/docxExport";
 
 type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
 
-function generateCharterPdf(detail: ProjectDetail): Promise<Buffer> {
+// requireProjectAccess collapses "not logged in / session expired" and "logged in but wrong
+// role" into a single null -- for VIEWER (the lowest tier) that's misleading almost every
+// time, since the real cause is nearly always the 1-hour session having quietly expired.
+// Same fix as charter-docx's checkAccess.
+async function checkAccess(id: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return { error: NextResponse.json({ error: "Your session has expired — log in again and retry." }, { status: 401 }) };
+  }
+  const user = await requireProjectAccess("VIEWER", id);
+  if (!user) return { error: NextResponse.json({ error: "You don't have access to this project." }, { status: 403 }) };
+  if (await isDownloadBlocked(user.id)) {
+    return {
+      error: NextResponse.json(
+        { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+        { status: 403 }
+      ),
+    };
+  }
+  return { user };
+}
+
+function generateCharterPdf(detail: ProjectDetail, diagram: DiagramImage | null): Promise<Buffer> {
   const project = detail.project;
   const generatedAt = new Date();
   return new Promise((resolve, reject) => {
@@ -99,11 +122,25 @@ function generateCharterPdf(detail: ProjectDetail): Promise<Buffer> {
       "High-Level Architecture",
       [
         project.highLevelArchitecture,
-        project.architectureDiagram ? "(A generated architecture diagram is available in the app's Charter tab.)" : null,
+        !diagram && project.architectureDiagram
+          ? "(A generated architecture diagram is available in the app's Charter tab.)"
+          : null,
       ]
         .filter(Boolean)
         .join("\n\n") || null
     );
+    if (diagram) {
+      sectionTitle(doc, "Architecture Diagram");
+      const maxWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+      let w = diagram.width;
+      let h = diagram.height;
+      if (w > maxWidth) {
+        h = Math.round((h / w) * maxWidth);
+        w = maxWidth;
+      }
+      doc.image(Buffer.from(diagram.pngBase64, "base64"), { fit: [maxWidth, h], align: "center" });
+      doc.moveDown(1);
+    }
     section("Internal Support Needs", project.internalSupportNeeds);
     section("ROI to Be Achieved", project.roiExpected);
     section(
@@ -141,31 +178,43 @@ function generateCharterPdf(detail: ProjectDetail): Promise<Buffer> {
   });
 }
 
+// GET has no diagram — Mermaid needs a DOM the server doesn't have. The Charter tab's download
+// button uses POST with a client-rendered diagram image instead (same pattern as charter-docx).
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  // requireProjectAccess collapses "session expired" and "wrong role" into one null -- for
-  // VIEWER (the lowest tier) the only realistic cause is an expired session, so check that
-  // first for a clearer message (same fix as override-advance and charter-docx).
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
-    return NextResponse.json({ error: "Your session has expired — log in again and retry." }, { status: 401 });
-  }
-  const user = await requireProjectAccess("VIEWER", id);
-  if (!user) return NextResponse.json({ error: "You don't have access to this project." }, { status: 403 });
-  if (await isDownloadBlocked(user.id)) {
-    return NextResponse.json(
-      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
-      { status: 403 }
-    );
-  }
+  const access = await checkAccess(id);
+  if (access.error) return access.error;
 
   const detail = await getProjectDetail(id);
   if (!detail) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const buffer = await generateCharterPdf(detail);
+  const buffer = await generateCharterPdf(detail, null);
+  const slug = detail.project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "project";
+
+  return new NextResponse(new Uint8Array(buffer), {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${slug}-charter.pdf"`,
+      "Content-Length": String(buffer.length),
+    },
+  });
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const access = await checkAccess(id);
+  if (access.error) return access.error;
+
+  const detail = await getProjectDetail(id);
+  if (!detail) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  const body = await req.json().catch(() => ({}));
+  const diagram: DiagramImage | null = body?.diagram?.pngBase64 ? (body.diagram as DiagramImage) : null;
+
+  const buffer = await generateCharterPdf(detail, diagram);
   const slug = detail.project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "project";
 
   return new NextResponse(new Uint8Array(buffer), {

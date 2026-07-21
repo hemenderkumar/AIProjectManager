@@ -4,10 +4,9 @@ import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
-import { Sparkles, Loader2, FileDown } from "lucide-react";
+import { Sparkles, Loader2, FileDown, Download } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
-import DownloadPdfLink from "@/components/DownloadPdfLink";
 import AiEditChat from "./AiEditChat";
 import { renderMermaidToImages } from "@/lib/mermaidToImage";
 
@@ -60,11 +59,36 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
 
   const [downloadingWord, setDownloadingWord] = useState(false);
   const [downloadWordError, setDownloadWordError] = useState<string | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadPdfError, setDownloadPdfError] = useState<string | null>(null);
+
+  // Both exports read from the persisted project row, not this component's local `form`
+  // state -- so any AI-drafted or hand-edited value (cost figures, executive summary, etc.)
+  // that hasn't been saved yet would otherwise show correctly on screen but as 0/blank in the
+  // downloaded document. Saving right before generating either file closes that gap instead
+  // of relying on someone remembering to hit "Save Charter" first.
+  async function persistCharter(): Promise<{ ok: true } | { ok: false; error: string }> {
+    const res = await fetch(`/api/projects/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data?.error ?? "Could not save the charter. Please try again." };
+    }
+    return { ok: true };
+  }
 
   async function downloadCharterWord() {
     setDownloadingWord(true);
     setDownloadWordError(null);
     try {
+      const saved = await persistCharter();
+      if (!saved.ok) {
+        setDownloadWordError(`Couldn't save the charter before downloading: ${saved.error}`);
+        return;
+      }
       const diagram = p.architectureDiagram?.trim() ? await renderMermaidToImages(p.architectureDiagram) : null;
       const res = await fetch(`/api/projects/${p.id}/charter-docx`, {
         method: "POST",
@@ -92,10 +116,55 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      router.refresh();
     } catch {
       setDownloadWordError("Couldn't reach the server to generate the Word document. Check your connection and try again.");
     } finally {
       setDownloadingWord(false);
+    }
+  }
+
+  async function downloadCharterPdf() {
+    setDownloadingPdf(true);
+    setDownloadPdfError(null);
+    try {
+      const saved = await persistCharter();
+      if (!saved.ok) {
+        setDownloadPdfError(`Couldn't save the charter before downloading: ${saved.error}`);
+        return;
+      }
+      const diagram = p.architectureDiagram?.trim() ? await renderMermaidToImages(p.architectureDiagram) : null;
+      const res = await fetch(`/api/projects/${p.id}/charter-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ diagram }),
+      });
+      if (!res.ok) {
+        let message = `Couldn't generate the PDF (server returned ${res.status}).`;
+        try {
+          const data = await res.json();
+          if (data?.error) message = data.error;
+        } catch {
+          // not a JSON error body — keep the generic message
+        }
+        setDownloadPdfError(message);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const slug = (p.name || "charter").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "project";
+      a.download = `${slug}-charter.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      router.refresh();
+    } catch {
+      setDownloadPdfError("Couldn't reach the server to generate the PDF. Check your connection and try again.");
+    } finally {
+      setDownloadingPdf(false);
     }
   }
 
@@ -134,15 +203,10 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   async function save() {
     setSaving(true);
     setSaveError(null);
-    const res = await fetch(`/api/projects/${p.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
+    const result = await persistCharter();
     setSaving(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setSaveError(data?.error ?? "Could not save the charter. Please try again.");
+    if (!result.ok) {
+      setSaveError(result.error);
       return;
     }
     router.refresh();
@@ -312,7 +376,14 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         title="Project Charter"
         action={
           <div className="flex items-center gap-2">
-            <DownloadPdfLink href={`/api/projects/${p.id}/charter-pdf`} filename={`${p.name || "charter"}.pdf`} />
+            <button
+              onClick={downloadCharterPdf}
+              disabled={downloadingPdf}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {downloadingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              PDF
+            </button>
             <button
               onClick={downloadCharterWord}
               disabled={downloadingWord}
@@ -333,6 +404,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         }
       >
         <div className="space-y-4">
+          {downloadPdfError && <p className="text-xs text-rose-600">{downloadPdfError}</p>}
           {downloadWordError && <p className="text-xs text-rose-600">{downloadWordError}</p>}
           {genDraftError && <p className="text-xs text-rose-600">{genDraftError}</p>}
           <AiWaitIndicator
