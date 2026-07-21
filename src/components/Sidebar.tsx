@@ -65,9 +65,10 @@ export default function Sidebar({
   const pathname = usePathname();
   // Two separate product tracks sharing one login: "Keel Deliver" (the original PM/delivery
   // tool -- everything under the routes below) and "KeelConnect" (the B2B marketplace,
-  // everything under /keelconnect/*). The switcher just below the logo swaps which nav
-  // section renders; it doesn't gate access itself -- that's enforced server-side by each
-  // track's own API routes.
+  // everything under /keelconnect/*). Deliberately no direct switcher between the two --
+  // /home is the only place that links into both, so each track's nav only ever shows that
+  // track's own features. This doesn't gate access itself -- that's enforced server-side by
+  // each track's own API routes.
   const onKeelConnect = pathname.startsWith("/keelconnect");
 
   return (
@@ -78,41 +79,23 @@ export default function Sidebar({
         ${open ? "translate-x-0" : "-translate-x-full"}`}
     >
       <div className="px-5 py-5 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
+        <Link href="/home" className="flex items-center gap-2.5 group">
           <Image src="/keel-mark.svg" alt="Keel" width={32} height={32} />
           <div>
-            <p className="text-sm font-semibold text-slate-900 leading-tight">Keel</p>
+            <p className="text-sm font-semibold text-slate-900 leading-tight group-hover:text-accent-700">
+              {onKeelConnect ? "KeelConnect" : "Keel"}
+            </p>
             <p className="text-xs text-slate-400 leading-tight">
               {onKeelConnect ? "B2B outsourcing marketplace" : "Guiding project success"}
             </p>
           </div>
-        </div>
-      </div>
-
-      <div className="px-3 pt-3">
-        <div className="flex rounded-lg border border-slate-200 p-0.5 text-xs font-medium">
-          <Link
-            href="/home"
-            className={`flex-1 text-center px-2 py-1.5 rounded-md transition-colors ${
-              !onKeelConnect ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            Keel Deliver
-          </Link>
-          <Link
-            href="/keelconnect"
-            className={`flex-1 text-center px-2 py-1.5 rounded-md transition-colors ${
-              onKeelConnect ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"
-            }`}
-          >
-            KeelConnect
-          </Link>
-        </div>
+        </Link>
       </div>
 
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         {onKeelConnect ? (
           <>
+            <NavLink href="/home" icon={<Home size={17} />} pathname={pathname}>Home</NavLink>
             <NavLink href="/keelconnect" icon={<Compass size={17} />} pathname={pathname}>KeelConnect Home</NavLink>
             <NavSection label="Marketplace">
               <NavLink href="/keelconnect/organizations" icon={<Building2 size={17} />} pathname={pathname}>Organizations</NavLink>
@@ -179,13 +162,23 @@ export default function Sidebar({
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">
         <ThemeSwitcher />
-        <Link
-          href="/projects/new"
-          className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
-        >
-          <PlusCircle size={16} />
-          New Project
-        </Link>
+        {onKeelConnect ? (
+          <Link
+            href="/keelconnect/organizations"
+            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
+          >
+            <PlusCircle size={16} />
+            Register Organization
+          </Link>
+        ) : (
+          <Link
+            href="/projects/new"
+            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
+          >
+            <PlusCircle size={16} />
+            New Project
+          </Link>
+        )}
         <div className="flex items-center gap-2 px-1 text-xs text-slate-300">
           <Link href="/privacy" className="hover:text-slate-500">Privacy</Link>
           <span>·</span>
