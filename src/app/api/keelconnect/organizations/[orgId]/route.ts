@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { getScMemberships, hasPlatformRole, rolesInOrg, requireScOrgRole, requireScPlatform } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
 
+const VERIFICATION_STATUSES = ["PENDING", "VERIFIED", "REJECTED"] as const;
+
 async function checkReadAccess(orgId: string) {
   const user = await getCurrentUser();
   if (!user) return null;
@@ -23,22 +25,34 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ org
   return NextResponse.json(org);
 }
 
-// Org profile fields (name/profile/tax id/country/SAML config) editable by that org's own
-// ORG_ADMIN or Platform Admin. verificationStatus is deliberately NOT editable here -- that's
-// gated to Platform Compliance Officer/Admin via the compliance-records endpoints, so a
-// vendor can't just self-declare "VERIFIED".
+// Org profile fields (name/profile/tax id/country/SAML config) are editable by that org's
+// own ORG_ADMIN or Platform Admin. verificationStatus is a separate, more sensitive field --
+// only a Platform Admin/Compliance Officer can set it (a vendor can't self-declare
+// "VERIFIED"), so a request touching it is gated by requireScPlatform instead of the looser
+// org-role check, regardless of which other fields are also present in the same body.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ orgId: string }> }) {
   const { orgId } = await params;
-  const ctx = await requireScOrgRole(orgId, ["CLIENT_ORG_ADMIN", "VENDOR_ORG_ADMIN"]);
+  const body = await req.json().catch(() => ({}));
+  const wantsVerificationChange = "verificationStatus" in body;
+
+  const ctx = wantsVerificationChange
+    ? await requireScPlatform(["PLATFORM_ADMIN", "PLATFORM_COMPLIANCE_OFFICER"])
+    : await requireScOrgRole(orgId, ["CLIENT_ORG_ADMIN", "VENDOR_ORG_ADMIN"]);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await req.json().catch(() => ({}));
   const [before] = await db.select().from(scOrganizations).where(eq(scOrganizations.id, orgId));
   if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const patch: Record<string, unknown> = {};
   for (const key of ["name", "companyProfile", "taxId", "primaryCountry", "ssoEnabled", "samlEntityId", "samlIdpMetadataUrl", "samlIdpCert"]) {
     if (key in body) patch[key] = body[key];
+  }
+  if (wantsVerificationChange) {
+    if (!VERIFICATION_STATUSES.includes(body.verificationStatus)) {
+      return NextResponse.json({ error: `verificationStatus must be one of: ${VERIFICATION_STATUSES.join(", ")}` }, { status: 400 });
+    }
+    patch.verificationStatus = body.verificationStatus;
+    patch.verifiedAt = body.verificationStatus === "VERIFIED" ? new Date() : before.verifiedAt;
   }
 
   const [updated] = await db.update(scOrganizations).set(patch).where(eq(scOrganizations.id, orgId)).returning();

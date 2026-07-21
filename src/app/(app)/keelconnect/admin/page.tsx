@@ -43,6 +43,15 @@ export default function KeelConnectAdminPage() {
     load();
   }
 
+  async function decideOrg(orgId: string, status: "VERIFIED" | "REJECTED") {
+    await fetch(`/api/keelconnect/organizations/${orgId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verificationStatus: status }),
+    });
+    load();
+  }
+
   if (loading) {
     return (
       <div>
@@ -107,10 +116,22 @@ export default function KeelConnectAdminPage() {
           <p className="text-sm font-semibold text-slate-900 mb-3">All organizations ({orgs.length})</p>
           <div className="space-y-2">
             {orgs.map((o) => (
-              <Link key={o.id} href={`/keelconnect/organizations/${o.id}`} className="flex items-center justify-between text-sm border-b border-slate-50 pb-2 last:border-0 hover:text-accent-600">
-                <span className="flex items-center gap-2"><Building2 size={14} className="text-slate-400" /> {o.name}</span>
-                <span className="text-xs text-slate-400">{o.orgType} · {o.verificationStatus}</span>
-              </Link>
+              <div key={o.id} className="flex items-center justify-between text-sm border-b border-slate-50 pb-2 last:border-0">
+                <Link href={`/keelconnect/organizations/${o.id}`} className="flex items-center gap-2 hover:text-accent-600">
+                  <Building2 size={14} className="text-slate-400" /> {o.name}
+                  <span className="text-xs text-slate-400">{o.orgType} · {o.verificationStatus}</span>
+                </Link>
+                {o.verificationStatus !== "VERIFIED" && (
+                  <div className="flex gap-1.5">
+                    <button onClick={() => decideOrg(o.id, "VERIFIED")} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                      <ShieldCheck size={12} /> Verify org
+                    </button>
+                    <button onClick={() => decideOrg(o.id, "REJECTED")} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100">
+                      <ShieldX size={12} /> Reject
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>

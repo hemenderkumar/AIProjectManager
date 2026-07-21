@@ -6,13 +6,9 @@ import {
   Rocket,
   LayoutDashboard,
   ArrowRight,
-  Sparkles,
-  FileSearch,
-  FileBarChart,
   Globe2,
-  ShieldCheck,
-  FileText,
-  KeyRound,
+  FolderKanban,
+  FileBarChart,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getScMemberships } from "@/lib/keelconnect/access";
@@ -30,144 +26,106 @@ export default async function HomePage() {
       <Topbar title={`Welcome${user ? `, ${user.name.split(" ")[0]}` : ""}`} subtitle="What are you working on today?" />
       <div className="p-8">
         <MyRateCard />
-        <div className="max-w-5xl bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 mb-6">
-          <p className="text-xs font-semibold tracking-wide uppercase text-accent-600 mb-1.5">What Keel Deliver does</p>
-          <p className="text-sm text-slate-600 mb-4">
-            Keel Deliver is your AI-driven project and portfolio tracker: it plans work, drafts charters and RFPs,
-            watches budgets and risk, and turns your whole portfolio into board-ready reports.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-            <AboutChip icon={<Rocket size={16} />} label="Full project lifecycle" />
-            <AboutChip icon={<Sparkles size={16} />} label="An AI project manager" />
-            <AboutChip icon={<FileSearch size={16} />} label="Vendor evaluation" />
-            <AboutChip icon={<FileBarChart size={16} />} label="Board-ready reports" />
-          </div>
-          <p className="text-xs font-semibold tracking-wide uppercase text-accent-600 mb-1.5 pt-4 border-t border-slate-100">What KeelConnect does</p>
-          <p className="text-sm text-slate-600 mb-4">
-            KeelConnect is the B2B marketplace layer: post a project, receive bids from vetted Vendor
-            organizations, and let Keel generate the agreement and manage milestone payments.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <AboutChip icon={<Globe2 size={16} />} label="Sealed bidding marketplace" />
-            <AboutChip icon={<ShieldCheck size={16} />} label="KYC/KYB compliance" />
-            <AboutChip icon={<FileText size={16} />} label="Auto-generated agreements" />
-            <AboutChip icon={<KeyRound size={16} />} label="Enterprise SSO + MFA" />
-          </div>
-        </div>
 
-        <div className="max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <Link
-            href="/dashboard"
-            className="group flex items-center justify-between gap-4 bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 rounded-xl px-6 py-5"
-          >
-            <div className="flex items-center gap-4">
-              <div className="h-11 w-11 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
-                <LayoutDashboard size={22} />
+        <div className="max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Keel Deliver lane */}
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 flex flex-col">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <div className="h-9 w-9 rounded-lg bg-accent-50 flex items-center justify-center shrink-0">
+                <Rocket size={18} className="text-accent-600" />
               </div>
-              <div>
-                <p className="text-sm font-semibold">Go to the Tracker</p>
-                <p className="text-xs text-accent-100">Portfolio dashboard — status, budgets, and risk across every project.</p>
-              </div>
+              <p className="text-sm font-semibold text-slate-900">Keel Deliver</p>
             </div>
-            <ArrowRight size={18} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
+            <p className="text-xs text-slate-500 mb-4">Run your own team&apos;s delivery — plan, track, and report.</p>
 
-          <Link
-            href="/keelconnect"
-            className="group flex items-center justify-between gap-4 bg-slate-900 text-white shadow-sm shadow-slate-900/20 transition-colors hover:bg-slate-800 rounded-xl px-6 py-5"
-          >
-            <div className="flex items-center gap-4">
-              <div className="h-11 w-11 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
-                <Globe2 size={22} />
+            <Link
+              href="/dashboard"
+              className="group flex items-center justify-between gap-3 bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700 rounded-lg px-4 py-3 mb-4"
+            >
+              <div className="flex items-center gap-3">
+                <LayoutDashboard size={18} />
+                <span className="text-sm font-semibold">Go to the Tracker</span>
               </div>
-              <div>
-                <p className="text-sm font-semibold">{isKeelConnectMember ? "Go to KeelConnect" : "Explore KeelConnect"}</p>
-                <p className="text-xs text-slate-300">
-                  {isKeelConnectMember
-                    ? "Browse projects, manage bids, and track your organizations."
-                    : "Register a Client or Vendor organization to post or bid on work."}
-                </p>
-              </div>
+              <ArrowRight size={16} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+
+            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Quick start</p>
+            <div className="space-y-1.5 mb-4">
+              <QuickRow href="/ideation" icon={<Lightbulb size={15} />} label="New Ideation" hint="Brainstorm & feasibility" />
+              <QuickRow href="/execution" icon={<Rocket size={15} />} label="New Project" hint="Skip straight to planning" />
+              <QuickRow href="/support" icon={<LifeBuoy size={15} />} label="Project Support" hint="Incidents & ongoing cost" />
             </div>
-            <ArrowRight size={18} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-        </div>
 
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3 max-w-5xl">Or start something new</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl">
-          <ChoiceCard
-            href="/ideation"
-            icon={<Lightbulb size={22} className="text-accent-600" />}
-            title="New Ideation"
-            description="Brainstorm a new opportunity or a problem that needs solving, run a feasibility check, and build the case before it becomes a project."
-            cta="Start ideating"
-          />
-          <ChoiceCard
-            href="/execution"
-            icon={<Rocket size={22} className="text-accent-600" />}
-            title="New Project"
-            description="Skip ideation and kick off a new project directly — the AI planner is ready as soon as it's created."
-            cta="Start a project"
-          />
-          <ChoiceCard
-            href="/support"
-            icon={<LifeBuoy size={22} className="text-accent-600" />}
-            title="Project Support"
-            description="Log or triage an incident on a live project, or estimate what ongoing support should cost."
-            cta="Go to Ongoing Support"
-          />
-        </div>
+            <div className="mt-auto pt-3 border-t border-slate-100 flex gap-2">
+              <QuickLink href="/projects" label="All Projects" icon={<FolderKanban size={14} />} />
+              {isInternal && <QuickLink href="/reports" label="Reports" icon={<FileBarChart size={14} />} />}
+            </div>
+          </div>
 
-        <div className="mt-8 max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-3">
-          <QuickLink href="/projects" label="All Projects" />
-          {isInternal && <QuickLink href="/reports" label="Reports" />}
+          {/* KeelConnect lane */}
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 flex flex-col">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                <Globe2 size={18} className="text-slate-700" />
+              </div>
+              <p className="text-sm font-semibold text-slate-900">KeelConnect</p>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">
+              {isKeelConnectMember
+                ? "The marketplace layer — your registered organizations, projects, and bids."
+                : "The marketplace layer — post a project or bid on one as a Client or Vendor."}
+            </p>
+
+            <Link
+              href="/keelconnect"
+              className="group flex items-center justify-between gap-3 bg-slate-900 text-white shadow-sm shadow-slate-900/20 transition-colors hover:bg-slate-800 rounded-lg px-4 py-3 mb-4"
+            >
+              <div className="flex items-center gap-3">
+                <Globe2 size={18} />
+                <span className="text-sm font-semibold">{isKeelConnectMember ? "Go to KeelConnect" : "Register an organization"}</span>
+              </div>
+              <ArrowRight size={16} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+
+            {!isKeelConnectMember && (
+              <p className="text-xs text-slate-400 mb-4">
+                Takes under a minute — no separate account, just a Client or Vendor profile tied to your Keel login.
+              </p>
+            )}
+
+            <div className="mt-auto pt-3 border-t border-slate-100 flex gap-2">
+              <QuickLink href="/keelconnect/organizations" label="Organizations" icon={<Globe2 size={14} />} />
+              <QuickLink href="/keelconnect/projects" label="Marketplace" icon={<FolderKanban size={14} />} />
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function ChoiceCard({
-  href,
-  icon,
-  title,
-  description,
-  cta,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  cta: string;
-}) {
+function QuickRow({ href, icon, label, hint }: { href: string; icon: React.ReactNode; label: string; hint: string }) {
   return (
     <Link
       href={href}
-      className="group bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 hover:border-accent-300 hover:shadow-sm transition-all flex flex-col"
+      className="group flex items-center justify-between gap-3 rounded-lg border border-slate-100 hover:border-accent-200 hover:bg-accent-50/40 transition-colors px-3 py-2"
     >
-      <div className="h-10 w-10 rounded-lg bg-accent-50 flex items-center justify-center mb-3">{icon}</div>
-      <p className="text-sm font-semibold text-slate-900 mb-1.5">{title}</p>
-      <p className="text-xs text-slate-500 leading-relaxed flex-1">{description}</p>
-      <p className="text-xs font-medium text-accent-600 mt-3 group-hover:underline">{cta} →</p>
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-accent-600 shrink-0">{icon}</span>
+        <span className="text-sm font-medium text-slate-800 truncate">{label}</span>
+      </div>
+      <span className="text-xs text-slate-400 shrink-0 hidden sm:inline">{hint}</span>
     </Link>
   );
 }
 
-function AboutChip({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-2.5 py-2">
-      <span className="text-accent-600 shrink-0">{icon}</span>
-      {label}
-    </div>
-  );
-}
-
-function QuickLink({ href, label }: { href: string; label: string }) {
+function QuickLink({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) {
   return (
     <Link
       href={href}
-      className="text-xs px-3 py-2.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-center"
+      className="flex-1 flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-center"
     >
+      {icon}
       {label}
     </Link>
   );

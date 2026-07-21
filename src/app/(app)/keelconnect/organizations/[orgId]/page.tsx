@@ -127,6 +127,15 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
     load();
   }
 
+  async function decideOrgVerification(status: "VERIFIED" | "REJECTED" | "PENDING") {
+    await fetch(`/api/keelconnect/organizations/${orgId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verificationStatus: status }),
+    });
+    load();
+  }
+
   if (loading) {
     return (
       <div>
@@ -152,23 +161,46 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-semibold text-slate-900">Profile</p>
-            <span
-              className={`text-xs font-medium px-2 py-1 rounded-full ${
-                org.verificationStatus === "VERIFIED"
-                  ? "bg-emerald-50 text-emerald-700"
-                  : org.verificationStatus === "REJECTED"
-                  ? "bg-rose-50 text-rose-700"
-                  : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              {org.verificationStatus}
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-xs font-medium px-2 py-1 rounded-full ${
+                  org.verificationStatus === "VERIFIED"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : org.verificationStatus === "REJECTED"
+                    ? "bg-rose-50 text-rose-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                {org.verificationStatus}
+              </span>
+              {me?.isPlatform && org.verificationStatus !== "VERIFIED" && (
+                <button onClick={() => decideOrgVerification("VERIFIED")} className="text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                  Verify org
+                </button>
+              )}
+              {me?.isPlatform && org.verificationStatus !== "REJECTED" && (
+                <button onClick={() => decideOrgVerification("REJECTED")} className="text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100">
+                  Reject
+                </button>
+              )}
+              {me?.isPlatform && org.verificationStatus !== "PENDING" && (
+                <button onClick={() => decideOrgVerification("PENDING")} className="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div><dt className="text-xs text-slate-400">Primary country</dt><dd className="text-slate-800">{org.primaryCountry ?? "—"}</dd></div>
             <div><dt className="text-xs text-slate-400">Tax ID</dt><dd className="text-slate-800">{org.taxId ?? "—"}</dd></div>
           </dl>
           {org.companyProfile && <p className="text-xs text-slate-600 mt-3">{org.companyProfile}</p>}
+          {me?.isPlatform && (
+            <p className="text-xs text-slate-400 mt-3">
+              This is the overall org determination a Platform Admin/Compliance Officer makes after reviewing
+              the compliance records below — it does not update automatically.
+            </p>
+          )}
         </div>
 
         {isOrgAdmin && (
