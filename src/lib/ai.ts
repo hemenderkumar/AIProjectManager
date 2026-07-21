@@ -11,7 +11,16 @@ export function getAnthropic(): Anthropic | null {
 
 export const AI_MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-5";
 
-export async function askClaude(system: string, user: string, maxTokens: number = 1500): Promise<string> {
+// temperature is left undefined (the API's own default, ~1) unless a caller passes one --
+// conversational/creative callers (project chat, report narratives) want that natural
+// variation, but estimation/extraction callers (e.g. generate-charter's cost figures) should
+// pass something low like 0.2 so repeated runs on the same project don't swing wildly.
+export async function askClaude(
+  system: string,
+  user: string,
+  maxTokens: number = 1500,
+  temperature?: number
+): Promise<string> {
   const anthropic = getAnthropic();
   if (!anthropic) {
     return (
@@ -25,6 +34,7 @@ export async function askClaude(system: string, user: string, maxTokens: number 
     max_tokens: maxTokens,
     system,
     messages: [{ role: "user", content: user }],
+    ...(temperature != null ? { temperature } : {}),
   });
   const block = msg.content[0];
   return block && block.type === "text" ? block.text : "";
@@ -38,7 +48,8 @@ export type AskClaudeJSONResult<T> = { data: T | null; error?: string };
 export async function askClaudeJSON<T = unknown>(
   system: string,
   user: string,
-  maxTokens: number = 8192
+  maxTokens: number = 8192,
+  temperature?: number
 ): Promise<AskClaudeJSONResult<T>> {
   if (!getAnthropic()) {
     return {
@@ -55,7 +66,8 @@ export async function askClaudeJSON<T = unknown>(
     raw = await askClaude(
       system + "\n\nRespond with ONLY valid JSON. No markdown code fences, no commentary, no explanation before or after.",
       user,
-      maxTokens
+      maxTokens,
+      temperature
     );
   } catch (err) {
     return {

@@ -66,12 +66,15 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   // state -- so any AI-drafted or hand-edited value (cost figures, executive summary, etc.)
   // that hasn't been saved yet would otherwise show correctly on screen but as 0/blank in the
   // downloaded document. Saving right before generating either file closes that gap instead
-  // of relying on someone remembering to hit "Save Charter" first.
-  async function persistCharter(): Promise<{ ok: true } | { ok: false; error: string }> {
+  // of relying on someone remembering to hit "Save Charter" first. `overrides` lets a caller
+  // save values that were JUST set (via setForm, which doesn't apply until the next render)
+  // without waiting on that render -- used by generateDraft so an AI draft is saved
+  // immediately instead of only landing in local state until someone clicks Save Charter.
+  async function persistCharter(overrides?: Partial<typeof form>): Promise<{ ok: true } | { ok: false; error: string }> {
     const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(overrides ? { ...form, ...overrides } : form),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -228,28 +231,38 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
       }
       // Field names come back matching form state 1:1 (see generate-charter's
       // DraftCharterResult type) -- no parsing layer, so nothing silently fails to map.
-      setForm((f) => ({
-        ...f,
-        executiveSummary: data.executiveSummary ?? f.executiveSummary,
-        businessCase: data.businessCase ?? f.businessCase,
-        objectives: data.objectives ?? f.objectives,
-        scopeInScope: data.scopeInScope ?? f.scopeInScope,
-        scopeOutOfScope: data.scopeOutOfScope ?? f.scopeOutOfScope,
-        highLevelRequirements: data.highLevelRequirements ?? f.highLevelRequirements,
-        deliverables: data.deliverables ?? f.deliverables,
-        successCriteria: data.successCriteria ?? f.successCriteria,
-        stakeholders: data.stakeholders ?? f.stakeholders,
-        assumptionsRisks: data.assumptionsRisks ?? f.assumptionsRisks,
-        risks: data.risks ?? f.risks,
-        integratedSystems: data.integratedSystems ?? f.integratedSystems,
-        highLevelArchitecture: data.highLevelArchitecture ?? f.highLevelArchitecture,
-        internalSupportNeeds: data.internalSupportNeeds ?? f.internalSupportNeeds,
-        roiExpected: data.roiExpected ?? f.roiExpected,
-        materialCostEstimate: typeof data.materialCostEstimate === "number" ? data.materialCostEstimate : f.materialCostEstimate,
-        budgetPlanned: typeof data.budgetPlanned === "number" ? data.budgetPlanned : f.budgetPlanned,
-        ongoingSupportMonthlyCost: typeof data.ongoingSupportMonthlyCost === "number" ? data.ongoingSupportMonthlyCost : f.ongoingSupportMonthlyCost,
-        totalFundingRequired: typeof data.totalFundingRequired === "number" ? data.totalFundingRequired : f.totalFundingRequired,
-      }));
+      const overrides = {
+        executiveSummary: data.executiveSummary ?? form.executiveSummary,
+        businessCase: data.businessCase ?? form.businessCase,
+        objectives: data.objectives ?? form.objectives,
+        scopeInScope: data.scopeInScope ?? form.scopeInScope,
+        scopeOutOfScope: data.scopeOutOfScope ?? form.scopeOutOfScope,
+        highLevelRequirements: data.highLevelRequirements ?? form.highLevelRequirements,
+        deliverables: data.deliverables ?? form.deliverables,
+        successCriteria: data.successCriteria ?? form.successCriteria,
+        stakeholders: data.stakeholders ?? form.stakeholders,
+        assumptionsRisks: data.assumptionsRisks ?? form.assumptionsRisks,
+        risks: data.risks ?? form.risks,
+        integratedSystems: data.integratedSystems ?? form.integratedSystems,
+        highLevelArchitecture: data.highLevelArchitecture ?? form.highLevelArchitecture,
+        internalSupportNeeds: data.internalSupportNeeds ?? form.internalSupportNeeds,
+        roiExpected: data.roiExpected ?? form.roiExpected,
+        materialCostEstimate: typeof data.materialCostEstimate === "number" ? data.materialCostEstimate : form.materialCostEstimate,
+        budgetPlanned: typeof data.budgetPlanned === "number" ? data.budgetPlanned : form.budgetPlanned,
+        ongoingSupportMonthlyCost: typeof data.ongoingSupportMonthlyCost === "number" ? data.ongoingSupportMonthlyCost : form.ongoingSupportMonthlyCost,
+        totalFundingRequired: typeof data.totalFundingRequired === "number" ? data.totalFundingRequired : form.totalFundingRequired,
+      };
+      setForm((f) => ({ ...f, ...overrides }));
+
+      // Auto-save right away -- previously an AI draft only landed in local form state until
+      // someone remembered to separately click "Save Charter," which is exactly how the cost
+      // figures and executive summary were ending up blank/zero in the exported documents.
+      const saved = await persistCharter(overrides);
+      if (!saved.ok) {
+        setGenDraftError(`Drafted, but couldn't save automatically: ${saved.error} Click "Save Charter" to retry.`);
+        return;
+      }
+      router.refresh();
     } catch {
       setGenDraftError("Couldn't reach the server to draft the charter. Check your connection and try again.");
     } finally {
@@ -310,8 +323,8 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         }
       >
         <p className="text-xs text-slate-500 mb-3">
-          Editable directly here, or estimated by AI from the project&apos;s scope and technology — save the
-          Charter below once you&apos;re happy with the numbers.
+          Editable directly here (click &quot;Save Charter&quot; below after typing your own numbers), or
+          estimated by AI — an AI estimate saves itself automatically as soon as it comes back.
         </p>
         <AiWaitIndicator active={generating} messages={["Reading the scope and technology...", "Estimating costs..."]} className="mb-2" />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">

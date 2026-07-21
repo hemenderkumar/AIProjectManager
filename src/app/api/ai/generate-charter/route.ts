@@ -117,7 +117,10 @@ Resources allocated with hourly rates: ${resourceRateSummary}
 Existing recorded material cost items (if any, use as a floor/reference): ${existingMaterialCost > 0 ? `$${existingMaterialCost.toLocaleString()}` : "none recorded"}
 Existing planned implementation budget (if any, use as a floor/reference): ${p.budgetPlanned ? `$${p.budgetPlanned.toLocaleString()}` : "not set"}`;
 
-  const { data, error } = await askClaudeJSON<DraftCharterResult>(system, user, 4000);
+  // Low temperature (default is ~1) so repeated runs on the same, unchanged project data
+  // don't produce wildly different cost figures each time -- this is an estimate grounded in
+  // the project's actual scope/resources/existing cost items, not a creative-writing task.
+  const { data, error } = await askClaudeJSON<DraftCharterResult>(system, user, 4000, 0.2);
   if (error || !data) return NextResponse.json({ error: error || "No response from the AI model" }, { status: 502 });
 
   return NextResponse.json(data);
