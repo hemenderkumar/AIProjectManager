@@ -438,6 +438,13 @@ export const tasks = pgTable("tasks", {
   phase: text("phase"),
   sprintId: text("sprint_id").references((): AnyPgColumn => sprints.id, { onDelete: "set null" }),
   storyPoints: real("story_points"),
+
+  // Set once a VENDOR-classified task has been posted as a real KeelConnect marketplace
+  // project (see /api/projects/[id]/tasks/[taskId]/post-to-keelconnect) -- lets the UI show
+  // "Posted to KeelConnect" instead of the action, link to the posting, and prevent posting
+  // the same task twice. Forward-references scProjects the same way sprintId above
+  // forward-references sprints, since sc_projects is defined later in this file.
+  scProjectId: text("sc_project_id").references((): AnyPgColumn => scProjects.id, { onDelete: "set null" }),
 });
 
 // Iteration containers for Scrum/Hybrid execution. Kept separate from milestones (which

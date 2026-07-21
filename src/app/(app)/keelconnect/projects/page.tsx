@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Globe2 } from "lucide-react";
+import { Plus, Globe2, Sparkles, Loader2 } from "lucide-react";
+import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type Organization = { id: string; name: string; orgType: "CLIENT" | "VENDOR" };
 type Project = {
@@ -43,7 +44,41 @@ export default function KeelConnectProjectsPage() {
     targetBudget: "",
     currency: "USD",
     engagementModel: "MARKETPLACE",
+    locationRequirement: "GLOBAL",
   });
+  const [draftNote, setDraftNote] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  async function draftWithAI() {
+    if (!draftNote.trim()) return;
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const res = await fetch("/api/ai/draft-keelconnect-project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: draftNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDraftError(data?.error ?? "Couldn't draft this posting right now.");
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        title: data.title ?? f.title,
+        description: data.description ?? f.description,
+        category: data.category ?? f.category,
+        targetBudget: typeof data.targetBudget === "number" && data.targetBudget > 0 ? String(data.targetBudget) : f.targetBudget,
+        currency: data.currency ?? f.currency,
+        engagementModel: data.engagementModel === "MEDIATOR" ? "MEDIATOR" : "MARKETPLACE",
+        locationRequirement: data.locationRequirement === "RESTRICTED" ? "RESTRICTED" : "GLOBAL",
+      }));
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -79,7 +114,8 @@ export default function KeelConnectProjectsPage() {
       return;
     }
     setShowForm(false);
-    setForm({ clientOrgId: "", title: "", description: "", category: "", targetBudget: "", currency: "USD", engagementModel: "MARKETPLACE" });
+    setForm({ clientOrgId: "", title: "", description: "", category: "", targetBudget: "", currency: "USD", engagementModel: "MARKETPLACE", locationRequirement: "GLOBAL" });
+    setDraftNote("");
     load();
   }
 
@@ -103,6 +139,27 @@ export default function KeelConnectProjectsPage() {
         {showForm && (
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-3">
             <p className="text-sm font-semibold text-slate-900">Post a new project</p>
+
+            <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-slate-600">Describe the work (one line is fine) — AI drafts the fields below</p>
+              <textarea
+                value={draftNote}
+                onChange={(e) => setDraftNote(e.target.value)}
+                className={`${inputCls} min-h-16`}
+                placeholder="e.g. need someone to migrate our legacy PHP billing system to a modern stack, budget around 40k"
+              />
+              <button
+                onClick={draftWithAI}
+                disabled={drafting || !draftNote.trim()}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
+              >
+                {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {drafting ? "Drafting..." : "Draft with AI"}
+              </button>
+              <AiWaitIndicator active={drafting} messages={["Reading your note...", "Filling in the fields..."]} />
+              {draftError && <p className="text-xs text-rose-600">{draftError}</p>}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <select value={form.clientOrgId} onChange={(e) => setForm((f) => ({ ...f, clientOrgId: e.target.value }))} className={inputCls}>
                 <option value="">Posting as...</option>
@@ -117,6 +174,10 @@ export default function KeelConnectProjectsPage() {
               <select value={form.engagementModel} onChange={(e) => setForm((f) => ({ ...f, engagementModel: e.target.value }))} className={inputCls}>
                 <option value="MARKETPLACE">Marketplace (direct Client-Vendor agreement)</option>
                 <option value="MEDIATOR">Mediator (Keel contracts both sides)</option>
+              </select>
+              <select value={form.locationRequirement} onChange={(e) => setForm((f) => ({ ...f, locationRequirement: e.target.value }))} className={inputCls}>
+                <option value="GLOBAL">Global (any vendor)</option>
+                <option value="RESTRICTED">Restricted to certain countries</option>
               </select>
             </div>
             <textarea
