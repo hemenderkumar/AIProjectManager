@@ -3,8 +3,14 @@ import { askClaudeJSON } from "@/lib/ai";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
 
+export type CostBreakdownItem = { name: string; amount: number };
+
 // Field names match CharterTab's form state 1:1 on purpose -- the client just spreads this
-// response straight into its form, no parsing/mapping layer to keep in sync.
+// response straight into its form, no parsing/mapping layer to keep in sync. The three cost
+// figures are no longer asked for as bare numbers: the model instead returns an itemized
+// breakdown per category, and this route sums each list itself -- that way the headline
+// number can never disagree with the line items sitting under it (a real risk if the model
+// were asked for both a total AND a breakdown independently in the same response).
 type DraftCharterResult = {
   executiveSummary: string;
   businessCase: string;
@@ -21,9 +27,9 @@ type DraftCharterResult = {
   highLevelArchitecture: string;
   internalSupportNeeds: string;
   roiExpected: string;
-  materialCostEstimate: number;
-  budgetPlanned: number;
-  ongoingSupportMonthlyCost: number;
+  materialCostBreakdown: CostBreakdownItem[];
+  implementationCostBreakdown: CostBreakdownItem[];
+  ongoingSupportBreakdown: CostBreakdownItem[];
   totalFundingRequired: number;
 };
 
@@ -78,17 +84,25 @@ objects, no markdown headings:
     support after go-live),
   "roiExpected": string (2-3 sentences — expected return, cost savings/revenue impact/efficiency
     gains, and over what timeframe),
-  "materialCostEstimate": number (best-estimate ONE-TIME cost for materials/licenses/hardware/
-    third-party purchases, just the number in dollars, no symbols/commas — use any existing
-    recorded cost items given below as a floor/reference, 0 if nothing like this applies),
-  "budgetPlanned": number (best-estimate ONE-TIME delivery/labor cost to build and deliver this
-    project, just the number in dollars — inform it from the task count and resource rates given
-    below if present, otherwise reason from scope and complexity),
-  "ongoingSupportMonthlyCost": number (best-estimate recurring MONTHLY cost to operate/support the
-    solution after go-live, just the number in dollars),
+  "materialCostBreakdown": array of {"name": string, "amount": number} — itemized ONE-TIME
+    material/license/hardware/third-party-purchase line items (e.g. "Software licenses",
+    "Server hardware", "Third-party API subscription (year 1)"), each with its own dollar
+    amount, no symbols/commas. Use any existing recorded cost items given below as a floor/
+    reference. Return an empty array if nothing like this applies to this project — do not
+    invent a single vague "Materials" line just to have an entry,
+  "implementationCostBreakdown": array of {"name": string, "amount": number} — itemized
+    ONE-TIME delivery/labor cost line items to build and deliver this project (e.g. "Backend
+    development", "QA and testing", "Vendor implementation services"). Inform amounts from the
+    task count and resource rates given below if present, otherwise reason from scope and
+    complexity. This is the equivalent of what used to be a single "implementation cost"
+    guess — break it into the 3-6 largest cost drivers instead of one lump sum,
+  "ongoingSupportBreakdown": array of {"name": string, "amount": number} — itemized recurring
+    MONTHLY cost line items to operate/support the solution after go-live (e.g. "Hosting/
+    infrastructure", "Support staff time", "SaaS subscription fees"). Each amount is a MONTHLY
+    dollar figure,
   "totalFundingRequired": number (best-estimate total budget, just the number in dollars — should
-    be broadly consistent with materialCostEstimate + budgetPlanned plus a contingency margin, not
-    a disconnected figure)
+    be broadly consistent with the sum of materialCostBreakdown + implementationCostBreakdown
+    plus a contingency margin, not a disconnected figure)
 }`;
 
   const optionsSummary = detail.solutionOptions.length

@@ -160,6 +160,7 @@ export const reportCadenceEnum = pgEnum("report_cadence", [
 
 export const costItemCategoryEnum = pgEnum("cost_item_category", [
   "MATERIAL",
+  "IMPLEMENTATION",
   "ONGOING_SUPPORT",
 ]);
 

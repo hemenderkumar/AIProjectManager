@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
-import { Sparkles, Loader2, FileDown, Download } from "lucide-react";
+import { Sparkles, Loader2, FileDown, Download, Plus, Trash2 } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
 import AiEditChat from "./AiEditChat";
 import { renderMermaidToImages } from "@/lib/mermaidToImage";
+
+type CostItemCategory = "MATERIAL" | "IMPLEMENTATION" | "ONGOING_SUPPORT";
 
 export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -35,27 +37,71 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
     internalSupportNeeds: p.internalSupportNeeds ?? "",
     roiExpected: p.roiExpected ?? "",
     totalFundingRequired: p.totalFundingRequired ?? 0,
-    // Falls back to the itemized cost-items total (from the Tasks-tab plan wizard) until
-    // someone edits or AI-drafts this project-level figure directly — after that, this
-    // column is the source of truth for what Cost Summary shows, so existing data isn't
-    // lost but a fresh save always wins.
-    materialCostEstimate:
-      p.materialCostEstimate ?? detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0),
-    budgetPlanned: p.budgetPlanned ?? 0,
-    ongoingSupportMonthlyCost: p.ongoingSupportMonthlyCost ?? 0,
     contingencyPercent: p.contingencyPercent ?? 10,
     charterApprovedBy: p.charterApprovedBy ?? "",
     charterApprovedAt: formatDateInput(p.charterApprovedAt),
   });
 
+  // Material/Implementation/Ongoing support are no longer single typed-in numbers -- each is
+  // now a list of named cost_items rows (category-scoped), and the $ total shown is always
+  // the live sum of that list rather than a number someone has to keep in sync by hand. These
+  // are deliberately NOT part of `form`/persistCharter: the totals live-sync straight to the
+  // project's materialCostEstimate/budgetPlanned/ongoingSupportMonthlyCost columns the moment
+  // an item changes (see syncCostTotals below), so folding them into the general "Save
+  // Charter" payload too would risk overwriting that fresh sync with a stale form value.
+  const materialItems = detail.costItems.filter((c) => c.category === "MATERIAL");
+  const implementationItems = detail.costItems.filter((c) => c.category === "IMPLEMENTATION");
+  const ongoingItems = detail.costItems.filter((c) => c.category === "ONGOING_SUPPORT");
+  const materialCostSubtotal = materialItems.reduce((s, c) => s + c.amount, 0);
+  const implementationCostSubtotal = implementationItems.reduce((s, c) => s + c.amount, 0);
+  const ongoingSupportSubtotal = ongoingItems.reduce((s, c) => s + c.amount, 0);
+
   // Applied to both cost and effort so the buffer shows up wherever someone is sizing the
   // project, not just in the dollar total — a schedule built off "best case" hours alone is
   // exactly what a contingency margin exists to protect against.
-  const costSubtotal = (form.materialCostEstimate || 0) + (form.budgetPlanned || 0);
+  const costSubtotal = materialCostSubtotal + implementationCostSubtotal;
   const contingencyAmount = Math.round((costSubtotal * (form.contingencyPercent || 0)) / 100);
   const totalWithContingency = costSubtotal + contingencyAmount;
   const totalEstimateHours = detail.tasks.reduce((s, t) => s + (t.estimateHours ?? 0), 0);
   const effortWithContingency = totalEstimateHours * (1 + (form.contingencyPercent || 0) / 100);
+
+  async function syncCostTotals() {
+    const res = await fetch(`/api/projects/${p.id}/cost-items`);
+    const items: { category: CostItemCategory; amount: number }[] = await res.json().catch(() => []);
+    const materialCostEstimate = items.filter((i) => i.category === "MATERIAL").reduce((s, i) => s + (i.amount || 0), 0);
+    const budgetPlanned = items.filter((i) => i.category === "IMPLEMENTATION").reduce((s, i) => s + (i.amount || 0), 0);
+    const ongoingSupportMonthlyCost = items.filter((i) => i.category === "ONGOING_SUPPORT").reduce((s, i) => s + (i.amount || 0), 0);
+    await fetch(`/api/projects/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ materialCostEstimate, budgetPlanned, ongoingSupportMonthlyCost }),
+    });
+  }
+
+  async function addCostItem(category: CostItemCategory) {
+    await fetch(`/api/projects/${p.id}/cost-items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, name: "New item", amount: 0 }),
+    });
+    router.refresh();
+  }
+
+  async function updateCostItem(itemId: string, patch: { name?: string; amount?: number }) {
+    await fetch(`/api/projects/${p.id}/cost-items/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    await syncCostTotals();
+    router.refresh();
+  }
+
+  async function deleteCostItem(itemId: string) {
+    await fetch(`/api/projects/${p.id}/cost-items/${itemId}`, { method: "DELETE" });
+    await syncCostTotals();
+    router.refresh();
+  }
 
   const [downloadingWord, setDownloadingWord] = useState(false);
   const [downloadWordError, setDownloadWordError] = useState<string | null>(null);
@@ -247,12 +293,27 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         highLevelArchitecture: data.highLevelArchitecture ?? form.highLevelArchitecture,
         internalSupportNeeds: data.internalSupportNeeds ?? form.internalSupportNeeds,
         roiExpected: data.roiExpected ?? form.roiExpected,
-        materialCostEstimate: typeof data.materialCostEstimate === "number" ? data.materialCostEstimate : form.materialCostEstimate,
-        budgetPlanned: typeof data.budgetPlanned === "number" ? data.budgetPlanned : form.budgetPlanned,
-        ongoingSupportMonthlyCost: typeof data.ongoingSupportMonthlyCost === "number" ? data.ongoingSupportMonthlyCost : form.ongoingSupportMonthlyCost,
         totalFundingRequired: typeof data.totalFundingRequired === "number" ? data.totalFundingRequired : form.totalFundingRequired,
       };
       setForm((f) => ({ ...f, ...overrides }));
+
+      // Cost breakdowns come back as itemized {name, amount} arrays, not bare numbers --
+      // atomically swap out each category's line items for the freshly generated set (bulk
+      // replace, not append), then resync the project's top-line cost columns to match.
+      const breakdowns: { category: CostItemCategory; items: unknown }[] = [
+        { category: "MATERIAL", items: data.materialCostBreakdown },
+        { category: "IMPLEMENTATION", items: data.implementationCostBreakdown },
+        { category: "ONGOING_SUPPORT", items: data.ongoingSupportBreakdown },
+      ];
+      for (const { category, items } of breakdowns) {
+        if (!Array.isArray(items)) continue;
+        await fetch(`/api/projects/${p.id}/cost-items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category, items, replace: true }),
+        });
+      }
+      await syncCostTotals();
 
       // Auto-save right away -- previously an AI draft only landed in local form state until
       // someone remembered to separately click "Save Charter," which is exactly how the cost
@@ -323,38 +384,33 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         }
       >
         <p className="text-xs text-slate-500 mb-3">
-          Editable directly here (click &quot;Save Charter&quot; below after typing your own numbers), or
-          estimated by AI — an AI estimate saves itself automatically as soon as it comes back.
+          Each $ figure below is the sum of the line items listed under it, not a single typed-in
+          guess — add items directly, or use &quot;Estimate with AI&quot; to draft an itemized
+          breakdown for all three at once (it saves itself automatically as soon as it comes back).
         </p>
         <AiWaitIndicator active={generating} messages={["Reading the scope and technology...", "Estimating costs..."]} className="mb-2" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
-          <Field label="Material cost ($)">
-            <input
-              type="number"
-              min={0}
-              value={form.materialCostEstimate}
-              onChange={(e) => update("materialCostEstimate", Number(e.target.value))}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Implementation cost ($)">
-            <input
-              type="number"
-              min={0}
-              value={form.budgetPlanned}
-              onChange={(e) => update("budgetPlanned", Number(e.target.value))}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Ongoing support ($/month)">
-            <input
-              type="number"
-              min={0}
-              value={form.ongoingSupportMonthlyCost}
-              onChange={(e) => update("ongoingSupportMonthlyCost", Number(e.target.value))}
-              className={inputCls}
-            />
-          </Field>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
+          <CostBreakdownSection
+            title="Material cost"
+            items={materialItems}
+            onAdd={() => addCostItem("MATERIAL")}
+            onUpdate={updateCostItem}
+            onDelete={deleteCostItem}
+          />
+          <CostBreakdownSection
+            title="Implementation cost"
+            items={implementationItems}
+            onAdd={() => addCostItem("IMPLEMENTATION")}
+            onUpdate={updateCostItem}
+            onDelete={deleteCostItem}
+          />
+          <CostBreakdownSection
+            title="Ongoing support ($/month)"
+            items={ongoingItems}
+            onAdd={() => addCostItem("ONGOING_SUPPORT")}
+            onUpdate={updateCostItem}
+            onDelete={deleteCostItem}
+          />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <Field label="Contingency (%)">
@@ -374,10 +430,11 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <SummaryStat label="Cost subtotal" value={`$${costSubtotal.toLocaleString()}`} />
           <SummaryStat label={`Contingency (${form.contingencyPercent}%)`} value={`$${contingencyAmount.toLocaleString()}`} />
           <SummaryStat label="Total incl. contingency" value={`$${totalWithContingency.toLocaleString()}`} />
+          <SummaryStat label="Ongoing support (monthly)" value={`$${ongoingSupportSubtotal.toLocaleString()}`} />
           <SummaryStat
             label="Total effort incl. contingency"
             value={totalEstimateHours > 0 ? `${Math.round(effortWithContingency).toLocaleString()} hrs` : "No tasks yet"}
@@ -579,6 +636,69 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
     <div className="border border-slate-200 rounded-lg p-2.5 text-center bg-white">
       <p className="text-xs text-slate-400">{label}</p>
       <p className="text-sm font-semibold text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+// One category's itemized cost breakdown -- a list of named line items, each editable inline
+// (committed on blur, matching the pattern already used for resource-mix rows elsewhere in
+// this app) plus an "Add item" affordance. The $ total shown at the bottom is always the live
+// sum of these rows, never a separately-typed number that could drift from what's listed.
+function CostBreakdownSection({
+  title,
+  items,
+  onAdd,
+  onUpdate,
+  onDelete,
+}: {
+  title: string;
+  items: { id: string; name: string; amount: number }[];
+  onAdd: () => void;
+  onUpdate: (itemId: string, patch: { name?: string; amount?: number }) => void;
+  onDelete: (itemId: string) => void;
+}) {
+  const subtotal = items.reduce((s, i) => s + i.amount, 0);
+  return (
+    <div className="border border-slate-200 rounded-lg p-3 bg-white">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-medium text-slate-600">{title}</p>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex items-center gap-1 text-xs text-accent-600 hover:text-accent-700"
+        >
+          <Plus size={12} /> Add item
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-400 mb-2">No items yet — add one, or use &quot;Estimate with AI&quot;.</p>
+      ) : (
+        <div className="space-y-1.5 mb-2">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center gap-1.5">
+              <input
+                defaultValue={item.name}
+                onBlur={(e) => e.target.value.trim() && e.target.value !== item.name && onUpdate(item.id, { name: e.target.value })}
+                placeholder="Item name"
+                className="min-w-0 flex-1 text-xs border border-slate-200 rounded px-1.5 py-1"
+              />
+              <input
+                type="number"
+                min={0}
+                defaultValue={item.amount}
+                onBlur={(e) => onUpdate(item.id, { amount: Number(e.target.value) })}
+                className="w-20 text-xs border border-slate-200 rounded px-1.5 py-1 text-right"
+              />
+              <button type="button" onClick={() => onDelete(item.id)} className="text-slate-400 hover:text-rose-600 shrink-0">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-slate-500 text-right border-t border-slate-100 pt-1.5">
+        Subtotal: <span className="font-semibold text-slate-800">${subtotal.toLocaleString()}</span>
+      </p>
     </div>
   );
 }

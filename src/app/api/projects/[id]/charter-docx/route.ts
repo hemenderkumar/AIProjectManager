@@ -58,7 +58,13 @@ async function renderCharterDocx(detail: ProjectDetail, diagram: DiagramImage | 
     approvedAt: p.charterApprovedAt,
   };
 
-  const materialCost = p.materialCostEstimate ?? detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
+  const materialItems = detail.costItems.filter((c) => c.category === "MATERIAL");
+  const implementationItems = detail.costItems.filter((c) => c.category === "IMPLEMENTATION");
+  const ongoingItems = detail.costItems.filter((c) => c.category === "ONGOING_SUPPORT");
+  const itemLines = (items: { name: string; amount: number }[]) =>
+    items.map((i) => `    - ${i.name}: $${i.amount.toLocaleString()}`).join("\n");
+
+  const materialCost = p.materialCostEstimate ?? materialItems.reduce((s, c) => s + c.amount, 0);
   const implementationCost = p.budgetPlanned ?? 0;
   const contingencyPercent = p.contingencyPercent ?? 10;
   const contingencyAmount = Math.round((materialCost + implementationCost) * (contingencyPercent / 100));
@@ -97,7 +103,16 @@ async function renderCharterDocx(detail: ProjectDetail, diagram: DiagramImage | 
     { heading: "ROI to Be Achieved", body: p.roiExpected ?? "" },
     {
       heading: "Cost Summary",
-      body: `Material cost: $${materialCost.toLocaleString()}\nImplementation cost (est.): $${implementationCost.toLocaleString()}\nContingency (${contingencyPercent}%): $${contingencyAmount.toLocaleString()}\nTotal incl. contingency: $${totalWithContingency.toLocaleString()}\nOngoing support (monthly est.): $${(p.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`,
+      body: [
+        `Material cost: $${materialCost.toLocaleString()}`,
+        materialItems.length ? itemLines(materialItems) : "",
+        `Implementation cost (est.): $${implementationCost.toLocaleString()}`,
+        implementationItems.length ? itemLines(implementationItems) : "",
+        `Contingency (${contingencyPercent}%): $${contingencyAmount.toLocaleString()}`,
+        `Total incl. contingency: $${totalWithContingency.toLocaleString()}`,
+        `Ongoing support (monthly est.): $${(p.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`,
+        ongoingItems.length ? itemLines(ongoingItems) : "",
+      ].filter(Boolean).join("\n"),
     },
     { heading: "Total Funding Required", body: p.totalFundingRequired != null ? `$${p.totalFundingRequired.toLocaleString()}` : "" },
     {

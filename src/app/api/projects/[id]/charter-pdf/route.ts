@@ -79,7 +79,13 @@ function generateCharterPdf(detail: ProjectDetail, diagram: DiagramImage | null)
           .join("\n")
       : null;
 
-    const materialCost = project.materialCostEstimate ?? detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
+    const materialItems = detail.costItems.filter((c) => c.category === "MATERIAL");
+    const implementationItems = detail.costItems.filter((c) => c.category === "IMPLEMENTATION");
+    const ongoingItems = detail.costItems.filter((c) => c.category === "ONGOING_SUPPORT");
+    const itemLines = (items: { name: string; amount: number }[]) =>
+      items.map((i) => `    - ${i.name}: $${i.amount.toLocaleString()}`).join("\n");
+
+    const materialCost = project.materialCostEstimate ?? materialItems.reduce((s, c) => s + c.amount, 0);
     const implementationCost = project.budgetPlanned ?? 0;
     const contingencyPercent = project.contingencyPercent ?? 10;
     const contingencyAmount = Math.round((materialCost + implementationCost) * (contingencyPercent / 100));
@@ -157,7 +163,16 @@ function generateCharterPdf(detail: ProjectDetail, diagram: DiagramImage | null)
     section("ROI to Be Achieved", project.roiExpected);
     section(
       "Cost Summary",
-      `Material cost: $${materialCost.toLocaleString()}\nImplementation cost (est.): $${implementationCost.toLocaleString()}\nContingency (${contingencyPercent}%): $${contingencyAmount.toLocaleString()}\nTotal incl. contingency: $${totalWithContingency.toLocaleString()}\nOngoing support (monthly est.): $${(project.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`
+      [
+        `Material cost: $${materialCost.toLocaleString()}`,
+        materialItems.length ? itemLines(materialItems) : "",
+        `Implementation cost (est.): $${implementationCost.toLocaleString()}`,
+        implementationItems.length ? itemLines(implementationItems) : "",
+        `Contingency (${contingencyPercent}%): $${contingencyAmount.toLocaleString()}`,
+        `Total incl. contingency: $${totalWithContingency.toLocaleString()}`,
+        `Ongoing support (monthly est.): $${(project.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`,
+        ongoingItems.length ? itemLines(ongoingItems) : "",
+      ].filter(Boolean).join("\n")
     );
     section(
       "Total Funding Required",
