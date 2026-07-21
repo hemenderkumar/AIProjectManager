@@ -19,12 +19,13 @@ const PREVIEW_RAG_STYLES: Record<string, { bg: string; text: string; dot: string
 
 // The single homepage at "/" -- for everyone, signed in or not. Logged-out visitors get
 // the pitch + an embedded login form; signed-in visitors get the same page with a
-// personalized hero and a single CTA into /home instead of the login form.
+// personalized hero and direct entry points into both products instead of the login form.
 //
-// Deliberately restrained: exactly one CTA action per section (header, hero) rather than
-// repeating "Log in" / "Go to Tracker" at every turn, a plain numbered list for "How it
-// works" instead of a wall of colored icon tiles, and a quieter two-column feature list --
-// closer to how Linear/Notion-style B2B SaaS sites read than a template landing page.
+// Two products, two CTAs, everywhere a CTA appears: a single "Go to Tracker" button used to
+// stand in for both, which read as if Keel Deliver were the only real product and
+// KeelConnect an afterthought. Header, hero, and the two product cards each now offer
+// "Keel Deliver" and "KeelConnect" as equal-weight, separately-clickable destinations --
+// /dashboard and /keelconnect respectively -- for signed-in visitors.
 export default async function HomePage() {
   const user = await getCurrentUser();
 
@@ -46,12 +47,20 @@ export default async function HomePage() {
             <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How it works</a>
           </nav>
           {user ? (
-            <Link
-              href="/home"
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
-            >
-              Go to Tracker
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
+              >
+                Keel Deliver
+              </Link>
+              <Link
+                href="/keelconnect"
+                className="text-sm font-medium px-3.5 py-2 rounded-lg bg-slate-900 text-white shadow-sm shadow-slate-900/20 transition-colors hover:bg-slate-800"
+              >
+                KeelConnect
+              </Link>
+            </div>
           ) : (
             <a
               href="#login"
@@ -96,13 +105,24 @@ export default async function HomePage() {
               <div id="login" className="w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6 text-center">
                 <p className="text-sm font-semibold text-slate-900 mb-1.5">Welcome back, {user.name.split(" ")[0]}</p>
                 <p className="text-xs text-slate-500 mb-5">
-                  Pick up where you left off — your projects, budgets, and reports are waiting in the tracker.
+                  Pick a product to jump into — or see both side by side on your home page.
                 </p>
-                <Link
-                  href="/home"
-                  className="block w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 transition-colors"
-                >
-                  Go to the Tracker
+                <div className="space-y-2">
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center justify-center gap-2 w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 transition-colors"
+                  >
+                    <Rocket size={15} /> Go to Keel Deliver
+                  </Link>
+                  <Link
+                    href="/keelconnect"
+                    className="flex items-center justify-center gap-2 w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-slate-900 text-white shadow-sm shadow-slate-900/20 hover:bg-slate-800 transition-colors"
+                  >
+                    <Globe2 size={15} /> Go to KeelConnect
+                  </Link>
+                </div>
+                <Link href="/home" className="block mt-3 text-xs text-slate-400 hover:text-slate-600">
+                  Or see both on your home page →
                 </Link>
               </div>
             ) : (
@@ -124,9 +144,15 @@ export default async function HomePage() {
               Ideation, AI-drafted charters, sprints or waterfall phases, risk and budget tracking, and
               board-ready reports — one tracker from first idea to steady-state support.
             </p>
-            <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-              See how it works <ArrowRight size={14} />
-            </a>
+            {user ? (
+              <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
+                Open Keel Deliver <ArrowRight size={14} />
+              </Link>
+            ) : (
+              <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
+                See how it works <ArrowRight size={14} />
+              </a>
+            )}
           </div>
           <div id="keelconnect" className="scroll-mt-16 relative rounded-xl border-2 border-accent-600 p-6">
             <span className="absolute -top-2.5 left-5 bg-accent-600 text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full">
@@ -141,9 +167,15 @@ export default async function HomePage() {
               Post a project, receive bids from verified vendor organizations, negotiate terms, and let
               Keel generate the agreement and manage milestone payments.
             </p>
-            <a href="#features" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-              Explore the marketplace <ArrowRight size={14} />
-            </a>
+            {user ? (
+              <Link href="/keelconnect" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
+                Open KeelConnect <ArrowRight size={14} />
+              </Link>
+            ) : (
+              <a href="#features" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
+                Explore the marketplace <ArrowRight size={14} />
+              </a>
+            )}
           </div>
         </div>
       </section>
