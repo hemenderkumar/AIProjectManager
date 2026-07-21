@@ -13,7 +13,17 @@ import type { SessionUser } from "@/lib/auth";
 // (hidden by default) opened via a hamburger button in a small fixed top bar, with a
 // tap-to-dismiss backdrop — the standard mobile pattern for an app that otherwise assumes
 // a permanent left nav.
-export default function AppShell({ user, children }: { user: SessionUser | null; children: React.ReactNode }) {
+export default function AppShell({
+  user,
+  children,
+  isKeelConnectMember,
+  isScPlatform,
+}: {
+  user: SessionUser | null;
+  children: React.ReactNode;
+  isKeelConnectMember?: boolean;
+  isScPlatform?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -35,7 +45,9 @@ export default function AppShell({ user, children }: { user: SessionUser | null;
           <Menu size={22} />
         </button>
         <Image src="/keel-mark.svg" alt="Keel" width={22} height={22} />
-        <p className="text-sm font-semibold text-slate-900">Keel</p>
+        <p className="text-sm font-semibold text-slate-900">
+          Keel{pathname.startsWith("/keelconnect") ? "Connect" : ""}
+        </p>
       </div>
 
       {open && (
@@ -46,7 +58,7 @@ export default function AppShell({ user, children }: { user: SessionUser | null;
         />
       )}
 
-      <Sidebar user={user} open={open} />
+      <Sidebar user={user} open={open} isKeelConnectMember={isKeelConnectMember} isScPlatform={isScPlatform} />
 
       <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
       <AvatarAssistant />

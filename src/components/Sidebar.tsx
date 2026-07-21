@@ -18,6 +18,8 @@ import {
   FileSearch,
   TrendingUp,
   Compass,
+  Globe2,
+  Gavel,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
@@ -48,9 +50,26 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
   );
 }
 
-export default function Sidebar({ user, open }: { user: SessionUser | null; open?: boolean }) {
+export default function Sidebar({
+  user,
+  open,
+  isKeelConnectMember,
+  isScPlatform,
+}: {
+  user: SessionUser | null;
+  open?: boolean;
+  isKeelConnectMember?: boolean;
+  isScPlatform?: boolean;
+}) {
   const isInternal = !!user && user.organizationId == null;
   const pathname = usePathname();
+  // Two separate product tracks sharing one login: "Keel Deliver" (the original PM/delivery
+  // tool -- everything under the routes below) and "KeelConnect" (the B2B marketplace,
+  // everything under /keelconnect/*). The switcher just below the logo swaps which nav
+  // section renders; it doesn't gate access itself -- that's enforced server-side by each
+  // track's own API routes.
+  const onKeelConnect = pathname.startsWith("/keelconnect");
+
   return (
     <aside
       className={`w-64 md:w-60 shrink-0 border-r border-slate-200 bg-white h-screen flex flex-col
@@ -63,48 +82,99 @@ export default function Sidebar({ user, open }: { user: SessionUser | null; open
           <Image src="/keel-mark.svg" alt="Keel" width={32} height={32} />
           <div>
             <p className="text-sm font-semibold text-slate-900 leading-tight">Keel</p>
-            <p className="text-xs text-slate-400 leading-tight">Guiding project success</p>
+            <p className="text-xs text-slate-400 leading-tight">
+              {onKeelConnect ? "B2B outsourcing marketplace" : "Guiding project success"}
+            </p>
           </div>
         </div>
       </div>
+
+      <div className="px-3 pt-3">
+        <div className="flex rounded-lg border border-slate-200 p-0.5 text-xs font-medium">
+          <Link
+            href="/home"
+            className={`flex-1 text-center px-2 py-1.5 rounded-md transition-colors ${
+              !onKeelConnect ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            Keel Deliver
+          </Link>
+          <Link
+            href="/keelconnect"
+            className={`flex-1 text-center px-2 py-1.5 rounded-md transition-colors ${
+              onKeelConnect ? "bg-accent-600 text-white" : "text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            KeelConnect
+          </Link>
+        </div>
+      </div>
+
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        <NavLink href="/home" icon={<Home size={17} />} pathname={pathname}>Home</NavLink>
-        <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
-        <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Keel Works</NavLink>
+        {onKeelConnect ? (
+          <>
+            <NavLink href="/keelconnect" icon={<Compass size={17} />} pathname={pathname}>KeelConnect Home</NavLink>
+            <NavSection label="Marketplace">
+              <NavLink href="/keelconnect/organizations" icon={<Building2 size={17} />} pathname={pathname}>Organizations</NavLink>
+              <NavLink href="/keelconnect/projects" icon={<Globe2 size={17} />} pathname={pathname}>Projects</NavLink>
+            </NavSection>
+            <NavSection label="My Work">
+              <NavLink href="/keelconnect/disputes" icon={<Gavel size={17} />} pathname={pathname}>Disputes</NavLink>
+              <NavLink href="/keelconnect/mfa" icon={<ShieldCheck size={17} />} pathname={pathname}>Two-Factor Auth</NavLink>
+            </NavSection>
+            {isScPlatform && (
+              <NavSection label="Platform">
+                <NavLink href="/keelconnect/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Admin Console</NavLink>
+              </NavSection>
+            )}
+            {!isKeelConnectMember && !isScPlatform && (
+              <p className="px-3 pt-4 text-xs text-slate-400 leading-relaxed">
+                You&apos;re not part of a KeelConnect organization yet. Create a Client or Vendor
+                organization to start posting or bidding on projects.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <NavLink href="/home" icon={<Home size={17} />} pathname={pathname}>Home</NavLink>
+            <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
+            <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Keel Works</NavLink>
 
-        <NavSection label="Project Lifecycle">
-          <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
-          <NavLink href="/execution" icon={<Rocket size={17} />} pathname={pathname}>Project Execution</NavLink>
-          <NavLink href="/support" icon={<LifeBuoy size={17} />} pathname={pathname}>Ongoing Support</NavLink>
-        </NavSection>
+            <NavSection label="Project Lifecycle">
+              <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
+              <NavLink href="/execution" icon={<Rocket size={17} />} pathname={pathname}>Project Execution</NavLink>
+              <NavLink href="/support" icon={<LifeBuoy size={17} />} pathname={pathname}>Ongoing Support</NavLink>
+            </NavSection>
 
-        <NavSection label="More">
-          <NavLink href="/projects" icon={<FolderKanban size={17} />} pathname={pathname}>All Projects</NavLink>
-          <NavLink href="/ai" icon={<Sparkles size={17} />} pathname={pathname}>AI Assistant</NavLink>
-          {isInternal && (
-            <NavLink href="/reports" icon={<FileBarChart size={17} />} pathname={pathname}>Reports</NavLink>
-          )}
-          {isInternal && (
-            <NavLink href="/resources" icon={<Users size={17} />} pathname={pathname}>Resources</NavLink>
-          )}
-          {user?.role === "SUPER_USER" && (
-            <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>
-          )}
-          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
-            <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
-          )}
-          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
-            <NavLink href="/vendors" icon={<TrendingUp size={17} />} pathname={pathname}>Vendor Scorecard</NavLink>
-          )}
-        </NavSection>
+            <NavSection label="More">
+              <NavLink href="/projects" icon={<FolderKanban size={17} />} pathname={pathname}>All Projects</NavLink>
+              <NavLink href="/ai" icon={<Sparkles size={17} />} pathname={pathname}>AI Assistant</NavLink>
+              {isInternal && (
+                <NavLink href="/reports" icon={<FileBarChart size={17} />} pathname={pathname}>Reports</NavLink>
+              )}
+              {isInternal && (
+                <NavLink href="/resources" icon={<Users size={17} />} pathname={pathname}>Resources</NavLink>
+              )}
+              {user?.role === "SUPER_USER" && (
+                <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>
+              )}
+              {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+                <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
+              )}
+              {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+                <NavLink href="/vendors" icon={<TrendingUp size={17} />} pathname={pathname}>Vendor Scorecard</NavLink>
+              )}
+            </NavSection>
 
-        {user?.role === "ADMIN" && (
-          // Its own clearly-labeled section, not buried inside "More" — this is where
-          // inviting/managing users and companies (and approving registration requests)
-          // actually lives, so it needs to be easy to find, not the last item in a list.
-          <NavSection label="Account Management">
-            <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Users & Companies</NavLink>
-          </NavSection>
+            {user?.role === "ADMIN" && (
+              // Its own clearly-labeled section, not buried inside "More" — this is where
+              // inviting/managing users and companies (and approving registration requests)
+              // actually lives, so it needs to be easy to find, not the last item in a list.
+              <NavSection label="Account Management">
+                <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Users & Companies</NavLink>
+              </NavSection>
+            )}
+          </>
         )}
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">

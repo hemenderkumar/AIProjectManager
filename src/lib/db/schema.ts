@@ -599,6 +599,15 @@ export const users = pgTable("users", {
   // (see getCurrentTheme() in lib/auth.ts) and renders it straight onto <html> server-side,
   // so there's no flash-of-wrong-theme to guard against on load.
   theme: text("theme").notNull().default("indigo"),
+  // Per-user language preference (KeelConnect: e.g. an agreement's own governingLanguage
+  // is separate -- this is just what the UI/notifications are shown in for this person).
+  locale: text("locale").notNull().default("en"),
+  // Real TOTP MFA (RFC 6238) -- mfaSecret is only ever set once mfaEnabled flips true
+  // (enrollment isn't complete, and the secret isn't trusted, until a code is verified).
+  // Enforced at login for KeelConnect's Finance Approver and all Platform roles; optional
+  // for everyone else. See lib/keelconnect/mfa.ts.
+  mfaSecret: text("mfa_secret"),
+  mfaEnabled: boolean("mfa_enabled").notNull().default(false),
 });
 
 // A sign-up submitted through the public /register page. The password is hashed at
@@ -858,6 +867,14 @@ export const auditLog = pgTable("audit_log", {
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
   detail: text("detail"), // free-text description of what changed
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // KeelConnect additions -- kept on this same immutable log rather than a parallel table.
+  // scOrganizationId is separate from the Keel Deliver `organizationId` above (different
+  // table entirely); before/afterValue are JSON snapshots for Agreement/Payment state
+  // changes and permission (scOrgMembers) changes, per the "immutable ... before/after
+  // values" requirement -- the free-text `detail` above isn't structured enough for that.
+  scOrganizationId: text("sc_organization_id").references((): AnyPgColumn => scOrganizations.id, { onDelete: "set null" }),
+  beforeValue: text("before_value"),
+  afterValue: text("after_value"),
 });
 
 // Lightweight record of "someone showed up" events — logins, and visits to public/no-login
@@ -1165,6 +1182,283 @@ export const deliverableTestCases = pgTable("deliverable_test_cases", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ============================================================================
+// KeelConnect — B2B marketplace for global IT project outsourcing. A separate
+// "track" alongside Keel Deliver (everything above): Client orgs post projects,
+// Vendor orgs bid, and the platform mediates (or steps aside for a direct
+// marketplace deal). Deliberately its own org/role tables (sc = "source")
+// rather than reusing `organizations`/`userRoleEnum` -- a KeelConnect org
+// (Client or Vendor, with tax ID/KYC/verification) is a different concept
+// from a Keel Deliver tenant, and its 8 roles don't map onto
+// ADMIN/SUPER_USER/PM/CONTRIBUTOR/VIEWER. Login/session stays the single
+// shared `users` table -- the same account works in both tracks; scOrgMembers
+// just grants a user KeelConnect-specific roles on top of that.
+// ============================================================================
+
+export const scOrgTypeEnum = pgEnum("sc_org_type", ["CLIENT", "VENDOR"]);
+
+// Reused for both scOrganizations.verificationStatus (KYB on the org itself) and
+// scComplianceRecords.status (each individual KYC/KYB/sanctions/tax record) -- same
+// three-state lifecycle either way.
+export const scVerificationStatusEnum = pgEnum("sc_verification_status", [
+  "PENDING",
+  "VERIFIED",
+  "REJECTED",
+]);
+
+// PLATFORM_* roles are Keel's own marketplace-operations staff and are not tied to any
+// scOrganization (scOrgMembers.scOrganizationId is null for these three). Every other role
+// always belongs to exactly one scOrganization (a Client or Vendor company).
+export const scRoleEnum = pgEnum("sc_role", [
+  "PLATFORM_ADMIN",
+  "PLATFORM_COMPLIANCE_OFFICER",
+  "PLATFORM_SUPPORT",
+  "CLIENT_ORG_ADMIN",
+  "CLIENT_REQUESTER",
+  "CLIENT_FINANCE_APPROVER",
+  "VENDOR_ORG_ADMIN",
+  "VENDOR_CONTRIBUTOR",
+]);
+
+export const scProjectStatusEnum = pgEnum("sc_project_status", [
+  "DRAFT",
+  "OPEN",
+  "NEGOTIATING",
+  "AWARDED",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+// MEDIATOR: Keel is a contracting party on both sides (Client-Platform + Platform-Vendor
+// agreements) and sits in the payment flow. MARKETPLACE: Keel just matches the two sides --
+// a single Client-Vendor agreement, platform not a party, no platform_commission leg.
+export const scEngagementModelEnum = pgEnum("sc_engagement_model", ["MEDIATOR", "MARKETPLACE"]);
+
+export const scLocationRequirementEnum = pgEnum("sc_location_requirement", ["GLOBAL", "RESTRICTED"]);
+
+export const scBidStatusEnum = pgEnum("sc_bid_status", ["SUBMITTED", "COUNTERED", "ACCEPTED", "REJECTED"]);
+
+export const scAgreementTypeEnum = pgEnum("sc_agreement_type", [
+  "CLIENT_PLATFORM",
+  "PLATFORM_VENDOR",
+  "CLIENT_VENDOR",
+]);
+
+export const scAgreementStatusEnum = pgEnum("sc_agreement_status", [
+  "DRAFT",
+  "SENT",
+  "SIGNED",
+  "ACTIVE",
+  "COMPLETED",
+]);
+
+export const scAgreementPartyRoleEnum = pgEnum("sc_agreement_party_role", ["CLIENT", "VENDOR", "PLATFORM"]);
+
+export const scMilestoneStatusEnum = pgEnum("sc_milestone_status", ["PENDING", "APPROVED", "PAID"]);
+
+export const scPaymentDirectionEnum = pgEnum("sc_payment_direction", [
+  "CLIENT_TO_PLATFORM",
+  "PLATFORM_TO_VENDOR",
+  "CLIENT_TO_VENDOR",
+  "PLATFORM_COMMISSION",
+]);
+
+export const scPaymentStatusEnum = pgEnum("sc_payment_status", ["PENDING", "HELD", "RELEASED", "REFUNDED"]);
+
+export const scComplianceTypeEnum = pgEnum("sc_compliance_type", ["KYC", "KYB", "SANCTIONS_SCREENING", "TAX_FORM"]);
+
+export const scDisputeStatusEnum = pgEnum("sc_dispute_status", ["OPEN", "UNDER_REVIEW", "RESOLVED"]);
+
+export const scOrganizations = pgTable("sc_organizations", {
+  id: cuid(),
+  name: text("name").notNull(),
+  orgType: scOrgTypeEnum("org_type").notNull(),
+  companyProfile: text("company_profile"),
+  taxId: text("tax_id"),
+  primaryCountry: text("primary_country"),
+  verificationStatus: scVerificationStatusEnum("verification_status").notNull().default("PENDING"),
+  verifiedAt: timestamp("verified_at"),
+  // SSO/SAML, configured per Client org by that org's own Client Org Admin (enterprise
+  // Client orgs only -- see lib/keelconnect/saml.ts and the KeelConnect admin console).
+  ssoEnabled: boolean("sso_enabled").notNull().default(false),
+  samlEntityId: text("saml_entity_id"),
+  samlIdpMetadataUrl: text("saml_idp_metadata_url"),
+  samlIdpCert: text("saml_idp_cert"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// One row per (user, org, role) grant. A user can hold different roles in different
+// scOrganizations (e.g. Vendor Contributor on one vendor, Client Requester on an
+// unrelated client) -- membership is per-org, not a single global role like Keel
+// Deliver's users.role.
+export const scOrgMembers = pgTable(
+  "sc_org_members",
+  {
+    id: cuid(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    scOrganizationId: text("sc_organization_id").references(() => scOrganizations.id, { onDelete: "cascade" }),
+    role: scRoleEnum("role").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    // Nulls are distinct in Postgres uniqueness, so this still allows a user to hold more
+    // than one PLATFORM_* role (scOrganizationId null for all of them) while still blocking
+    // an exact duplicate (same user, same org, same role) grant.
+    uq: uniqueIndex("sc_org_member_uq").on(t.userId, t.scOrganizationId, t.role),
+  })
+);
+
+export const scComplianceRecords = pgTable("sc_compliance_records", {
+  id: cuid(),
+  scOrganizationId: text("sc_organization_id")
+    .notNull()
+    .references(() => scOrganizations.id, { onDelete: "cascade" }),
+  type: scComplianceTypeEnum("type").notNull(),
+  status: scVerificationStatusEnum("status").notNull().default("PENDING"),
+  verifiedAt: timestamp("verified_at"),
+  expiresAt: timestamp("expires_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const scProjects = pgTable("sc_projects", {
+  id: cuid(),
+  clientOrgId: text("client_org_id")
+    .notNull()
+    .references(() => scOrganizations.id, { onDelete: "cascade" }),
+  postedByUserId: text("posted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category"),
+  targetBudget: real("target_budget"),
+  currency: text("currency").notNull().default("USD"),
+  deadline: timestamp("deadline"),
+  engagementModel: scEngagementModelEnum("engagement_model").notNull().default("MARKETPLACE"),
+  locationRequirement: scLocationRequirementEnum("location_requirement").notNull().default("GLOBAL"),
+  restrictedCountries: text("restricted_countries").array(),
+  status: scProjectStatusEnum("status").notNull().default("DRAFT"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const scBids = pgTable("sc_bids", {
+  id: cuid(),
+  scProjectId: text("sc_project_id")
+    .notNull()
+    .references(() => scProjects.id, { onDelete: "cascade" }),
+  vendorOrgId: text("vendor_org_id")
+    .notNull()
+    .references(() => scOrganizations.id, { onDelete: "cascade" }),
+  submittedByUserId: text("submitted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  proposedPrice: real("proposed_price").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  // Free text ("8 weeks", "by Q3") rather than a rigid duration/date pair -- proposed
+  // timelines vary too much by project type to force into one shape at bid time.
+  timeline: text("timeline"),
+  status: scBidStatusEnum("status").notNull().default("SUBMITTED"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Ordered (by createdAt) thread of offers/counteroffers against one Bid -- the Bid's own
+// proposedPrice/currency/timeline is the opening offer; every subsequent round (from either
+// side) is a row here, so the full back-and-forth is preserved rather than overwritten.
+export const scNegotiationEntries = pgTable("sc_negotiation_entries", {
+  id: cuid(),
+  scBidId: text("sc_bid_id")
+    .notNull()
+    .references(() => scBids.id, { onDelete: "cascade" }),
+  price: real("price").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  terms: text("terms"),
+  proposedByUserId: text("proposed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  proposedByOrgType: scOrgTypeEnum("proposed_by_org_type").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Polymorphic by engagement_model on the parent scProject: MEDIATOR produces two of these
+// (CLIENT_PLATFORM + PLATFORM_VENDOR) from one accepted Bid; MARKETPLACE produces one
+// (CLIENT_VENDOR). scAgreementParties below carries the actual party list per row.
+export const scAgreements = pgTable("sc_agreements", {
+  id: cuid(),
+  scProjectId: text("sc_project_id")
+    .notNull()
+    .references(() => scProjects.id, { onDelete: "cascade" }),
+  scBidId: text("sc_bid_id").references(() => scBids.id, { onDelete: "set null" }),
+  type: scAgreementTypeEnum("type").notNull(),
+  governingLaw: text("governing_law"),
+  governingLanguage: text("governing_language").notNull().default("en"),
+  status: scAgreementStatusEnum("status").notNull().default("DRAFT"),
+  signedDocumentUrl: text("signed_document_url"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const scAgreementParties = pgTable("sc_agreement_parties", {
+  id: cuid(),
+  scAgreementId: text("sc_agreement_id")
+    .notNull()
+    .references(() => scAgreements.id, { onDelete: "cascade" }),
+  partyRole: scAgreementPartyRoleEnum("party_role").notNull(),
+  // Null exactly when partyRole = PLATFORM -- the platform isn't itself an scOrganization row.
+  scOrganizationId: text("sc_organization_id").references(() => scOrganizations.id, { onDelete: "cascade" }),
+});
+
+export const scMilestones = pgTable("sc_milestones", {
+  id: cuid(),
+  scAgreementId: text("sc_agreement_id")
+    .notNull()
+    .references(() => scAgreements.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  amount: real("amount").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  dueDate: timestamp("due_date"),
+  status: scMilestoneStatusEnum("status").notNull().default("PENDING"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const scPayments = pgTable("sc_payments", {
+  id: cuid(),
+  scMilestoneId: text("sc_milestone_id")
+    .notNull()
+    .references(() => scMilestones.id, { onDelete: "cascade" }),
+  amount: real("amount").notNull(),
+  currency: text("currency").notNull().default("USD"),
+  fxRateApplied: real("fx_rate_applied"),
+  direction: scPaymentDirectionEnum("direction").notNull(),
+  status: scPaymentStatusEnum("status").notNull().default("PENDING"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Linked to a Project OR an Agreement (at least one should be set; enforced at the API
+// layer, not the DB, since a pre-award dispute has no Agreement yet).
+export const scDisputes = pgTable("sc_disputes", {
+  id: cuid(),
+  scProjectId: text("sc_project_id").references(() => scProjects.id, { onDelete: "cascade" }),
+  scAgreementId: text("sc_agreement_id").references(() => scAgreements.id, { onDelete: "cascade" }),
+  raisedByUserId: text("raised_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  description: text("description").notNull(),
+  status: scDisputeStatusEnum("status").notNull().default("OPEN"),
+  resolutionNotes: text("resolution_notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+// fromOrgType=CLIENT means the Client org reviewing the Vendor; fromOrgType=VENDOR means
+// the reverse -- a completed project naturally gets up to two of these (one each way).
+export const scReviews = pgTable("sc_reviews", {
+  id: cuid(),
+  scProjectId: text("sc_project_id")
+    .notNull()
+    .references(() => scProjects.id, { onDelete: "cascade" }),
+  fromOrgType: scOrgTypeEnum("from_org_type").notNull(),
+  authorUserId: text("author_user_id").references(() => users.id, { onDelete: "set null" }),
+  rating: integer("rating").notNull(),
+  comments: text("comments"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Relations
 export const projectsRelations = relations(projects, ({ many, one }) => ({
   organization: one(organizations, {
@@ -1366,4 +1660,77 @@ export const reportsRelations = relations(reports, ({ one }) => ({
     fields: [reports.projectId],
     references: [projects.id],
   }),
+}));
+
+// --- KeelConnect relations ---
+
+export const scOrganizationsRelations = relations(scOrganizations, ({ many }) => ({
+  members: many(scOrgMembers),
+  complianceRecords: many(scComplianceRecords),
+  projectsPosted: many(scProjects),
+  bids: many(scBids),
+}));
+
+export const scOrgMembersRelations = relations(scOrgMembers, ({ one }) => ({
+  user: one(users, { fields: [scOrgMembers.userId], references: [users.id] }),
+  organization: one(scOrganizations, { fields: [scOrgMembers.scOrganizationId], references: [scOrganizations.id] }),
+}));
+
+export const scComplianceRecordsRelations = relations(scComplianceRecords, ({ one }) => ({
+  organization: one(scOrganizations, { fields: [scComplianceRecords.scOrganizationId], references: [scOrganizations.id] }),
+}));
+
+export const scProjectsRelations = relations(scProjects, ({ one, many }) => ({
+  clientOrg: one(scOrganizations, { fields: [scProjects.clientOrgId], references: [scOrganizations.id] }),
+  postedBy: one(users, { fields: [scProjects.postedByUserId], references: [users.id] }),
+  bids: many(scBids),
+  agreements: many(scAgreements),
+  disputes: many(scDisputes),
+  reviews: many(scReviews),
+}));
+
+export const scBidsRelations = relations(scBids, ({ one, many }) => ({
+  project: one(scProjects, { fields: [scBids.scProjectId], references: [scProjects.id] }),
+  vendorOrg: one(scOrganizations, { fields: [scBids.vendorOrgId], references: [scOrganizations.id] }),
+  submittedBy: one(users, { fields: [scBids.submittedByUserId], references: [users.id] }),
+  negotiationEntries: many(scNegotiationEntries),
+  agreements: many(scAgreements),
+}));
+
+export const scNegotiationEntriesRelations = relations(scNegotiationEntries, ({ one }) => ({
+  bid: one(scBids, { fields: [scNegotiationEntries.scBidId], references: [scBids.id] }),
+  proposedBy: one(users, { fields: [scNegotiationEntries.proposedByUserId], references: [users.id] }),
+}));
+
+export const scAgreementsRelations = relations(scAgreements, ({ one, many }) => ({
+  project: one(scProjects, { fields: [scAgreements.scProjectId], references: [scProjects.id] }),
+  bid: one(scBids, { fields: [scAgreements.scBidId], references: [scBids.id] }),
+  parties: many(scAgreementParties),
+  milestones: many(scMilestones),
+  disputes: many(scDisputes),
+}));
+
+export const scAgreementPartiesRelations = relations(scAgreementParties, ({ one }) => ({
+  agreement: one(scAgreements, { fields: [scAgreementParties.scAgreementId], references: [scAgreements.id] }),
+  organization: one(scOrganizations, { fields: [scAgreementParties.scOrganizationId], references: [scOrganizations.id] }),
+}));
+
+export const scMilestonesRelations = relations(scMilestones, ({ one, many }) => ({
+  agreement: one(scAgreements, { fields: [scMilestones.scAgreementId], references: [scAgreements.id] }),
+  payments: many(scPayments),
+}));
+
+export const scPaymentsRelations = relations(scPayments, ({ one }) => ({
+  milestone: one(scMilestones, { fields: [scPayments.scMilestoneId], references: [scMilestones.id] }),
+}));
+
+export const scDisputesRelations = relations(scDisputes, ({ one }) => ({
+  project: one(scProjects, { fields: [scDisputes.scProjectId], references: [scProjects.id] }),
+  agreement: one(scAgreements, { fields: [scDisputes.scAgreementId], references: [scAgreements.id] }),
+  raisedBy: one(users, { fields: [scDisputes.raisedByUserId], references: [users.id] }),
+}));
+
+export const scReviewsRelations = relations(scReviews, ({ one }) => ({
+  project: one(scProjects, { fields: [scReviews.scProjectId], references: [scProjects.id] }),
+  author: one(users, { fields: [scReviews.authorUserId], references: [users.id] }),
 }));
