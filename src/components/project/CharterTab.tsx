@@ -17,6 +17,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [genDraftError, setGenDraftError] = useState<string | null>(null);
   const [regeneratingDiagram, setRegeneratingDiagram] = useState(false);
   const [form, setForm] = useState({
     executiveSummary: p.executiveSummary ?? "",
@@ -58,9 +59,11 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const effortWithContingency = totalEstimateHours * (1 + (form.contingencyPercent || 0) / 100);
 
   const [downloadingWord, setDownloadingWord] = useState(false);
+  const [downloadWordError, setDownloadWordError] = useState<string | null>(null);
 
   async function downloadCharterWord() {
     setDownloadingWord(true);
+    setDownloadWordError(null);
     try {
       const diagram = p.architectureDiagram?.trim() ? await renderMermaidToImages(p.architectureDiagram) : null;
       const res = await fetch(`/api/projects/${p.id}/charter-docx`, {
@@ -68,7 +71,17 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ diagram }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        let message = `Couldn't generate the Word document (server returned ${res.status}).`;
+        try {
+          const data = await res.json();
+          if (data?.error) message = data.error;
+        } catch {
+          // not a JSON error body — keep the generic message
+        }
+        setDownloadWordError(message);
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -79,6 +92,8 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+    } catch {
+      setDownloadWordError("Couldn't reach the server to generate the Word document. Check your connection and try again.");
     } finally {
       setDownloadingWord(false);
     }
@@ -135,38 +150,44 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
 
   async function generateDraft() {
     setGenerating(true);
+    setGenDraftError(null);
     try {
       const res = await fetch("/api/ai/generate-charter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId: p.id }),
       });
-      const data = await res.json();
-      if (data.draft) {
-        // Best-effort parse of the AI markdown into fields by section heading.
-        const sections = parseMarkdownSections(data.draft);
-        setForm((f) => ({
-          ...f,
-          executiveSummary: sections["Executive Summary"] ?? f.executiveSummary,
-          businessCase: sections["Business Case"] ?? f.businessCase,
-          objectives: sections["Objectives"] ?? f.objectives,
-          scopeInScope: sections["Scope"] ? sections["Scope"] : f.scopeInScope,
-          highLevelRequirements: sections["High-Level Requirements"] ?? f.highLevelRequirements,
-          deliverables: sections["Deliverables"] ?? f.deliverables,
-          successCriteria: sections["Success Criteria"] ?? f.successCriteria,
-          stakeholders: sections["Stakeholders"] ?? f.stakeholders,
-          assumptionsRisks: sections["Assumptions & Risks"] ?? f.assumptionsRisks,
-          risks: sections["Risks"] ?? f.risks,
-          integratedSystems: sections["Integrated Systems"] ?? f.integratedSystems,
-          highLevelArchitecture: sections["High-Level Architecture"] ?? f.highLevelArchitecture,
-          internalSupportNeeds: sections["Internal Support Needs"] ?? f.internalSupportNeeds,
-          roiExpected: sections["ROI to Be Achieved"] ?? f.roiExpected,
-          materialCostEstimate: parseFundingNumber(sections["Material Cost Estimate"]) ?? f.materialCostEstimate,
-          budgetPlanned: parseFundingNumber(sections["Implementation Cost Estimate"]) ?? f.budgetPlanned,
-          ongoingSupportMonthlyCost: parseFundingNumber(sections["Ongoing Support Cost Estimate (Monthly)"]) ?? f.ongoingSupportMonthlyCost,
-          totalFundingRequired: parseFundingNumber(sections["Total Funding Required"]) ?? f.totalFundingRequired,
-        }));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setGenDraftError(data?.error ?? "Couldn't draft the charter. Please try again.");
+        return;
       }
+      // Field names come back matching form state 1:1 (see generate-charter's
+      // DraftCharterResult type) -- no parsing layer, so nothing silently fails to map.
+      setForm((f) => ({
+        ...f,
+        executiveSummary: data.executiveSummary ?? f.executiveSummary,
+        businessCase: data.businessCase ?? f.businessCase,
+        objectives: data.objectives ?? f.objectives,
+        scopeInScope: data.scopeInScope ?? f.scopeInScope,
+        scopeOutOfScope: data.scopeOutOfScope ?? f.scopeOutOfScope,
+        highLevelRequirements: data.highLevelRequirements ?? f.highLevelRequirements,
+        deliverables: data.deliverables ?? f.deliverables,
+        successCriteria: data.successCriteria ?? f.successCriteria,
+        stakeholders: data.stakeholders ?? f.stakeholders,
+        assumptionsRisks: data.assumptionsRisks ?? f.assumptionsRisks,
+        risks: data.risks ?? f.risks,
+        integratedSystems: data.integratedSystems ?? f.integratedSystems,
+        highLevelArchitecture: data.highLevelArchitecture ?? f.highLevelArchitecture,
+        internalSupportNeeds: data.internalSupportNeeds ?? f.internalSupportNeeds,
+        roiExpected: data.roiExpected ?? f.roiExpected,
+        materialCostEstimate: typeof data.materialCostEstimate === "number" ? data.materialCostEstimate : f.materialCostEstimate,
+        budgetPlanned: typeof data.budgetPlanned === "number" ? data.budgetPlanned : f.budgetPlanned,
+        ongoingSupportMonthlyCost: typeof data.ongoingSupportMonthlyCost === "number" ? data.ongoingSupportMonthlyCost : f.ongoingSupportMonthlyCost,
+        totalFundingRequired: typeof data.totalFundingRequired === "number" ? data.totalFundingRequired : f.totalFundingRequired,
+      }));
+    } catch {
+      setGenDraftError("Couldn't reach the server to draft the charter. Check your connection and try again.");
     } finally {
       setGenerating(false);
     }
@@ -312,6 +333,8 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
         }
       >
         <div className="space-y-4">
+          {downloadWordError && <p className="text-xs text-rose-600">{downloadWordError}</p>}
+          {genDraftError && <p className="text-xs text-rose-600">{genDraftError}</p>}
           <AiWaitIndicator
             active={generating}
             messages={["Reading the project context...", "Drafting scope and requirements...", "Working out costs and internal needs..."]}
@@ -475,35 +498,3 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function parseMarkdownSections(md: string): Record<string, string> {
-  const lines = md.split("\n");
-  const sections: Record<string, string> = {};
-  let current: string | null = null;
-  let buffer: string[] = [];
-
-  const flush = () => {
-    if (current) sections[current] = buffer.join("\n").trim();
-    buffer = [];
-  };
-
-  for (const line of lines) {
-    const headingMatch = line.match(/^#{1,3}\s*(.+)$/);
-    if (headingMatch) {
-      flush();
-      current = headingMatch[1].replace(/\*\*/g, "").trim();
-    } else {
-      buffer.push(line);
-    }
-  }
-  flush();
-  return sections;
-}
-
-// Best-effort extraction of a dollar figure from the AI's free-text funding section
-// (e.g. "$120,000" or "Approximately 85000 USD" -> 120000 / 85000). Returns null if
-// nothing number-like is found, so the existing value is left alone rather than zeroed out.
-function parseFundingNumber(text: string | undefined): number | null {
-  if (!text) return null;
-  const match = text.replace(/,/g, "").match(/\d+(\.\d+)?/);
-  return match ? Number(match[0]) : null;
-}

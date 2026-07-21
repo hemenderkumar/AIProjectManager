@@ -4,8 +4,32 @@ import { organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
-import { isDownloadBlocked } from "@/lib/auth";
+import { isDownloadBlocked, getCurrentUser } from "@/lib/auth";
 import { buildSectionedDocx, docxHeaders, type DiagramImage, type DocMeta } from "@/lib/docxExport";
+
+// requireProjectAccess collapses "not logged in / session expired" and "logged in but wrong
+// role" into a single null -- for VIEWER (the lowest tier, so basically every logged-in
+// project member passes it) that ambiguity is misleading almost every time: a plain
+// "Forbidden" reads like a permissions problem when the real cause is nearly always the
+// 1-hour session (SESSION_MAX_AGE_SECONDS in lib/auth.ts) having quietly expired. Same fix
+// as override-advance's route -- check the session first so that case gets its own message.
+async function checkAccess(id: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return { error: NextResponse.json({ error: "Your session has expired — log in again and retry." }, { status: 401 }) };
+  }
+  const user = await requireProjectAccess("VIEWER", id);
+  if (!user) return { error: NextResponse.json({ error: "You don't have access to this project." }, { status: 403 }) };
+  if (await isDownloadBlocked(user.id)) {
+    return {
+      error: NextResponse.json(
+        { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
+        { status: 403 }
+      ),
+    };
+  }
+  return { user };
+}
 
 type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
 
@@ -87,14 +111,8 @@ async function renderCharterDocx(detail: ProjectDetail, diagram: DiagramImage | 
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireProjectAccess("VIEWER", id);
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (await isDownloadBlocked(user.id)) {
-    return NextResponse.json(
-      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
-      { status: 403 }
-    );
-  }
+  const access = await checkAccess(id);
+  if (access.error) return access.error;
 
   const detail = await getProjectDetail(id);
   if (!detail) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -106,14 +124,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireProjectAccess("VIEWER", id);
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (await isDownloadBlocked(user.id)) {
-    return NextResponse.json(
-      { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
-      { status: 403 }
-    );
-  }
+  const access = await checkAccess(id);
+  if (access.error) return access.error;
 
   const detail = await getProjectDetail(id);
   if (!detail) return NextResponse.json({ error: "not found" }, { status: 404 });

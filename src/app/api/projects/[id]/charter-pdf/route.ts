@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
-import { isDownloadBlocked } from "@/lib/auth";
+import { isDownloadBlocked, getCurrentUser } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { BRAND, createKeelPdf, finalizeKeelPdf, coverMasthead, sectionTitle } from "@/lib/brand";
 
@@ -146,8 +146,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  // requireProjectAccess collapses "session expired" and "wrong role" into one null -- for
+  // VIEWER (the lowest tier) the only realistic cause is an expired session, so check that
+  // first for a clearer message (same fix as override-advance and charter-docx).
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return NextResponse.json({ error: "Your session has expired — log in again and retry." }, { status: 401 });
+  }
   const user = await requireProjectAccess("VIEWER", id);
-  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user) return NextResponse.json({ error: "You don't have access to this project." }, { status: 403 });
   if (await isDownloadBlocked(user.id)) {
     return NextResponse.json(
       { error: "Your account is pending admin approval. Downloads unlock once an admin confirms your registration." },
