@@ -56,8 +56,13 @@ function generateCharterPdf(detail: ProjectDetail): Promise<Buffer> {
           .join("\n")
       : null;
 
-    const materialCost = detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
+    const materialCost = project.materialCostEstimate ?? detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
+    const implementationCost = project.budgetPlanned ?? 0;
+    const contingencyPercent = project.contingencyPercent ?? 10;
+    const contingencyAmount = Math.round((materialCost + implementationCost) * (contingencyPercent / 100));
+    const totalWithContingency = materialCost + implementationCost + contingencyAmount;
 
+    section("Executive Summary", project.executiveSummary);
     section("Business Case", project.businessCase);
     section("Objectives", project.objectives);
     section("In Scope", project.scopeInScope);
@@ -103,7 +108,7 @@ function generateCharterPdf(detail: ProjectDetail): Promise<Buffer> {
     section("ROI to Be Achieved", project.roiExpected);
     section(
       "Cost Summary",
-      `Material cost: $${materialCost.toLocaleString()}\nImplementation cost (est.): $${(project.budgetPlanned ?? 0).toLocaleString()}\nOngoing support (monthly est.): $${(project.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`
+      `Material cost: $${materialCost.toLocaleString()}\nImplementation cost (est.): $${implementationCost.toLocaleString()}\nContingency (${contingencyPercent}%): $${contingencyAmount.toLocaleString()}\nTotal incl. contingency: $${totalWithContingency.toLocaleString()}\nOngoing support (monthly est.): $${(project.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`
     );
     section(
       "Total Funding Required",

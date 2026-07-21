@@ -34,7 +34,11 @@ async function renderCharterDocx(detail: ProjectDetail, diagram: DiagramImage | 
     approvedAt: p.charterApprovedAt,
   };
 
-  const materialCost = detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
+  const materialCost = p.materialCostEstimate ?? detail.costItems.filter((c) => c.category === "MATERIAL").reduce((s, c) => s + c.amount, 0);
+  const implementationCost = p.budgetPlanned ?? 0;
+  const contingencyPercent = p.contingencyPercent ?? 10;
+  const contingencyAmount = Math.round((materialCost + implementationCost) * (contingencyPercent / 100));
+  const totalWithContingency = materialCost + implementationCost + contingencyAmount;
   const optionsConsideredText = detail.solutionOptions.length
     ? detail.solutionOptions.map((o) => `${o.name}${o.isSelected ? " (selected)" : ""}${o.description ? `: ${o.description}` : ""}`).join("\n")
     : "";
@@ -69,7 +73,7 @@ async function renderCharterDocx(detail: ProjectDetail, diagram: DiagramImage | 
     { heading: "ROI to Be Achieved", body: p.roiExpected ?? "" },
     {
       heading: "Cost Summary",
-      body: `Material cost: $${materialCost.toLocaleString()}\nImplementation cost (est.): $${(p.budgetPlanned ?? 0).toLocaleString()}\nOngoing support (monthly est.): $${(p.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`,
+      body: `Material cost: $${materialCost.toLocaleString()}\nImplementation cost (est.): $${implementationCost.toLocaleString()}\nContingency (${contingencyPercent}%): $${contingencyAmount.toLocaleString()}\nTotal incl. contingency: $${totalWithContingency.toLocaleString()}\nOngoing support (monthly est.): $${(p.ongoingSupportMonthlyCost ?? 0).toLocaleString()}`,
     },
     { heading: "Total Funding Required", body: p.totalFundingRequired != null ? `$${p.totalFundingRequired.toLocaleString()}` : "" },
     {
