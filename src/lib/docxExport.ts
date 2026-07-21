@@ -25,10 +25,12 @@ const MUTED = "64748B";
 const HAIRLINE = "E2E8F0";
 
 // A diagram rendered client-side (Mermaid needs a DOM — see lib/mermaidToImage.ts) and handed
-// to the server as both raw SVG and a rasterized PNG. docx supports embedding an SVG directly
-// as long as a PNG fallback is provided (Word's own SVG rendering is inconsistent across
-// versions), so both get passed straight through to ImageRun below — no server-side rendering
-// of any kind is needed.
+// to the server as both raw SVG and a rasterized PNG. docx CAN embed the SVG directly with the
+// PNG only as a fallback, but in practice Word's built-in SVG renderer chokes on the <style>/
+// @keyframes blocks Mermaid emits and draws a broken, partial diagram instead of cleanly
+// falling back to the PNG -- so only the PNG (already confirmed complete and correct) is used
+// here. svgBase64 is still accepted/passed through the API for potential future use, just not
+// embedded.
 export type DiagramImage = { svgBase64: string; pngBase64: string; width: number; height: number };
 
 // Everything about a document's identity and provenance that the old plain "title + subtitle"
@@ -70,9 +72,8 @@ function diagramParagraph(diagram: DiagramImage): Paragraph {
     spacing: { after: 200 },
     children: [
       new ImageRun({
-        type: "svg",
-        data: Buffer.from(diagram.svgBase64, "base64"),
-        fallback: { type: "png", data: Buffer.from(diagram.pngBase64, "base64") },
+        type: "png",
+        data: Buffer.from(diagram.pngBase64, "base64"),
         transformation: { width, height },
       }),
     ],
