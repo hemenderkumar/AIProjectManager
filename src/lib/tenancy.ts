@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { projects, projectMembers } from "./db/schema";
 import { requireRole, type SessionUser } from "./auth";
@@ -121,4 +121,26 @@ export async function filterProjectsForUser<T extends { id: string; organization
     .where(eq(projectMembers.userId, user.id));
   const allowedIds = new Set(memberships.map((m) => m.projectId));
   return allProjects.filter((p) => allowedIds.has(p.id));
+}
+
+// SQL-scoped equivalent of "fetch every project, then filterProjectsForUser it" -- same
+// visibility rule (ADMIN: everything; SUPER_USER: own org; PM/CONTRIBUTOR/VIEWER: only
+// projects they're a member of), but applied as a WHERE/JOIN so a PROJECT-scoped user's
+// portfolio dashboard never pulls every organization's rows into memory just to throw most
+// of them away. Used by getAllProjectsWithMetrics (#260) -- the fetch-everything-then-filter
+// version above stays in place for the handful of callers that already have an in-memory
+// project list from some other query and just need it narrowed.
+export async function listVisibleProjects(user?: SessionUser | null) {
+  if (!user || user.role === "ADMIN") {
+    return db.select().from(projects);
+  }
+  if (user.role === "SUPER_USER") {
+    return user.organizationId ? db.select().from(projects).where(eq(projects.organizationId, user.organizationId)) : [];
+  }
+  // Two bounded queries (this user's membership rows, then just those projects) rather than
+  // a join-and-reshape -- keeps the return type an identical flat `projects` row to every
+  // other branch above, with no need to hand-enumerate every column on a table this large.
+  const memberships = await db.select({ projectId: projectMembers.projectId }).from(projectMembers).where(eq(projectMembers.userId, user.id));
+  if (!memberships.length) return [];
+  return db.select().from(projects).where(inArray(projects.id, memberships.map((m) => m.projectId)));
 }

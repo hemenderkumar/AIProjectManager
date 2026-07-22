@@ -1,26 +1,62 @@
 import { db } from "./db";
 import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints, ideaReviewers, users } from "./db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { computeAutoRag, scheduleVarianceDays, budgetVariancePercent, isOverdueTask, riskScore, ProjectForHealth } from "./kpi";
-import { filterProjectsForUser } from "./tenancy";
+import { listVisibleProjects } from "./tenancy";
 import type { SessionUser } from "./auth";
 
-// `user` scopes which projects come back — see filterProjectsForUser in lib/tenancy.ts.
+// `user` scopes which projects come back — see listVisibleProjects in lib/tenancy.ts, which
+// applies the same ADMIN/SUPER_USER/PROJECT visibility rule as filterProjectsForUser but as a
+// SQL WHERE/lookup instead of "fetch every project, then throw most of them away in JS."
 // Every user-facing caller (pages, non-cron API routes) MUST pass the current user; omitting
 // it returns everything unfiltered, which is only appropriate for system/cron contexts.
+//
+// Perf note (#260): this used to load the ENTIRE tasks and riskItems tables into memory and
+// filter them per-project in a JS loop (O(projects x tasks) just to bucket rows by
+// projectId), on top of loading every organization's projects before filtering to just this
+// user's. Both replaced below with two GROUP BY aggregate queries scoped to only the
+// projectIds actually visible to this user -- the DB does the counting, and the app never
+// sees a row it doesn't need. The overdue-task and open-high-risk *definitions* (see
+// isOverdueTask/riskScore in lib/kpi.ts) are re-expressed here as SQL CASE/FILTER
+// expressions rather than reused as JS functions, since they now run inside the query.
 export async function getAllProjectsWithMetrics(user?: SessionUser | null) {
-  const allProjectsRaw = await db.select().from(projects);
-  const allProjects = await filterProjectsForUser(allProjectsRaw, user);
-  const allTasks = await db.select().from(tasks);
-  const allRisks = await db.select().from(riskItems);
+  const allProjects = await listVisibleProjects(user);
+  if (!allProjects.length) return [];
+
+  const projectIds = allProjects.map((p) => p.id);
+
+  const taskAgg = await db
+    .select({
+      projectId: tasks.projectId,
+      taskCount: sql<number>`count(*)`,
+      doneTaskCount: sql<number>`count(*) filter (where ${tasks.status} = 'DONE')`,
+      // Mirrors isOverdueTask(): not DONE, has a due date, and that due date is in the past.
+      overdueTaskCount: sql<number>`count(*) filter (where ${tasks.status} <> 'DONE' and ${tasks.dueDate} is not null and ${tasks.dueDate} < now())`,
+    })
+    .from(tasks)
+    .where(inArray(tasks.projectId, projectIds))
+    .groupBy(tasks.projectId);
+
+  // Mirrors riskScore()'s fixed LOW/MEDIUM/HIGH/CRITICAL -> 1/2/3/4 severity map, multiplied
+  // and thresholded at >=6 -- same rule, expressed as SQL instead of a JS helper per row.
+  const impactScore = sql`case ${riskItems.impact} when 'LOW' then 1 when 'MEDIUM' then 2 when 'HIGH' then 3 when 'CRITICAL' then 4 else 2 end`;
+  const likelihoodScore = sql`case ${riskItems.likelihood} when 'LOW' then 1 when 'MEDIUM' then 2 when 'HIGH' then 3 when 'CRITICAL' then 4 else 2 end`;
+  const riskAgg = await db
+    .select({
+      projectId: riskItems.projectId,
+      openHighRiskCount: sql<number>`count(*) filter (where ${riskItems.status} <> 'CLOSED' and (${impactScore}) * (${likelihoodScore}) >= 6)`,
+    })
+    .from(riskItems)
+    .where(inArray(riskItems.projectId, projectIds))
+    .groupBy(riskItems.projectId);
+
+  const taskByProject = new Map(taskAgg.map((r) => [r.projectId, r]));
+  const riskByProject = new Map(riskAgg.map((r) => [r.projectId, r]));
 
   return allProjects.map((p) => {
-    const pTasks = allTasks.filter((t) => t.projectId === p.id);
-    const pRisks = allRisks.filter((r) => r.projectId === p.id);
-    const overdueTaskCount = pTasks.filter((t) => isOverdueTask(t)).length;
-    const openHighRiskCount = pRisks.filter(
-      (r) => r.status !== "CLOSED" && riskScore(r) >= 6
-    ).length;
+    const t = taskByProject.get(p.id);
+    const overdueTaskCount = Number(t?.overdueTaskCount ?? 0);
+    const openHighRiskCount = Number(riskByProject.get(p.id)?.openHighRiskCount ?? 0);
 
     const health = computeAutoRag({
       project: p as unknown as ProjectForHealth,
@@ -36,8 +72,8 @@ export async function getAllProjectsWithMetrics(user?: SessionUser | null) {
       budgetVariancePercent: budgetVariancePercent(p as unknown as ProjectForHealth),
       overdueTaskCount,
       openHighRiskCount,
-      taskCount: pTasks.length,
-      doneTaskCount: pTasks.filter((t) => t.status === "DONE").length,
+      taskCount: Number(t?.taskCount ?? 0),
+      doneTaskCount: Number(t?.doneTaskCount ?? 0),
     };
   });
 }
