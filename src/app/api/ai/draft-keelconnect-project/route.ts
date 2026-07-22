@@ -10,6 +10,10 @@ type KeelConnectProjectDraft = {
   currency: string;
   engagementModel: "MARKETPLACE" | "MEDIATOR";
   locationRequirement: "GLOBAL" | "RESTRICTED";
+  // Only populated when requestType is RESOURCE_REQUEST -- see the branch below.
+  skillsRequired?: string[];
+  durationWeeks?: number;
+  rateType?: "HOURLY" | "DAILY" | "WEEKLY" | "FIXED";
 };
 
 // KeelConnect's own "rough note -> structured record" AI drafting endpoint -- the same
@@ -31,27 +35,48 @@ export async function POST(req: NextRequest) {
   if (!note) {
     return NextResponse.json({ error: "Describe the work first, then draft with AI." }, { status: 400 });
   }
+  const isResourceRequest = body?.requestType === "RESOURCE_REQUEST";
 
-  const system = `You are helping a Client organization post a project to KeelConnect, a B2B
-marketplace where vetted Vendor organizations bid on outsourced work. Turn their rough note into a
-properly formed, externally-facing project posting -- remember Vendors browsing the marketplace have
-none of the Client's internal context, so the description must stand alone and read professionally.
+  const system = `You are helping a Client organization post ${
+    isResourceRequest ? "a staffing/resource request" : "a project"
+  } to KeelConnect, a B2B marketplace where vetted Vendor organizations ${
+    isResourceRequest ? "offer a rate for" : "bid on"
+  } outsourced ${isResourceRequest ? "talent" : "work"}. Turn their rough note into a properly formed,
+externally-facing posting -- remember Vendors browsing the marketplace have none of the Client's
+internal context, so the description must stand alone and read professionally.
+${
+  isResourceRequest
+    ? `This is a RESOURCE REQUEST, not a scoped project -- the Client needs specific people/skills for a
+period of time (e.g. "2 senior React developers for 3 months"), not a fixed deliverable. Focus the
+title/description on the role(s) needed, not a project outcome.`
+    : ""
+}
 
 Rough note from the Client:
 """
 ${note}
 """
 
-Respond as JSON: { "title": a clear, specific external-facing title (not vague, e.g. "Migrate legacy
-PHP billing system to a modern stack" not "Backend work"), "description": 2-4 sentences a Vendor could
-bid from with no other context -- what needs to be done, any constraints or must-haves, "category": a
-short category label (e.g. "Web Development", "Data Engineering", "Security Audit", "Electrical
+Respond as JSON: { "title": a clear, specific external-facing title (${
+    isResourceRequest
+      ? 'e.g. "Senior React Developer (2 roles, 3-month engagement)" not "Need developers"'
+      : 'e.g. "Migrate legacy PHP billing system to a modern stack" not "Backend work"'
+  }), "description": 2-4 sentences a Vendor could ${isResourceRequest ? "propose a rate" : "bid"} from
+with no other context -- what needs to be done, any constraints or must-haves, "category": a short
+category label (e.g. "Web Development", "Data Engineering", "Security Audit", "Electrical
 Contracting"), "targetBudget": a reasonable rough total budget in USD as a plain number reasoned from
 the scope described (0 if truly nothing to go on), "currency": "USD" unless another currency is clearly
 implied, "engagementModel": "MARKETPLACE" (Client and Vendor contract directly once a bid is accepted)
 by default, or "MEDIATOR" only if the note implies wanting Keel itself as the contracting party on both
 sides, "locationRequirement": "GLOBAL" by default, or "RESTRICTED" only if the note mentions needing
-vendors from specific countries/regions (e.g. data residency, on-site work, licensing) }`;
+vendors from specific countries/regions (e.g. data residency, on-site work, licensing)${
+    isResourceRequest
+      ? `, "skillsRequired": an array of 2-6 short skill/technology strings reasoned from the note (e.g.
+["React", "TypeScript", "Node.js"]), "durationWeeks": the engagement length in weeks as a plain number
+reasoned from the note (0 if truly nothing to go on), "rateType": "HOURLY", "DAILY", "WEEKLY", or
+"FIXED" -- whichever the note implies, defaulting to "HOURLY" if unclear`
+      : ""
+  } }`;
 
   const { data, error } = await askClaudeJSON<KeelConnectProjectDraft>(system, "Draft this project posting now.", 1200);
 

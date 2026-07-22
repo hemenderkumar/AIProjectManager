@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
 
+  const requestType = body.requestType === "RESOURCE_REQUEST" ? "RESOURCE_REQUEST" : "PROJECT";
+  const RATE_TYPES = ["HOURLY", "DAILY", "WEEKLY", "FIXED"];
+
   const [project] = await db
     .insert(scProjects)
     .values({
@@ -49,6 +52,10 @@ export async function POST(req: NextRequest) {
       locationRequirement: body.locationRequirement === "RESTRICTED" ? "RESTRICTED" : "GLOBAL",
       restrictedCountries: Array.isArray(body.restrictedCountries) ? body.restrictedCountries : null,
       status: "DRAFT",
+      requestType,
+      skillsRequired: requestType === "RESOURCE_REQUEST" && Array.isArray(body.skillsRequired) ? body.skillsRequired : null,
+      durationWeeks: requestType === "RESOURCE_REQUEST" && typeof body.durationWeeks === "number" ? body.durationWeeks : null,
+      rateType: requestType === "RESOURCE_REQUEST" && RATE_TYPES.includes(body.rateType) ? body.rateType : null,
     })
     .returning();
 

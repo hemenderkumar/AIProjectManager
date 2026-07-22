@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Globe2, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Globe2, Users, Sparkles, Loader2 } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type Organization = { id: string; name: string; orgType: "CLIENT" | "VENDOR" };
@@ -15,6 +15,9 @@ type Project = {
   targetBudget: number | null;
   engagementModel: string;
   clientOrgId: string;
+  requestType?: "PROJECT" | "RESOURCE_REQUEST";
+  durationWeeks?: number | null;
+  rateType?: string | null;
 };
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
@@ -36,7 +39,7 @@ export default function KeelConnectProjectsPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({
+  const emptyForm = {
     clientOrgId: "",
     title: "",
     description: "",
@@ -45,7 +48,12 @@ export default function KeelConnectProjectsPage() {
     currency: "USD",
     engagementModel: "MARKETPLACE",
     locationRequirement: "GLOBAL",
-  });
+    requestType: "PROJECT" as "PROJECT" | "RESOURCE_REQUEST",
+    skillsRequired: "",
+    durationWeeks: "",
+    rateType: "HOURLY",
+  };
+  const [form, setForm] = useState(emptyForm);
   const [draftNote, setDraftNote] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -58,7 +66,7 @@ export default function KeelConnectProjectsPage() {
       const res = await fetch("/api/ai/draft-keelconnect-project", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: draftNote }),
+        body: JSON.stringify({ note: draftNote, requestType: form.requestType }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -74,6 +82,9 @@ export default function KeelConnectProjectsPage() {
         currency: data.currency ?? f.currency,
         engagementModel: data.engagementModel === "MEDIATOR" ? "MEDIATOR" : "MARKETPLACE",
         locationRequirement: data.locationRequirement === "RESTRICTED" ? "RESTRICTED" : "GLOBAL",
+        skillsRequired: Array.isArray(data.skillsRequired) ? data.skillsRequired.join(", ") : f.skillsRequired,
+        durationWeeks: typeof data.durationWeeks === "number" && data.durationWeeks > 0 ? String(data.durationWeeks) : f.durationWeeks,
+        rateType: ["HOURLY", "DAILY", "WEEKLY", "FIXED"].includes(data.rateType) ? data.rateType : f.rateType,
       }));
     } finally {
       setDrafting(false);
@@ -105,7 +116,15 @@ export default function KeelConnectProjectsPage() {
     const res = await fetch("/api/keelconnect/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, targetBudget: form.targetBudget ? Number(form.targetBudget) : undefined }),
+      body: JSON.stringify({
+        ...form,
+        targetBudget: form.targetBudget ? Number(form.targetBudget) : undefined,
+        skillsRequired: form.requestType === "RESOURCE_REQUEST" && form.skillsRequired.trim()
+          ? form.skillsRequired.split(",").map((s) => s.trim()).filter(Boolean)
+          : undefined,
+        durationWeeks: form.requestType === "RESOURCE_REQUEST" && form.durationWeeks ? Number(form.durationWeeks) : undefined,
+        rateType: form.requestType === "RESOURCE_REQUEST" ? form.rateType : undefined,
+      }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -114,7 +133,7 @@ export default function KeelConnectProjectsPage() {
       return;
     }
     setShowForm(false);
-    setForm({ clientOrgId: "", title: "", description: "", category: "", targetBudget: "", currency: "USD", engagementModel: "MARKETPLACE", locationRequirement: "GLOBAL" });
+    setForm(emptyForm);
     setDraftNote("");
     load();
   }
@@ -138,7 +157,33 @@ export default function KeelConnectProjectsPage() {
       <div className="p-8 max-w-4xl space-y-6">
         {showForm && (
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-3">
-            <p className="text-sm font-semibold text-slate-900">Post a new project</p>
+            <p className="text-sm font-semibold text-slate-900">
+              {form.requestType === "RESOURCE_REQUEST" ? "Post a new resource request" : "Post a new project"}
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setForm((f) => ({ ...f, requestType: "PROJECT" }))}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                  form.requestType === "PROJECT" ? "bg-accent-600 text-white border-accent-600" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Globe2 size={13} /> Project
+              </button>
+              <button
+                onClick={() => setForm((f) => ({ ...f, requestType: "RESOURCE_REQUEST" }))}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                  form.requestType === "RESOURCE_REQUEST" ? "bg-accent-600 text-white border-accent-600" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Users size={13} /> Resource Request
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">
+              {form.requestType === "RESOURCE_REQUEST"
+                ? "A staffing need (e.g. \"2 senior React developers, 3 months\") — Vendors offer a rate instead of bidding a fixed project price."
+                : "A scoped deliverable-based engagement — Vendors bid a price to complete it."}
+            </p>
 
             <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
               <p className="text-xs font-medium text-slate-600">Describe the work (one line is fine) — AI drafts the fields below</p>
@@ -146,7 +191,11 @@ export default function KeelConnectProjectsPage() {
                 value={draftNote}
                 onChange={(e) => setDraftNote(e.target.value)}
                 className={`${inputCls} min-h-16`}
-                placeholder="e.g. need someone to migrate our legacy PHP billing system to a modern stack, budget around 40k"
+                placeholder={
+                  form.requestType === "RESOURCE_REQUEST"
+                    ? "e.g. need 2 senior React developers for about 3 months, budget around 40/hr each"
+                    : "e.g. need someone to migrate our legacy PHP billing system to a modern stack, budget around 40k"
+                }
               />
               <button
                 onClick={draftWithAI}
@@ -166,7 +215,12 @@ export default function KeelConnectProjectsPage() {
                 {clientOrgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
               </select>
               <input placeholder="Category (e.g. Web Development)" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputCls} />
-              <input placeholder="Title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} />
+              <input
+                placeholder={form.requestType === "RESOURCE_REQUEST" ? "Title (e.g. Senior React Developer x2)" : "Title"}
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                className={inputCls}
+              />
               <div className="flex gap-2">
                 <input placeholder="Target budget" type="number" value={form.targetBudget} onChange={(e) => setForm((f) => ({ ...f, targetBudget: e.target.value }))} className={inputCls} />
                 <input placeholder="USD" value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))} className={`${inputCls} w-24 shrink-0`} />
@@ -179,6 +233,29 @@ export default function KeelConnectProjectsPage() {
                 <option value="GLOBAL">Global (any vendor)</option>
                 <option value="RESTRICTED">Restricted to certain countries</option>
               </select>
+              {form.requestType === "RESOURCE_REQUEST" && (
+                <>
+                  <input
+                    placeholder="Skills required (comma separated)"
+                    value={form.skillsRequired}
+                    onChange={(e) => setForm((f) => ({ ...f, skillsRequired: e.target.value }))}
+                    className={`${inputCls} sm:col-span-2`}
+                  />
+                  <input
+                    placeholder="Duration (weeks)"
+                    type="number"
+                    value={form.durationWeeks}
+                    onChange={(e) => setForm((f) => ({ ...f, durationWeeks: e.target.value }))}
+                    className={inputCls}
+                  />
+                  <select value={form.rateType} onChange={(e) => setForm((f) => ({ ...f, rateType: e.target.value }))} className={inputCls}>
+                    <option value="HOURLY">Hourly rate</option>
+                    <option value="DAILY">Daily rate</option>
+                    <option value="WEEKLY">Weekly rate</option>
+                    <option value="FIXED">Fixed total</option>
+                  </select>
+                </>
+              )}
             </div>
             <textarea
               placeholder="Description"
@@ -213,11 +290,18 @@ export default function KeelConnectProjectsPage() {
                   className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:border-accent-200 hover:bg-accent-50/40 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Globe2 size={16} className="text-slate-400" />
+                    {p.requestType === "RESOURCE_REQUEST" ? (
+                      <Users size={16} className="text-slate-400" />
+                    ) : (
+                      <Globe2 size={16} className="text-slate-400" />
+                    )}
                     <div>
                       <p className="text-sm font-medium text-slate-800">{p.title}</p>
                       <p className="text-xs text-slate-400">
-                        {p.category ?? "Uncategorized"}{p.targetBudget ? ` · ${p.currency} ${p.targetBudget.toLocaleString()}` : ""}
+                        {p.requestType === "RESOURCE_REQUEST" ? "Resource request" : p.category ?? "Uncategorized"}
+                        {p.targetBudget
+                          ? ` · ${p.currency} ${p.targetBudget.toLocaleString()}${p.requestType === "RESOURCE_REQUEST" && p.rateType ? `/${p.rateType.toLowerCase()}` : ""}`
+                          : ""}
                       </p>
                     </div>
                   </div>
