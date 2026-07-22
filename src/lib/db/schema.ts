@@ -447,6 +447,40 @@ export const tasks = pgTable("tasks", {
   scProjectId: text("sc_project_id").references((): AnyPgColumn => scProjects.id, { onDelete: "set null" }),
 });
 
+// In-context task comments (#262). Deliberately plain (no threading/replies) -- a flat,
+// chronological discussion per task, the same shape as most PM tools' task comment feeds.
+// @mentions are parsed out of `body` at write time (see the comments POST route) against
+// that project's projectMembers, and drive both a notifications row and a best-effort email.
+export const taskComments = pgTable("task_comments", {
+  id: cuid(),
+  taskId: text("task_id")
+    .notNull()
+    .references(() => tasks.id, { onDelete: "cascade" }),
+  authorUserId: text("author_user_id").references(() => users.id, { onDelete: "set null" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// A single, cross-feature in-app notification feed (#262) -- MENTION and COMMENT today,
+// deliberately typed as an open-ended enum so a later feature (e.g. a due-date reminder)
+// can add its own type without a new table. `link` is a relative app path the bell's
+// dropdown navigates to on click; `readAt` null means unread. The daily digest cron reads
+// this same table rather than keeping its own separate queue.
+export const notificationTypeEnum = pgEnum("notification_type", ["MENTION", "COMMENT", "DIGEST"]);
+
+export const notifications = pgTable("notifications", {
+  id: cuid(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  link: text("link"),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Iteration containers for Scrum/Hybrid execution. Kept separate from milestones (which
 // are date-based delivery markers) — a sprint is a fixed-length work container tasks get
 // assigned into, with its own goal and status.

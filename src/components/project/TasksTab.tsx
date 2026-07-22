@@ -10,6 +10,7 @@ import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid
 import SprintBoard from "./SprintBoard";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import AiEditChat from "./AiEditChat";
+import TaskComments from "./TaskComments";
 import PostToKeelConnectModal from "./PostToKeelConnectModal";
 
 type Resource = { id: string; name: string };
@@ -1068,13 +1069,14 @@ export default function TasksTab({
                         {t.createdByAi && <span className="text-xs text-accent-500 align-middle">AI</span>}
                         {t.executionSource === "AI" && <ExecutionSourceBadge source="AI" />}
                       </div>
-                      <div className="mt-1">
+                      <div className="mt-1 space-y-1">
                         <AiEditChat
                           entityType="task"
                           entityId={t.id}
                           onApplied={() => router.refresh()}
                           placeholder='e.g. "push this out a week and mark it high priority"'
                         />
+                        <TaskComments projectId={detail.project.id} taskId={t.id} />
                       </div>
                     </td>
                     <td className="py-2.5 text-slate-600">{resourceName(t.assigneeId)}</td>
