@@ -1309,6 +1309,12 @@ export const scOrganizations = pgTable("sc_organizations", {
   portfolioUrl: text("portfolio_url"),
   logoUrl: text("logo_url"),
   publicSlug: text("public_slug").unique(),
+  // Stripe Connect (#259) -- a Vendor org's own connected account, used as the destination
+  // of a Transfer when a payment against one of their milestones is released. Only ever
+  // populated for orgType='VENDOR'; a Client org never needs a payout destination.
+  stripeAccountId: text("stripe_account_id"),
+  stripeChargesEnabled: boolean("stripe_charges_enabled").notNull().default(false),
+  stripePayoutsEnabled: boolean("stripe_payouts_enabled").notNull().default(false),
   // SSO/SAML, configured per Client org by that org's own Client Org Admin (enterprise
   // Client orgs only -- see lib/keelconnect/saml.ts and the KeelConnect admin console).
   ssoEnabled: boolean("sso_enabled").notNull().default(false),
@@ -1465,6 +1471,18 @@ export const scPayments = pgTable("sc_payments", {
   direction: scPaymentDirectionEnum("direction").notNull(),
   status: scPaymentStatusEnum("status").notNull().default("PENDING"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Stripe Connect (#259). The escrow model this app uses is "separate charges and
+  // transfers": a Client's Checkout Session captures funds onto the Platform's own Stripe
+  // balance (stripePaymentIntentId set, status -> HELD), and only when Platform Admin
+  // releases the payment does a real Transfer move money to the Vendor's connected account
+  // (stripeTransferId set, status -> RELEASED). This mirrors the PENDING/HELD/RELEASED
+  // status machine that already existed here -- Stripe just makes each transition a real
+  // money movement instead of a ledger-only flag flip. A REFUNDED payment stores the refund
+  // id it issued against the original PaymentIntent.
+  stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeTransferId: text("stripe_transfer_id"),
+  stripeRefundId: text("stripe_refund_id"),
 });
 
 // Linked to a Project OR an Agreement (at least one should be set; enforced at the API

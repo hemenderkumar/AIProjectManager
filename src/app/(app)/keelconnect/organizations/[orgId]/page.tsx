@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, use as usePromise } from "react";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2, ShieldCheck, ShieldX, Clock, KeyRound } from "lucide-react";
+import { Plus, Trash2, ShieldCheck, ShieldX, Clock, KeyRound, CreditCard, ExternalLink } from "lucide-react";
 import AiEditChat from "@/components/project/AiEditChat";
 
 type Organization = {
@@ -58,6 +58,14 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
   });
   const [slugInput, setSlugInput] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<{
+    connected: boolean;
+    chargesEnabled: boolean;
+    payoutsEnabled: boolean;
+    stripeConfigured: boolean;
+  } | null>(null);
+  const [stripeConnecting, setStripeConnecting] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -80,11 +88,28 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
         portfolioUrl: orgData.portfolioUrl ?? "",
         logoUrl: orgData.logoUrl ?? "",
       });
+      if (orgData.orgType === "VENDOR") {
+        const stripeRes = await fetch(`/api/keelconnect/organizations/${orgId}/stripe`);
+        if (stripeRes.ok) setStripeStatus(await stripeRes.json());
+      }
     }
     if (membersRes.ok) setMembers(await membersRes.json());
     if (complianceRes.ok) setCompliance(await complianceRes.json());
     if (meRes.ok) setMe(await meRes.json());
     setLoading(false);
+  }
+
+  async function connectStripe() {
+    setStripeConnecting(true);
+    setStripeError(null);
+    const res = await fetch(`/api/keelconnect/organizations/${orgId}/stripe`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    setStripeConnecting(false);
+    if (!res.ok) {
+      setStripeError(data?.error ?? "Could not start Stripe onboarding.");
+      return;
+    }
+    window.location.href = data.url;
   }
 
   useEffect(() => {
@@ -366,6 +391,53 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
             ) : (
               <p className="text-xs text-slate-400">{org.headline || "No public headline set yet."}</p>
             )}
+          </div>
+        )}
+
+        {org.orgType === "VENDOR" && isOrgAdmin && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
+            <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 mb-1">
+              <CreditCard size={16} className="text-slate-400" /> Payouts (Stripe Connect)
+            </p>
+            <p className="text-xs text-slate-500 mb-3">
+              Connect a Stripe account to receive real payouts when a Client releases payment on a
+              milestone. Keel never sees or holds your banking details directly — Stripe does.
+            </p>
+            {stripeStatus?.stripeConfigured === false && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3">
+                Stripe isn&apos;t configured on this deployment yet — a Platform Admin needs to set
+                STRIPE_SECRET_KEY before payouts can be connected.
+              </p>
+            )}
+            {stripeStatus?.connected ? (
+              <div className="flex items-center gap-3">
+                <span
+                  className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    stripeStatus.payoutsEnabled ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  {stripeStatus.payoutsEnabled ? "Payouts enabled" : "Onboarding incomplete"}
+                </span>
+                {!stripeStatus.payoutsEnabled && stripeStatus.stripeConfigured && (
+                  <button
+                    onClick={connectStripe}
+                    disabled={stripeConnecting}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-accent-600 text-white font-medium hover:bg-accent-700 disabled:opacity-50"
+                  >
+                    {stripeConnecting ? "Opening Stripe..." : "Finish onboarding"} <ExternalLink size={12} />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={connectStripe}
+                disabled={stripeConnecting || stripeStatus?.stripeConfigured === false}
+                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-accent-600 text-white font-medium hover:bg-accent-700 disabled:opacity-50"
+              >
+                {stripeConnecting ? "Opening Stripe..." : "Connect with Stripe"} <ExternalLink size={12} />
+              </button>
+            )}
+            {stripeError && <p className="text-xs text-rose-600 mt-2">{stripeError}</p>}
           </div>
         )}
 

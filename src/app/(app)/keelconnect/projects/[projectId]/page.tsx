@@ -351,6 +351,20 @@ export default function KeelConnectProjectDetailPage({ params }: { params: Promi
     loadPayments(milestone.id);
   }
 
+  async function payWithStripe(payment: Payment) {
+    setError(null);
+    const res = await fetch(`/api/keelconnect/payments/${payment.id}/checkout`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data?.error ?? "Could not start payment.");
+      return;
+    }
+    // Identical redirect pattern is clean elsewhere (e.g. organizations/[orgId]'s
+    // connectStripe) -- false positive from the experimental react-hooks/immutability rule.
+    // eslint-disable-next-line react-hooks/immutability
+    window.location.href = data.url;
+  }
+
   async function updatePaymentStatus(payment: Payment, status: string) {
     setError(null);
     const res = await fetch(`/api/keelconnect/payments/${payment.id}`, {
@@ -665,8 +679,13 @@ export default function KeelConnectProjectDetailPage({ params }: { params: Promi
                                     <span>{p.direction.replace(/_/g, " ").toLowerCase()} · {p.currency} {p.amount.toLocaleString()}</span>
                                     <div className="flex items-center gap-1.5">
                                       <span className="font-medium text-slate-500">{p.status}</span>
+                                      {financeManageable && p.status === "PENDING" && (p.direction === "CLIENT_TO_PLATFORM" || p.direction === "CLIENT_TO_VENDOR") && (
+                                        <button onClick={() => payWithStripe(p)} className="text-accent-600 hover:text-accent-700 font-medium">
+                                          Pay with Stripe
+                                        </button>
+                                      )}
                                       {isPlatform && p.status === "PENDING" && (
-                                        <button onClick={() => updatePaymentStatus(p, "HELD")} className="text-accent-600 hover:text-accent-700">Hold</button>
+                                        <button onClick={() => updatePaymentStatus(p, "HELD")} className="text-accent-600 hover:text-accent-700">Hold (manual)</button>
                                       )}
                                       {isPlatform && p.status === "HELD" && (
                                         <button onClick={() => updatePaymentStatus(p, "RELEASED")} className="text-emerald-600 hover:text-emerald-700">Release</button>

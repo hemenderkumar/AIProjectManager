@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { scPayments, scMilestones, scAgreementParties } from "@/lib/db/schema";
+import { scPayments, scMilestones, scAgreementParties, scOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScPayment, requireScPlatform } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
 import { notifyScOrg } from "@/lib/keelconnect/notify";
+import { getStripeClient, isStripeConfigured } from "@/lib/keelconnect/stripe";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ paymentId: string }> }) {
   const { paymentId } = await params;
@@ -39,7 +40,48 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pa
     return NextResponse.json({ error: `Cannot move payment from ${before.status} to ${body.status}` }, { status: 400 });
   }
 
-  const [updated] = await db.update(scPayments).set({ status: body.status }).where(eq(scPayments.id, paymentId)).returning();
+  // Real money movement (#259): if this payment was actually captured via Stripe
+  // (stripePaymentIntentId set) and Stripe is configured on this deployment, RELEASED and
+  // REFUNDED perform a real Stripe Transfer/Refund before the DB is updated -- a failure here
+  // aborts the whole PATCH rather than silently marking money "released" that never moved.
+  // A payment that predates Stripe (or was raised on a deployment without Stripe configured)
+  // falls back to the original ledger-only transition, which is what a design-partner pilot
+  // running on an internal ledger still needs.
+  const patch: Record<string, unknown> = { status: body.status };
+
+  if (body.status === "RELEASED" && before.stripePaymentIntentId && isStripeConfigured()) {
+    const [milestone] = await db.select().from(scMilestones).where(eq(scMilestones.id, before.scMilestoneId));
+    const parties = milestone ? await db.select().from(scAgreementParties).where(eq(scAgreementParties.scAgreementId, milestone.scAgreementId)) : [];
+    const vendorOrgId = parties.find((p) => p.partyRole === "VENDOR")?.scOrganizationId;
+    const [vendorOrg] = vendorOrgId ? await db.select().from(scOrganizations).where(eq(scOrganizations.id, vendorOrgId)) : [];
+    if (!vendorOrg?.stripeAccountId) {
+      return NextResponse.json({ error: "The vendor hasn't connected a Stripe payout account yet" }, { status: 400 });
+    }
+    try {
+      const stripe = getStripeClient();
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(before.amount * 100),
+        currency: before.currency.toLowerCase(),
+        destination: vendorOrg.stripeAccountId,
+        transfer_group: before.id,
+      });
+      patch.stripeTransferId = transfer.id;
+    } catch (err) {
+      return NextResponse.json({ error: `Stripe transfer failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 502 });
+    }
+  }
+
+  if (body.status === "REFUNDED" && before.stripePaymentIntentId && isStripeConfigured()) {
+    try {
+      const stripe = getStripeClient();
+      const refund = await stripe.refunds.create({ payment_intent: before.stripePaymentIntentId });
+      patch.stripeRefundId = refund.id;
+    } catch (err) {
+      return NextResponse.json({ error: `Stripe refund failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 502 });
+    }
+  }
+
+  const [updated] = await db.update(scPayments).set(patch).where(eq(scPayments.id, paymentId)).returning();
 
   if (body.status === "RELEASED") {
     await db.update(scMilestones).set({ status: "PAID" }).where(eq(scMilestones.id, before.scMilestoneId));
