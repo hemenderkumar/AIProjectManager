@@ -6,7 +6,7 @@ import { scProjects, scOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
-import { Globe2, Users, ArrowRight, Search } from "lucide-react";
+import { Globe2, Users, ArrowRight, Search, ShieldCheck, KeyRound, ScrollText } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "KeelConnect Marketplace — Open Projects & Resource Requests | Keel",
@@ -79,10 +79,16 @@ export default async function MarketplaceLandingPage({
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight mb-3">
           Outsourcing projects & resource requests, open for bids
         </h1>
-        <p className="text-sm text-slate-600 max-w-2xl mb-8">
+        <p className="text-sm text-slate-600 max-w-2xl mb-6">
           Every posting below is open on KeelConnect right now. Browse freely — create a free Vendor
           account to submit a bid or offer a rate.
         </p>
+
+        <div className="flex flex-wrap gap-x-6 gap-y-2 mb-8 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-600" /> KYC/KYB verified organizations</span>
+          <span className="flex items-center gap-1.5"><KeyRound size={14} className="text-emerald-600" /> MFA-enforced Finance & Platform roles</span>
+          <span className="flex items-center gap-1.5"><ScrollText size={14} className="text-emerald-600" /> Full audit trail on every engagement</span>
+        </div>
 
         <form method="GET" className="flex flex-col sm:flex-row gap-2.5 mb-8">
           <input

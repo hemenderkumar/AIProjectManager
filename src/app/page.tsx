@@ -299,6 +299,43 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="bg-slate-900 text-white">
+        <div className="max-w-5xl mx-auto px-6 py-16">
+          <p className="text-xs font-medium tracking-widest uppercase text-accent-300 mb-2">Built for regulated industries</p>
+          <h2 className="text-xl font-semibold tracking-tight mb-4 max-w-2xl">
+            The compliance depth other marketplaces skip is exactly what finance, healthcare, and
+            government-adjacent teams require before they&apos;ll touch outsourced work at all.
+          </h2>
+          <p className="text-sm text-slate-300 max-w-2xl mb-10">
+            Upwork and similar marketplaces are built for speed, not scrutiny. KeelConnect is built for
+            teams whose procurement, security, and audit functions won&apos;t sign off without it.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <div>
+              <p className="text-sm font-semibold mb-1.5">KYC/KYB on every organization</p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Every Client and Vendor is verified — identity, business, sanctions screening, and tax
+                forms — before either side can transact. Nothing self-declared.
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-1.5">MFA enforced where it matters</p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Two-factor authentication is required, not optional, for Finance Approvers and every
+                Platform role — the roles that can move money or override a decision.
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold mb-1.5">Role-scoped access, full audit trail</p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Org Admin, Requester, Finance Approver, and Vendor roles are each scoped to exactly what
+                they need — with every material action logged for your own compliance review.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <footer className="bg-white">
         <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between text-xs text-slate-400">
           <span>© {new Date().getFullYear()} Keel</span>

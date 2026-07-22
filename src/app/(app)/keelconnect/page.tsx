@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Building2, Globe2, ArrowRight, Loader2, ShieldAlert } from "lucide-react";
+import { Building2, Globe2, ArrowRight, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 
 type Organization = { id: string; name: string; orgType: "CLIENT" | "VENDOR"; verificationStatus: string };
 type Project = { id: string; title: string; status: string; currency: string; targetBudget: number | null };
@@ -66,6 +66,19 @@ export default function KeelConnectHome() {
             >
               Register your organization <ArrowRight size={14} />
             </Link>
+          </div>
+        )}
+
+        {orgs.length === 0 && (
+          <div className="bg-slate-900 text-white rounded-xl p-5">
+            <p className="flex items-center gap-2 text-sm font-semibold mb-1.5">
+              <ShieldCheck size={16} className="text-accent-300" /> Compliance-first, by design
+            </p>
+            <p className="text-xs text-slate-300 leading-relaxed max-w-lg">
+              KYC/KYB on every organization, MFA enforced for Finance Approvers and Platform roles, and a
+              full audit trail on every engagement — the depth mid-market and regulated teams
+              (finance, healthcare, government-adjacent) need before they&apos;ll outsource work at all.
+            </p>
           </div>
         )}
 
