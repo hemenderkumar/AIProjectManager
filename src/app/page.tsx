@@ -299,6 +299,41 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="max-w-5xl mx-auto px-6 py-16 border-t border-slate-200">
+        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">Not just another task tracker</p>
+        <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-4 max-w-2xl">
+          Asana and Monday manage tasks once a project already exists. Keel manages the decision
+          to start one — and everything after.
+        </h2>
+        <p className="text-sm text-slate-600 max-w-2xl mb-10">
+          That&apos;s the actual wedge: three things a generic task tracker was never built to do.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+          <div>
+            <p className="text-sm font-semibold text-slate-900 mb-1.5">Ideation gates, not a blank board</p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Every idea passes through feasibility, architecture, and resourcing gates before it
+              becomes a funded project — so half-baked ideas don&apos;t quietly turn into
+              half-finished projects.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900 mb-1.5">AI drafting, not a blank template</p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Charters, RFPs, SOWs, and delivery plans are AI-drafted from a one-line idea — Waterfall,
+              Scrum, or hybrid — not built one field at a time from an empty template.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900 mb-1.5">RFP/SOW workflow, built in</p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Evaluate vendors, generate a Statement of Work, and track deliverables against it —
+              without exporting anything to a separate procurement tool.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="bg-slate-900 text-white">
         <div className="max-w-5xl mx-auto px-6 py-16">
           <p className="text-xs font-medium tracking-widest uppercase text-accent-300 mb-2">Built for regulated industries</p>

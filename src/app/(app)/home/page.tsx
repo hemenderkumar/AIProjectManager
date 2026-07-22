@@ -36,7 +36,14 @@ export default async function HomePage() {
               </div>
               <p className="text-sm font-semibold text-slate-900">Keel Deliver</p>
             </div>
-            <p className="text-xs text-slate-500 mb-4">Run your own team&apos;s delivery — plan, track, and report.</p>
+            <p className="text-xs text-slate-500 mb-1">Run your own team&apos;s delivery — plan, track, and report.</p>
+            <p className="text-xs text-slate-400 mb-4">
+              Ideation gates, AI-drafted charters, and a built-in RFP/SOW workflow — not just another
+              task tracker.{" "}
+              <Link href="/how-it-works" className="text-accent-600 hover:text-accent-700 font-medium">
+                See how
+              </Link>
+            </p>
 
             <Link
               href="/dashboard"

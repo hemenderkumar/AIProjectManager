@@ -98,6 +98,11 @@ export default function HowItWorksPage() {
         subtitle="A guided walk-through of the project lifecycle, from first idea to signed-off delivery"
       />
       <div className="p-8 max-w-4xl mx-auto space-y-8">
+        <div className="bg-accent-50/60 border border-accent-100 rounded-xl p-4 text-xs text-slate-600 leading-relaxed">
+          <span className="font-semibold text-slate-800">This isn&apos;t just another task tracker.</span>{" "}
+          Steps 1–3 (ideation gates) and step 5 (a built-in RFP/SOW workflow) don&apos;t exist in Asana or
+          Monday — and every draft in between is AI-generated, not built from a blank template.
+        </div>
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6 sm:p-8">
           {/* Step dots + connecting flow line */}
           <div className="flex items-center mb-8 overflow-x-auto pb-2 scrollbar-thin">
