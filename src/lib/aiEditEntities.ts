@@ -1,10 +1,19 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
-import { sows, deliverables, riskItems, tasks, solutionOptions, projects, scOrganizations, scProjects } from "./db/schema";
+import { sows, deliverables, riskItems, tasks, solutionOptions, projects, scOrganizations, scProjects, scAgreements } from "./db/schema";
 import type { SessionUser } from "./auth";
 import type { ScRole } from "./keelconnect/access";
 
-export type EntityType = "sow" | "deliverable" | "risk" | "task" | "solutionOption" | "project" | "scOrganization" | "scProject";
+export type EntityType =
+  | "sow"
+  | "deliverable"
+  | "risk"
+  | "task"
+  | "solutionOption"
+  | "project"
+  | "scOrganization"
+  | "scProject"
+  | "scAgreement";
 
 export type FieldDef = {
   key: string;
@@ -20,15 +29,18 @@ export type FieldDef = {
 // exactly as if the user had edited the field by hand — this endpoint only PROPOSES which
 // fields should change, grounded to a fixed whitelist per type.
 //
-// Two entirely separate access-control systems share this one registry: Keel Deliver's
-// per-project role check (requireProjectAccess + minRole) and KeelConnect's per-org role
-// check (requireScOrgRole + scRoles). `system` picks which one /api/ai/edit-entity uses;
-// entries that omit it default to "deliver" (every entry that predates KeelConnect support).
+// Three access-control paths share this one registry. Keel Deliver entities use
+// requireProjectAccess + minRole. Most KeelConnect entities are scoped to a single org, so
+// they use requireScOrgRole + scRoles ("keelconnect"). A KeelConnect Agreement is a special
+// case -- it can have two or three party orgs (Client + Vendor, or + Platform for Mediator),
+// so no single scOrganizationId/role-set captures "any party admin"; "keelconnect-agreement"
+// tells /api/ai/edit-entity to gate on canAccessScAgreement instead (see that route). Entries
+// that omit `system` default to "deliver" (every entry that predates KeelConnect support).
 export const ENTITY_CONFIG: Record<
   EntityType,
   {
     label: string;
-    system?: "deliver" | "keelconnect";
+    system?: "deliver" | "keelconnect" | "keelconnect-agreement";
     minRole?: SessionUser["role"];
     scRoles?: ScRole[];
     fields: FieldDef[];
@@ -197,6 +209,23 @@ export const ENTITY_CONFIG: Record<
       return row ? { row, scOrganizationId: row.clientOrgId } : null;
     },
     patchUrl: (id) => `/api/keelconnect/projects/${id}`,
+  },
+
+  scAgreement: {
+    label: "KeelConnect Agreement",
+    system: "keelconnect-agreement",
+    fields: [
+      { key: "governingLaw", label: "Governing law", kind: "text" },
+      { key: "governingLanguage", label: "Governing language", kind: "text" },
+      // status/signedDocumentUrl deliberately excluded -- status has its own transition-gated
+      // action (Send/Attest/Activate, see the agreement PATCH route), and there's no uploaded
+      // document to point signedDocumentUrl at (see the PDF export's attestation-clause note).
+    ],
+    load: async (id) => {
+      const [row] = await db.select().from(scAgreements).where(eq(scAgreements.id, id));
+      return row ? { row } : null;
+    },
+    patchUrl: (id) => `/api/keelconnect/agreements/${id}`,
   },
 };
 

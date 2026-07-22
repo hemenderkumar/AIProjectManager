@@ -2,9 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { askClaudeJSON } from "@/lib/ai";
 import { ENTITY_CONFIG, describeSnapshot, type EntityType } from "@/lib/aiEditEntities";
 import { requireProjectAccess } from "@/lib/tenancy";
-import { requireScOrgRole } from "@/lib/keelconnect/access";
+import { requireScOrgRole, canAccessScAgreement } from "@/lib/keelconnect/access";
+import { getCurrentUser } from "@/lib/auth";
 
 type EditProposal = { changes: Record<string, string | number | boolean | null>; explanation: string };
+
+// A KeelConnect Agreement can have two or three party orgs (Client + Vendor, or + Platform
+// for Mediator), so no single scOrganizationId/role-set captures "any party admin" the way
+// requireScOrgRole expects. This just gates who may PROPOSE an edit (read-level access to the
+// agreement); the real authorization -- and the ACTIVE-status change-request detour -- is
+// enforced independently by the agreement's own PATCH route regardless of what happens here.
+async function resolveKeelConnectAgreementUser(entityId: string) {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  return (await canAccessScAgreement(user, entityId)) ? user : null;
+}
 
 // The generic "edit anything via AI chat" endpoint: wherever a record was created (by AI or by
 // hand), this lets the user describe a change in plain language instead of only editing fields
@@ -32,6 +44,8 @@ export async function POST(req: NextRequest) {
   const user =
     config.system === "keelconnect"
       ? (await requireScOrgRole(loaded.scOrganizationId!, config.scRoles!))?.user ?? null
+      : config.system === "keelconnect-agreement"
+      ? await resolveKeelConnectAgreementUser(entityId)
       : await requireProjectAccess(config.minRole!, loaded.projectId!);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

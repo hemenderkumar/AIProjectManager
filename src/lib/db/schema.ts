@@ -1244,6 +1244,16 @@ export const scEngagementModelEnum = pgEnum("sc_engagement_model", ["MEDIATOR", 
 
 export const scLocationRequirementEnum = pgEnum("sc_location_requirement", ["GLOBAL", "RESTRICTED"]);
 
+// A Resource Request is a lighter-weight posting than a full Project -- "I need 2 senior
+// React developers for 3 months" rather than a scoped deliverable-based engagement. It's
+// deliberately NOT a separate table: it reuses the exact same scProjects/scBids/negotiation/
+// agreement/milestone/payment/review pipeline (Vendors "bid" a proposed rate the same way
+// they'd bid a project price), just with a few extra staffing-shaped fields and different
+// field labels in the UI. requestType defaults to PROJECT so every pre-existing row is
+// unaffected.
+export const scRequestTypeEnum = pgEnum("sc_request_type", ["PROJECT", "RESOURCE_REQUEST"]);
+export const scRateTypeEnum = pgEnum("sc_rate_type", ["HOURLY", "DAILY", "WEEKLY", "FIXED"]);
+
 export const scBidStatusEnum = pgEnum("sc_bid_status", ["SUBMITTED", "COUNTERED", "ACCEPTED", "REJECTED"]);
 
 export const scAgreementTypeEnum = pgEnum("sc_agreement_type", [
@@ -1345,6 +1355,12 @@ export const scProjects = pgTable("sc_projects", {
   locationRequirement: scLocationRequirementEnum("location_requirement").notNull().default("GLOBAL"),
   restrictedCountries: text("restricted_countries").array(),
   status: scProjectStatusEnum("status").notNull().default("DRAFT"),
+  // See the scRequestTypeEnum comment above -- everything below is only ever populated for
+  // RESOURCE_REQUEST postings; a normal PROJECT posting leaves them null.
+  requestType: scRequestTypeEnum("request_type").notNull().default("PROJECT"),
+  skillsRequired: text("skills_required").array(),
+  durationWeeks: integer("duration_weeks"),
+  rateType: scRateTypeEnum("rate_type"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -1450,6 +1466,32 @@ export const scDisputes = pgTable("sc_disputes", {
   resolutionNotes: text("resolution_notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   resolvedAt: timestamp("resolved_at"),
+});
+
+// Once an Agreement is ACTIVE it's a live, mutually-attested contract -- neither party's Org
+// Admin can silently rewrite its terms (governingLaw/governingLanguage today) the way they
+// could pre-attestation, so a content edit at that point becomes a Change Request instead:
+// proposed by one party, applied only once a DIFFERENT party's Org Admin (or Platform Admin)
+// accepts it. See the ACTIVE-status branch in api/keelconnect/agreements/[agreementId]/route.ts.
+// `changes` mirrors the same JSON.stringify-a-diff pattern the audit log already uses rather
+// than adding a dedicated column per editable field.
+export const scChangeRequestStatusEnum = pgEnum("sc_change_request_status", ["PENDING", "ACCEPTED", "REJECTED"]);
+
+export const scAgreementChangeRequests = pgTable("sc_agreement_change_requests", {
+  id: cuid(),
+  scAgreementId: text("sc_agreement_id")
+    .notNull()
+    .references(() => scAgreements.id, { onDelete: "cascade" }),
+  proposedByUserId: text("proposed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  // Null means Platform proposed it (mirrors scAgreementParties.scOrganizationId's PLATFORM
+  // convention) -- otherwise the scOrganizationId of whichever party org proposed the change.
+  proposedByOrgId: text("proposed_by_org_id").references(() => scOrganizations.id, { onDelete: "set null" }),
+  changes: text("changes").notNull(),
+  note: text("note"),
+  status: scChangeRequestStatusEnum("status").notNull().default("PENDING"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  decidedByUserId: text("decided_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  decidedAt: timestamp("decided_at"),
 });
 
 // fromOrgType=CLIENT means the Client org reviewing the Vendor; fromOrgType=VENDOR means
@@ -1715,6 +1757,14 @@ export const scAgreementsRelations = relations(scAgreements, ({ one, many }) => 
   parties: many(scAgreementParties),
   milestones: many(scMilestones),
   disputes: many(scDisputes),
+  changeRequests: many(scAgreementChangeRequests),
+}));
+
+export const scAgreementChangeRequestsRelations = relations(scAgreementChangeRequests, ({ one }) => ({
+  agreement: one(scAgreements, { fields: [scAgreementChangeRequests.scAgreementId], references: [scAgreements.id] }),
+  proposedBy: one(users, { fields: [scAgreementChangeRequests.proposedByUserId], references: [users.id] }),
+  proposedByOrg: one(scOrganizations, { fields: [scAgreementChangeRequests.proposedByOrgId], references: [scOrganizations.id] }),
+  decidedBy: one(users, { fields: [scAgreementChangeRequests.decidedByUserId], references: [users.id] }),
 }));
 
 export const scAgreementPartiesRelations = relations(scAgreementParties, ({ one }) => ({

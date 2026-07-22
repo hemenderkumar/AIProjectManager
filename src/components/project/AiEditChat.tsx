@@ -3,7 +3,16 @@ import { useState } from "react";
 import { Sparkles, Loader2, Check, X, MessageSquarePlus } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 
-export type AiEditEntityType = "sow" | "deliverable" | "risk" | "task" | "solutionOption" | "project" | "scOrganization" | "scProject";
+export type AiEditEntityType =
+  | "sow"
+  | "deliverable"
+  | "risk"
+  | "task"
+  | "solutionOption"
+  | "project"
+  | "scOrganization"
+  | "scProject"
+  | "scAgreement";
 
 type Proposal = {
   changes: Record<string, string | number | boolean | null>;
@@ -35,12 +44,14 @@ export default function AiEditChat({
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [pendingNote, setPendingNote] = useState<string | null>(null);
 
   async function propose() {
     if (!instruction.trim()) return;
     setProposing(true);
     setError(null);
     setProposal(null);
+    setPendingNote(null);
     try {
       const res = await fetch("/api/ai/edit-entity", {
         method: "POST",
@@ -68,15 +79,23 @@ export default function AiEditChat({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(proposal.changes),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setError(data?.error ?? "Couldn't apply that change.");
         return;
       }
       onApplied?.(proposal.changes);
       setProposal(null);
       setInstruction("");
-      setOpen(false);
+      // A 202 with `pending: true` (currently only KeelConnect Agreements while ACTIVE) means
+      // this didn't apply directly -- it was filed as a Change Request awaiting the other
+      // party's approval. Surface that distinction instead of closing silently, since to the
+      // user "Apply" otherwise implies the field changed right now.
+      if (data?.pending) {
+        setPendingNote(data.message ?? "Submitted as a change request awaiting approval.");
+      } else {
+        setOpen(false);
+      }
     } finally {
       setApplying(false);
     }
@@ -86,12 +105,13 @@ export default function AiEditChat({
     setProposal(null);
     setInstruction("");
     setError(null);
+    setPendingNote(null);
   }
 
   if (!open) {
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => { setOpen(true); setPendingNote(null); }}
         className="flex items-center gap-1.5 text-xs text-accent-600 hover:text-accent-700"
       >
         <MessageSquarePlus size={13} /> Edit with AI
@@ -112,7 +132,16 @@ export default function AiEditChat({
         </button>
       </div>
 
-      {!proposal && (
+      {pendingNote && (
+        <div className="text-xs bg-white border border-amber-200 text-amber-800 rounded-lg px-2.5 py-2 space-y-1.5">
+          <p>{pendingNote}</p>
+          <button onClick={() => setPendingNote(null)} className="text-slate-500 hover:text-slate-700 font-medium">
+            Got it
+          </button>
+        </div>
+      )}
+
+      {!proposal && !pendingNote && (
         <div className="flex items-center gap-2">
           <input
             value={instruction}
