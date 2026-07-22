@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { askClaudeJSON } from "@/lib/ai";
 import { ENTITY_CONFIG, describeSnapshot, type EntityType } from "@/lib/aiEditEntities";
 import { requireProjectAccess } from "@/lib/tenancy";
-import { requireScOrgRole, canAccessScAgreement } from "@/lib/keelconnect/access";
-import { getCurrentUser } from "@/lib/auth";
+import { requireScOrgRole, requireScPlatform, canAccessScAgreement } from "@/lib/keelconnect/access";
+import { getCurrentUser, requireRole } from "@/lib/auth";
 
 type EditProposal = { changes: Record<string, string | number | boolean | null>; explanation: string };
 
@@ -38,14 +38,21 @@ export async function POST(req: NextRequest) {
   const loaded = await config.load(entityId);
   if (!loaded) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Two entirely separate access-control systems share this one endpoint -- see the comment
-  // on ENTITY_CONFIG in aiEditEntities.ts. KeelConnect entities are scoped to an org + a set
-  // of KeelConnect roles; every other (Deliver) entity is scoped to a project + a Deliver role.
+  // Several access-control systems share this one endpoint -- see the comment on
+  // ENTITY_CONFIG in aiEditEntities.ts. KeelConnect org/vendor/client entities are scoped to
+  // an org + a set of KeelConnect roles; "keelconnect-platform" is the admin-console-only
+  // counterpart gated to Platform Admin/Compliance instead of that org's own roles; "admin"
+  // is Keel Deliver's own platform-wide admin console (no project or org scoping at all);
+  // everything else (the default) is a project-scoped Deliver entity.
   const user =
     config.system === "keelconnect"
       ? (await requireScOrgRole(loaded.scOrganizationId!, config.scRoles!))?.user ?? null
+      : config.system === "keelconnect-platform"
+      ? (await requireScPlatform(["PLATFORM_ADMIN", "PLATFORM_COMPLIANCE_OFFICER"]))?.user ?? null
       : config.system === "keelconnect-agreement"
       ? await resolveKeelConnectAgreementUser(entityId)
+      : config.system === "admin"
+      ? await requireRole("ADMIN")
       : await requireProjectAccess(config.minRole!, loaded.projectId!);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

@@ -1,15 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign, KeyRound, Bug, BookOpen } from "lucide-react";
+import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign, KeyRound, Bug, BookOpen, Power } from "lucide-react";
 import RateCardSection from "@/components/RateCardSection";
+import AiEditChat from "@/components/project/AiEditChat";
 
 type User = { id: string; name: string; email: string; role: string; organizationId: string | null; resourceId: string | null };
 type Resource = { id: string; name: string };
 type Organization = {
   id: string;
   name: string;
+  isActive: boolean;
   deletionRequestedAt: string | null;
   deletionRequestedBy: string | null;
 };
@@ -264,6 +266,22 @@ export default function AdminPage() {
     load();
   }
 
+  async function toggleActive(o: Organization) {
+    setOrgActionId(o.id);
+    const res = await fetch(`/api/admin/organizations/${o.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !o.isActive }),
+    });
+    setOrgActionId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setOrgDeleteError(data?.error ?? "Could not update this company.");
+      return;
+    }
+    load();
+  }
+
   async function deleteOrgDirectly(id: string) {
     setOrgActionId(id);
     setOrgDeleteError(null);
@@ -435,19 +453,34 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {orgs.map((o) => (
-                <tr key={o.id} className="border-b border-slate-50 last:border-0">
+                <Fragment key={o.id}>
+                <tr className={`border-b border-slate-50 last:border-0 ${o.isActive ? "" : "opacity-60"}`}>
                   <td className="py-2.5 font-medium text-slate-800">{o.name}</td>
                   <td className="py-2.5">
-                    {o.deletionRequestedAt ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
-                        <AlertTriangle size={12} />
-                        Deletion requested by {o.deletionRequestedBy ?? "unknown"} on {new Date(o.deletionRequestedAt).toLocaleDateString()}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-400">Active</span>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {!o.isActive && (
+                        <span className="text-xs text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5">Disabled</span>
+                      )}
+                      {o.deletionRequestedAt ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                          <AlertTriangle size={12} />
+                          Deletion requested by {o.deletionRequestedBy ?? "unknown"} on {new Date(o.deletionRequestedAt).toLocaleDateString()}
+                        </span>
+                      ) : o.isActive ? (
+                        <span className="text-xs text-slate-400">Active</span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="py-2.5 text-right space-x-3">
+                    <button
+                      onClick={() => toggleActive(o)}
+                      disabled={orgActionId === o.id}
+                      className={`text-xs font-medium disabled:opacity-50 inline-flex items-center gap-1 ${
+                        o.isActive ? "text-slate-500 hover:text-amber-600" : "text-slate-500 hover:text-emerald-600"
+                      }`}
+                    >
+                      <Power size={13} /> {o.isActive ? "Disable" : "Enable"}
+                    </button>
                     <button
                       onClick={() => setRatesOrgId(ratesOrgId === o.id ? null : o.id)}
                       className={`text-xs font-medium disabled:opacity-50 inline-flex items-center gap-1 ${
@@ -508,6 +541,17 @@ export default function AdminPage() {
                     )}
                   </td>
                 </tr>
+                <tr className="border-b border-slate-50 last:border-0">
+                  <td colSpan={3} className="pb-2.5 pt-0">
+                    <AiEditChat
+                      entityType="organization"
+                      entityId={o.id}
+                      onApplied={() => load()}
+                      placeholder='e.g. "disable this company" or "rename it to Acme Holdings"'
+                    />
+                  </td>
+                </tr>
+                </Fragment>
               ))}
               {orgs.length === 0 && (
                 <tr><td colSpan={3} className="py-6 text-center text-slate-400">No organizations yet.</td></tr>
@@ -550,7 +594,7 @@ export default function AdminPage() {
                   className={inputCls}
                 >
                   <option value="">Internal staff (no organization)</option>
-                  {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  {orgs.filter((o) => o.isActive).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               </div>
               {form.role === "SUPER_USER" && (
@@ -618,7 +662,7 @@ export default function AdminPage() {
                       className="text-xs border border-slate-200 rounded-md px-1.5 py-1 bg-white"
                     >
                       <option value="">Internal staff</option>
-                      {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                      {orgs.filter((o) => o.isActive || o.id === u.organizationId).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                     </select>
                   </td>
                   <td className="py-2.5">

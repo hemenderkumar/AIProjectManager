@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
-import { sows, deliverables, riskItems, tasks, solutionOptions, projects, scOrganizations, scProjects, scAgreements } from "./db/schema";
+import { sows, deliverables, riskItems, tasks, solutionOptions, projects, organizations, scOrganizations, scProjects, scAgreements } from "./db/schema";
 import type { SessionUser } from "./auth";
 import type { ScRole } from "./keelconnect/access";
 
@@ -11,7 +11,9 @@ export type EntityType =
   | "task"
   | "solutionOption"
   | "project"
+  | "organization"
   | "scOrganization"
+  | "scOrganizationAdmin"
   | "scProject"
   | "scAgreement";
 
@@ -29,18 +31,25 @@ export type FieldDef = {
 // exactly as if the user had edited the field by hand — this endpoint only PROPOSES which
 // fields should change, grounded to a fixed whitelist per type.
 //
-// Three access-control paths share this one registry. Keel Deliver entities use
+// Five access-control paths share this one registry. Keel Deliver entities use
 // requireProjectAccess + minRole. Most KeelConnect entities are scoped to a single org, so
-// they use requireScOrgRole + scRoles ("keelconnect"). A KeelConnect Agreement is a special
-// case -- it can have two or three party orgs (Client + Vendor, or + Platform for Mediator),
-// so no single scOrganizationId/role-set captures "any party admin"; "keelconnect-agreement"
-// tells /api/ai/edit-entity to gate on canAccessScAgreement instead (see that route). Entries
-// that omit `system` default to "deliver" (every entry that predates KeelConnect support).
+// they use requireScOrgRole + scRoles ("keelconnect"). "keelconnect-platform" is the
+// admin-console-only counterpart used for fields only a Platform Admin/Compliance Officer may
+// set (verificationStatus, isActive) -- gated to requireScPlatform instead of that org's own
+// roles, so it's used from the KeelConnect admin console, never from an org's own self-service
+// profile page. A KeelConnect Agreement is a special case -- it can have two or three party
+// orgs (Client + Vendor, or + Platform for Mediator), so no single scOrganizationId/role-set
+// captures "any party admin"; "keelconnect-agreement" tells /api/ai/edit-entity to gate on
+// canAccessScAgreement instead (see that route). A Deliver company (base `organizations` row,
+// used from the admin console) has no projectId at all, so it can't use requireProjectAccess
+// either -- "admin" tells the route to gate on requireRole("ADMIN") instead, mirroring how
+// /api/admin/organizations itself is gated. Entries that omit `system` default to "deliver"
+// (every entry that predates KeelConnect support).
 export const ENTITY_CONFIG: Record<
   EntityType,
   {
     label: string;
-    system?: "deliver" | "keelconnect" | "keelconnect-agreement";
+    system?: "deliver" | "keelconnect" | "keelconnect-platform" | "keelconnect-agreement" | "admin";
     minRole?: SessionUser["role"];
     scRoles?: ScRole[];
     fields: FieldDef[];
@@ -169,6 +178,20 @@ export const ENTITY_CONFIG: Record<
     patchUrl: (id) => `/api/projects/${id}`,
   },
 
+  organization: {
+    label: "Company",
+    system: "admin",
+    fields: [
+      { key: "name", label: "Company name", kind: "text" },
+      { key: "isActive", label: "Active (visible + usable, vs. disabled)", kind: "boolean" },
+    ],
+    load: async (id) => {
+      const [row] = await db.select().from(organizations).where(eq(organizations.id, id));
+      return row ? { row } : null;
+    },
+    patchUrl: (id) => `/api/admin/organizations/${id}`,
+  },
+
   scOrganization: {
     label: "KeelConnect Organization",
     system: "keelconnect",
@@ -178,9 +201,30 @@ export const ENTITY_CONFIG: Record<
       { key: "companyProfile", label: "Company profile", kind: "text" },
       { key: "taxId", label: "Tax ID", kind: "text" },
       { key: "primaryCountry", label: "Primary country", kind: "text" },
-      // verificationStatus deliberately excluded -- only a Platform Admin/Compliance
-      // Officer can set that (see /api/keelconnect/organizations/[orgId] PATCH), so an org
-      // can't use this chat to self-declare "VERIFIED".
+      // verificationStatus and isActive deliberately excluded -- both are Platform-only
+      // fields (see /api/keelconnect/organizations/[orgId] PATCH), so an org can't use this
+      // self-service chat to self-declare "VERIFIED" or reactivate itself after being
+      // disabled. The admin console uses the separate scOrganizationAdmin entity below for
+      // those two fields instead, gated to Platform Admin/Compliance Officer.
+    ],
+    load: async (id) => {
+      const [row] = await db.select().from(scOrganizations).where(eq(scOrganizations.id, id));
+      return row ? { row, scOrganizationId: row.id } : null;
+    },
+    patchUrl: (id) => `/api/keelconnect/organizations/${id}`,
+  },
+
+  // Platform-admin-only counterpart to scOrganization above, used from the KeelConnect admin
+  // console (not the org's own self-service profile page) to edit the two fields only
+  // Platform Admin/Compliance Officer may set. Kept as a separate entity type rather than
+  // just adding these fields to scOrganization so the self-service AiEditChat on an org's own
+  // page never even offers them (see the comment above).
+  scOrganizationAdmin: {
+    label: "KeelConnect Organization (Platform)",
+    system: "keelconnect-platform",
+    fields: [
+      { key: "verificationStatus", label: "Verification status", kind: "enum", options: ["PENDING", "VERIFIED", "REJECTED"] },
+      { key: "isActive", label: "Active (visible in discovery, vs. disabled)", kind: "boolean" },
     ],
     load: async (id) => {
       const [row] = await db.select().from(scOrganizations).where(eq(scOrganizations.id, id));

@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   const vendors = await db
     .select()
     .from(scOrganizations)
-    .where(and(eq(scOrganizations.orgType, "VENDOR"), isNotNull(scOrganizations.publicSlug)));
+    .where(and(eq(scOrganizations.orgType, "VENDOR"), isNotNull(scOrganizations.publicSlug), eq(scOrganizations.isActive, true)));
 
   const ratingRows = await db
     .select({ vendorOrgId: scBids.vendorOrgId, avgRating: avg(scReviews.rating), reviewCount: count(scReviews.id) })

@@ -34,10 +34,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ or
   const { orgId } = await params;
   const body = await req.json().catch(() => ({}));
   const wantsVerificationChange = "verificationStatus" in body;
+  // isActive (soft enable/disable) is just as sensitive as verificationStatus -- an org
+  // shouldn't be able to re-enable itself after a Platform Admin disabled it for a
+  // compliance/dispute reason -- so it shares that same platform-only gate.
+  const wantsActiveChange = "isActive" in body;
 
-  const ctx = wantsVerificationChange
-    ? await requireScPlatform(["PLATFORM_ADMIN", "PLATFORM_COMPLIANCE_OFFICER"])
-    : await requireScOrgRole(orgId, ["CLIENT_ORG_ADMIN", "VENDOR_ORG_ADMIN"]);
+  const ctx =
+    wantsVerificationChange || wantsActiveChange
+      ? await requireScPlatform(["PLATFORM_ADMIN", "PLATFORM_COMPLIANCE_OFFICER"])
+      : await requireScOrgRole(orgId, ["CLIENT_ORG_ADMIN", "VENDOR_ORG_ADMIN"]);
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const [before] = await db.select().from(scOrganizations).where(eq(scOrganizations.id, orgId));
@@ -86,6 +91,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ or
     }
     patch.verificationStatus = body.verificationStatus;
     patch.verifiedAt = body.verificationStatus === "VERIFIED" ? new Date() : before.verifiedAt;
+  }
+
+  if (wantsActiveChange) {
+    if (typeof body.isActive !== "boolean") {
+      return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 });
+    }
+    patch.isActive = body.isActive;
   }
 
   const [updated] = await db.update(scOrganizations).set(patch).where(eq(scOrganizations.id, orgId)).returning();

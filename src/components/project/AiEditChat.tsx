@@ -10,7 +10,9 @@ export type AiEditEntityType =
   | "task"
   | "solutionOption"
   | "project"
+  | "organization"
   | "scOrganization"
+  | "scOrganizationAdmin"
   | "scProject"
   | "scAgreement";
 

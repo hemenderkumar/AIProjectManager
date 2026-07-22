@@ -26,7 +26,10 @@ export async function GET(req: NextRequest) {
   const minRating = searchParams.get("minRating") ? Number(searchParams.get("minRating")) : null;
   const verifiedOnly = searchParams.get("verifiedOnly") === "true";
 
-  const vendors = await db.select().from(scOrganizations).where(eq(scOrganizations.orgType, "VENDOR"));
+  const vendors = await db
+    .select()
+    .from(scOrganizations)
+    .where(and(eq(scOrganizations.orgType, "VENDOR"), eq(scOrganizations.isActive, true)));
 
   const ratingRows = await db
     .select({ vendorOrgId: scBids.vendorOrgId, avgRating: avg(scReviews.rating), reviewCount: count(scReviews.id) })

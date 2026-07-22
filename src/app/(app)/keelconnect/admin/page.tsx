@@ -2,10 +2,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { ShieldCheck, ShieldX, Building2 } from "lucide-react";
+import { ShieldCheck, ShieldX, Building2, Power, Trash2 } from "lucide-react";
+import AiEditChat from "@/components/project/AiEditChat";
 
 type ComplianceRow = { id: string; type: string; status: string; scOrganizationId: string; organizationName: string };
-type Organization = { id: string; name: string; orgType: string; verificationStatus: string };
+type Organization = { id: string; name: string; orgType: string; verificationStatus: string; isActive: boolean };
 type Dispute = { id: string; description: string; status: string };
 
 export default function KeelConnectAdminPage() {
@@ -14,6 +15,8 @@ export default function KeelConnectAdminPage() {
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
+  const [confirmDeleteOrgId, setConfirmDeleteOrgId] = useState<string | null>(null);
+  const [orgActionId, setOrgActionId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -49,6 +52,30 @@ export default function KeelConnectAdminPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ verificationStatus: status }),
     });
+    load();
+  }
+
+  async function toggleOrgActive(o: Organization) {
+    setOrgActionId(o.id);
+    await fetch(`/api/keelconnect/organizations/${o.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !o.isActive }),
+    });
+    setOrgActionId(null);
+    load();
+  }
+
+  async function deleteOrg(orgId: string) {
+    setOrgActionId(orgId);
+    const res = await fetch(`/api/keelconnect/organizations/${orgId}`, { method: "DELETE" });
+    setOrgActionId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.error ?? "Could not delete this organization.");
+      return;
+    }
+    setConfirmDeleteOrgId(null);
     load();
   }
 
@@ -116,23 +143,69 @@ export default function KeelConnectAdminPage() {
           <p className="text-sm font-semibold text-slate-900 mb-3">All organizations ({orgs.length})</p>
           <div className="space-y-2">
             {orgs.map((o) => (
-              <div key={o.id} className="flex items-center justify-between text-sm border-b border-slate-50 pb-2 last:border-0">
-                <Link href={`/keelconnect/organizations/${o.id}`} className="flex items-center gap-2 hover:text-accent-600">
-                  <Building2 size={14} className="text-slate-400" /> {o.name}
-                  <span className="text-xs text-slate-400">{o.orgType} · {o.verificationStatus}</span>
-                </Link>
-                {o.verificationStatus !== "VERIFIED" && (
+              <div key={o.id} className={`border-b border-slate-50 pb-2 last:border-0 ${o.isActive ? "" : "opacity-60"}`}>
+                <div className="flex items-center justify-between text-sm">
+                  <Link href={`/keelconnect/organizations/${o.id}`} className="flex items-center gap-2 hover:text-accent-600">
+                    <Building2 size={14} className="text-slate-400" /> {o.name}
+                    <span className="text-xs text-slate-400">
+                      {o.orgType} · {o.verificationStatus}
+                      {!o.isActive && " · Disabled"}
+                    </span>
+                  </Link>
                   <div className="flex gap-1.5">
-                    <button onClick={() => decideOrg(o.id, "VERIFIED")} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
-                      <ShieldCheck size={12} /> Verify org
+                    {o.verificationStatus !== "VERIFIED" && (
+                      <>
+                        <button onClick={() => decideOrg(o.id, "VERIFIED")} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 hover:bg-emerald-100">
+                          <ShieldCheck size={12} /> Verify org
+                        </button>
+                        <button onClick={() => decideOrg(o.id, "REJECTED")} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100">
+                          <ShieldX size={12} /> Reject
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => toggleOrgActive(o)}
+                      disabled={orgActionId === o.id}
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                    >
+                      <Power size={12} /> {o.isActive ? "Disable" : "Enable"}
                     </button>
-                    <button onClick={() => decideOrg(o.id, "REJECTED")} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100">
-                      <ShieldX size={12} /> Reject
-                    </button>
+                    {confirmDeleteOrgId === o.id ? (
+                      <>
+                        <span className="text-xs text-slate-500 self-center">Delete for good?</span>
+                        <button
+                          onClick={() => deleteOrg(o.id)}
+                          disabled={orgActionId === o.id}
+                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50"
+                        >
+                          {orgActionId === o.id ? "Deleting..." : "Yes, delete"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteOrgId(null)}
+                          className="text-xs px-2 py-1 rounded-md text-slate-400 hover:text-slate-600"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteOrgId(o.id)}
+                        className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-rose-50 text-rose-700 hover:bg-rose-100"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    )}
                   </div>
-                )}
+                </div>
+                <AiEditChat
+                  entityType="scOrganizationAdmin"
+                  entityId={o.id}
+                  onApplied={() => load()}
+                  placeholder='e.g. "verify this org" or "disable this vendor"'
+                />
               </div>
             ))}
+            {orgs.length === 0 && <p className="text-xs text-slate-400 py-4 text-center">No organizations yet.</p>}
           </div>
         </div>
       </div>

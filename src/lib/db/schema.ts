@@ -600,6 +600,12 @@ export const organizations = pgTable("organizations", {
   // request.
   deletionRequestedAt: timestamp("deletion_requested_at"),
   deletionRequestedBy: text("deletion_requested_by"), // snapshot of requester's name/email
+
+  // Soft enable/disable (distinct from deletion): an ADMIN can temporarily hide a company --
+  // e.g. a lapsed contract or a company created for testing -- without destroying its
+  // projects/users/history the way DELETE does. Disabled companies still show in the admin
+  // list (so they can be re-enabled) but are excluded from org-picker dropdowns elsewhere.
+  isActive: boolean("is_active").notNull().default(true),
 });
 
 // A department/business unit within one client organization (e.g. "Finance", "Operations").
@@ -1386,6 +1392,11 @@ export const scOrganizations = pgTable("sc_organizations", {
   samlIdpMetadataUrl: text("saml_idp_metadata_url"),
   samlIdpCert: text("saml_idp_cert"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+
+  // Soft enable/disable, same purpose as organizations.isActive above -- a Platform Admin can
+  // hide a Client or Vendor org (pull it out of vendor search/discovery, block new activity)
+  // without hard-deleting it. Disabled orgs still appear in the KeelConnect admin console.
+  isActive: boolean("is_active").notNull().default(true),
 });
 
 // One row per (user, org, role) grant. A user can hold different roles in different
