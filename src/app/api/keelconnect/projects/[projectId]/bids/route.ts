@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScProject, getScMemberships, rolesInOrg, hasPlatformRole, clientOrgIds, vendorOrgIds } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
+import { notifyScOrg } from "@/lib/keelconnect/notify";
 
 // Client (project owner) and Platform see every bid on the project. A Vendor only sees its
 // own org's bid(s) -- competitors' pricing must stay private, which is the whole point of a
@@ -90,6 +91,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
     scOrganizationId: vendorOrgId,
     afterValue: JSON.stringify(bid),
   });
+
+  notifyScOrg(
+    project.clientOrgId,
+    `New bid on "${project.title}"`,
+    `A vendor submitted a bid of ${bid.currency} ${bid.proposedPrice.toLocaleString()} on "${project.title}". Review it in KeelConnect.`,
+    ["CLIENT_ORG_ADMIN", "CLIENT_REQUESTER"]
+  ).catch(() => {});
 
   return NextResponse.json(bid, { status: 201 });
 }

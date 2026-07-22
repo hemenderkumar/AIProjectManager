@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { scPayments, scMilestones } from "@/lib/db/schema";
+import { scPayments, scMilestones, scAgreementParties } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScPayment, requireScPlatform } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
+import { notifyScOrg } from "@/lib/keelconnect/notify";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ paymentId: string }> }) {
   const { paymentId } = await params;
@@ -52,6 +53,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ pa
     beforeValue: JSON.stringify(before),
     afterValue: JSON.stringify(updated),
   });
+
+  if (body.status === "RELEASED" || body.status === "REFUNDED") {
+    const [milestone] = await db.select().from(scMilestones).where(eq(scMilestones.id, before.scMilestoneId));
+    if (milestone) {
+      const parties = await db.select().from(scAgreementParties).where(eq(scAgreementParties.scAgreementId, milestone.scAgreementId));
+      const vendorOrgId = parties.find((p) => p.partyRole === "VENDOR")?.scOrganizationId;
+      const clientOrgId = parties.find((p) => p.partyRole === "CLIENT")?.scOrganizationId;
+      if (body.status === "RELEASED") {
+        notifyScOrg(
+          vendorOrgId,
+          "Payment released",
+          `A payment of ${updated.currency} ${updated.amount.toLocaleString()} has been released to your organization on KeelConnect.`,
+          ["VENDOR_ORG_ADMIN", "VENDOR_CONTRIBUTOR"]
+        ).catch(() => {});
+      } else {
+        notifyScOrg(
+          clientOrgId,
+          "Payment refunded",
+          `A payment of ${updated.currency} ${updated.amount.toLocaleString()} on KeelConnect has been refunded to your organization.`,
+          ["CLIENT_ORG_ADMIN", "CLIENT_FINANCE_APPROVER"]
+        ).catch(() => {});
+      }
+    }
+  }
 
   return NextResponse.json(updated);
 }

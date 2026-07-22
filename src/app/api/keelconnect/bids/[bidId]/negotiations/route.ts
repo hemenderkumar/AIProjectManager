@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScBid, getScMemberships, clientOrgIds, vendorOrgIds, hasPlatformRole } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
+import { notifyScOrg } from "@/lib/keelconnect/notify";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ bidId: string }> }) {
   const { bidId } = await params;
@@ -80,6 +81,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bid
     scOrganizationId: isVendorSide && !isClientSide ? bid.vendorOrgId : project.clientOrgId,
     afterValue: JSON.stringify({ entry, updatedBid }),
   });
+
+  // Notify whichever side didn't just make this move.
+  if (proposedByOrgType === "VENDOR") {
+    notifyScOrg(
+      project.clientOrgId,
+      `Counteroffer on "${project.title}"`,
+      `The vendor countered at ${entry.currency} ${entry.price.toLocaleString()} on "${project.title}". Review it in KeelConnect.`,
+      ["CLIENT_ORG_ADMIN", "CLIENT_REQUESTER"]
+    ).catch(() => {});
+  } else {
+    notifyScOrg(
+      bid.vendorOrgId,
+      `Counteroffer on "${project.title}"`,
+      `The client countered at ${entry.currency} ${entry.price.toLocaleString()} on "${project.title}". Review it in KeelConnect.`,
+      ["VENDOR_ORG_ADMIN", "VENDOR_CONTRIBUTOR"]
+    ).catch(() => {});
+  }
 
   return NextResponse.json({ entry, bid: updatedBid }, { status: 201 });
 }

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScAgreement, getScMemberships, hasPlatformRole } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
+import { notifyScOrg } from "@/lib/keelconnect/notify";
 
 const CONTENT_FIELDS = ["governingLaw", "governingLanguage", "signedDocumentUrl"] as const;
 
@@ -121,6 +122,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ag
     beforeValue: JSON.stringify(before),
     afterValue: JSON.stringify(updated),
   });
+
+  if (body.status) {
+    const otherPartyOrgIds = partyOrgIds.filter((id) => id !== myPartyOrgId);
+    for (const orgId of otherPartyOrgIds) {
+      notifyScOrg(
+        orgId,
+        `Agreement status changed to ${body.status}`,
+        `An agreement you're a party to just moved to ${body.status}. Review it in KeelConnect.`
+      ).catch(() => {});
+    }
+  }
 
   return NextResponse.json({ ...updated, parties: before.parties });
 }

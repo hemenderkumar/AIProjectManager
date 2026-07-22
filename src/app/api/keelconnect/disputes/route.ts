@@ -4,6 +4,7 @@ import { scDisputes } from "@/lib/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScDispute, canAccessScProject, canAccessScAgreement, hasPlatformRole, getScMemberships } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
+import { notifyScPlatform } from "@/lib/keelconnect/notify";
 
 // Platform Compliance Officer/Admin see every dispute (cross-org mediation is their job per
 // the spec); everyone else only sees disputes tied to a project/agreement they can already
@@ -66,6 +67,13 @@ export async function POST(req: NextRequest) {
     entityId: dispute.id,
     afterValue: JSON.stringify(dispute),
   });
+
+  // Dispute mediation is a Platform function (see canAccessScDispute) -- notify Platform
+  // Admins immediately rather than waiting for someone to notice it in the queue.
+  notifyScPlatform(
+    "New KeelConnect dispute raised",
+    `A dispute was raised: "${dispute.description}". Review it in the KeelConnect Admin Console.`
+  ).catch(() => {});
 
   return NextResponse.json(dispute, { status: 201 });
 }

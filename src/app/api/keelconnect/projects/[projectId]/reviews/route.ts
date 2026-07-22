@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScProject, getScMemberships, clientOrgIds, vendorOrgIds } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
+import { notifyScOrg } from "@/lib/keelconnect/notify";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -77,6 +78,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
     scOrganizationId: project.clientOrgId,
     afterValue: JSON.stringify(review),
   });
+
+  if (fromOrgType === "CLIENT") {
+    const [awardedBid] = await db
+      .select()
+      .from(scBids)
+      .where(and(eq(scBids.scProjectId, projectId), eq(scBids.status, "ACCEPTED")));
+    if (awardedBid) {
+      notifyScOrg(
+        awardedBid.vendorOrgId,
+        `New review on "${project.title}"`,
+        `The client left you a ${parsedRating}-star review on "${project.title}".`,
+        ["VENDOR_ORG_ADMIN", "VENDOR_CONTRIBUTOR"]
+      ).catch(() => {});
+    }
+  } else {
+    notifyScOrg(
+      project.clientOrgId,
+      `New review on "${project.title}"`,
+      `The vendor left your organization a ${parsedRating}-star review on "${project.title}".`,
+      ["CLIENT_ORG_ADMIN", "CLIENT_REQUESTER"]
+    ).catch(() => {});
+  }
 
   return NextResponse.json(review, { status: 201 });
 }

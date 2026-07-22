@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canAccessScBid, getScMemberships, clientOrgIds, hasPlatformRole } from "@/lib/keelconnect/access";
 import { generateAgreementsForAcceptedBid } from "@/lib/keelconnect/agreements";
 import { logAudit } from "@/lib/audit";
+import { notifyScOrg } from "@/lib/keelconnect/notify";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ bidId: string }> }) {
   const { bidId } = await params;
@@ -80,6 +81,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ bi
     beforeValue: JSON.stringify(before),
     afterValue: JSON.stringify(updated),
   });
+
+  notifyScOrg(
+    updated.vendorOrgId,
+    body.status === "ACCEPTED" ? `Your bid on "${project.title}" was accepted` : `Your bid on "${project.title}" was not selected`,
+    body.status === "ACCEPTED"
+      ? `Congratulations — your bid of ${updated.currency} ${updated.proposedPrice.toLocaleString()} on "${project.title}" was accepted. The agreement is ready in KeelConnect.`
+      : `Your bid on "${project.title}" was not selected this time.`,
+    ["VENDOR_ORG_ADMIN", "VENDOR_CONTRIBUTOR"]
+  ).catch(() => {});
 
   return NextResponse.json({ ...updated, agreements });
 }

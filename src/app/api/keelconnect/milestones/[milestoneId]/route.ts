@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScAgreement, getScMemberships, hasPlatformRole, isMfaSatisfied } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
+import { notifyScOrg } from "@/lib/keelconnect/notify";
 
 async function requireMilestoneAccess(milestoneId: string) {
   const user = await getCurrentUser();
@@ -84,6 +85,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ mi
     beforeValue: JSON.stringify(before),
     afterValue: JSON.stringify(updated),
   });
+
+  if (patch.status === "APPROVED") {
+    const vendorOrgId = parties.find((p) => p.partyRole === "VENDOR")?.scOrganizationId;
+    notifyScOrg(
+      vendorOrgId,
+      `Milestone approved: ${updated.description ?? "Milestone"}`,
+      `The client approved the milestone "${updated.description ?? ""}" (${updated.currency} ${updated.amount?.toLocaleString?.() ?? updated.amount}). Payment can now be raised in KeelConnect.`,
+      ["VENDOR_ORG_ADMIN", "VENDOR_CONTRIBUTOR"]
+    ).catch(() => {});
+  }
 
   return NextResponse.json(updated);
 }

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { scDisputes } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { scDisputes, scAgreementParties, scProjects, scBids } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessScDispute, requireScPlatform } from "@/lib/keelconnect/access";
 import { logAudit } from "@/lib/audit";
+import { notifyScOrg } from "@/lib/keelconnect/notify";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ disputeId: string }> }) {
   const { disputeId } = await params;
@@ -50,6 +51,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ di
     beforeValue: JSON.stringify(before),
     afterValue: JSON.stringify(updated),
   });
+
+  if (body.status === "RESOLVED" || body.status === "UNDER_REVIEW") {
+    // Notify every org actually party to the underlying agreement or project -- whichever
+    // this dispute is attached to (a pre-award dispute has an agreement of null).
+    const orgIds = new Set<string>();
+    if (updated.scAgreementId) {
+      const parties = await db.select().from(scAgreementParties).where(eq(scAgreementParties.scAgreementId, updated.scAgreementId));
+      parties.forEach((p) => p.scOrganizationId && orgIds.add(p.scOrganizationId));
+    } else if (updated.scProjectId) {
+      const [project] = await db.select().from(scProjects).where(eq(scProjects.id, updated.scProjectId));
+      if (project) {
+        orgIds.add(project.clientOrgId);
+        const [awardedBid] = await db
+          .select()
+          .from(scBids)
+          .where(and(eq(scBids.scProjectId, project.id), eq(scBids.status, "ACCEPTED")));
+        if (awardedBid) orgIds.add(awardedBid.vendorOrgId);
+      }
+    }
+    const subject = body.status === "RESOLVED" ? "Dispute resolved" : "Dispute under review";
+    const text =
+      body.status === "RESOLVED"
+        ? `The dispute has been resolved.${updated.resolutionNotes ? ` Notes: ${updated.resolutionNotes}` : ""}`
+        : "Keel's compliance team has picked up the dispute and is reviewing it.";
+    for (const orgId of orgIds) {
+      notifyScOrg(orgId, subject, text).catch(() => {});
+    }
+  }
 
   return NextResponse.json(updated);
 }
