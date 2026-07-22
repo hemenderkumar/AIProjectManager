@@ -172,9 +172,9 @@ export default async function HomePage() {
                 Open KeelConnect <ArrowRight size={14} />
               </Link>
             ) : (
-              <a href="#features" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-                Explore the marketplace <ArrowRight size={14} />
-              </a>
+              <Link href="/marketplace" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
+                Browse the open marketplace <ArrowRight size={14} />
+              </Link>
             )}
           </div>
         </div>
