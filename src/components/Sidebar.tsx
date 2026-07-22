@@ -100,6 +100,7 @@ export default function Sidebar({
             <NavSection label="Marketplace">
               <NavLink href="/keelconnect/organizations" icon={<Building2 size={17} />} pathname={pathname}>Organizations</NavLink>
               <NavLink href="/keelconnect/projects" icon={<Globe2 size={17} />} pathname={pathname}>Projects</NavLink>
+              <NavLink href="/keelconnect/vendors" icon={<Users size={17} />} pathname={pathname}>Vendor Directory</NavLink>
             </NavSection>
             <NavSection label="My Work">
               <NavLink href="/keelconnect/disputes" icon={<Gavel size={17} />} pathname={pathname}>Disputes</NavLink>

@@ -14,6 +14,14 @@ type Organization = {
   verificationStatus: string;
   ssoEnabled: boolean;
   samlIdpMetadataUrl: string | null;
+  headline: string | null;
+  categories: string[] | null;
+  skills: string[] | null;
+  priceBandMin: number | null;
+  priceBandMax: number | null;
+  portfolioUrl: string | null;
+  logoUrl: string | null;
+  publicSlug: string | null;
 };
 type Member = { id: string; role: string; userId: string; name: string; email: string };
 type ComplianceRecord = { id: string; type: string; status: string; notes: string | null; expiresAt: string | null };
@@ -39,6 +47,17 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
   const [complianceSaving, setComplianceSaving] = useState(false);
   const [ssoMetadataUrl, setSsoMetadataUrl] = useState("");
   const [ssoSaving, setSsoSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    headline: "",
+    categories: "",
+    skills: "",
+    priceBandMin: "",
+    priceBandMax: "",
+    portfolioUrl: "",
+    logoUrl: "",
+  });
+  const [slugInput, setSlugInput] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -52,6 +71,15 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
       const orgData = await orgRes.json();
       setOrg(orgData);
       setSsoMetadataUrl(orgData.samlIdpMetadataUrl ?? "");
+      setProfileForm({
+        headline: orgData.headline ?? "",
+        categories: (orgData.categories ?? []).join(", "),
+        skills: (orgData.skills ?? []).join(", "),
+        priceBandMin: orgData.priceBandMin != null ? String(orgData.priceBandMin) : "",
+        priceBandMax: orgData.priceBandMax != null ? String(orgData.priceBandMax) : "",
+        portfolioUrl: orgData.portfolioUrl ?? "",
+        logoUrl: orgData.logoUrl ?? "",
+      });
     }
     if (membersRes.ok) setMembers(await membersRes.json());
     if (complianceRes.ok) setCompliance(await complianceRes.json());
@@ -116,6 +144,37 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
       body: JSON.stringify(patch),
     });
     setSsoSaving(false);
+    load();
+  }
+
+  async function saveProfile() {
+    setProfileSaving(true);
+    await fetch(`/api/keelconnect/organizations/${orgId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        headline: profileForm.headline || null,
+        categories: profileForm.categories.trim() ? profileForm.categories.split(",").map((s) => s.trim()).filter(Boolean) : null,
+        skills: profileForm.skills.trim() ? profileForm.skills.split(",").map((s) => s.trim()).filter(Boolean) : null,
+        priceBandMin: profileForm.priceBandMin ? Number(profileForm.priceBandMin) : null,
+        priceBandMax: profileForm.priceBandMax ? Number(profileForm.priceBandMax) : null,
+        portfolioUrl: profileForm.portfolioUrl || null,
+        logoUrl: profileForm.logoUrl || null,
+      }),
+    });
+    setProfileSaving(false);
+    load();
+  }
+
+  async function claimSlug() {
+    if (!slugInput.trim()) return;
+    setProfileSaving(true);
+    await fetch(`/api/keelconnect/organizations/${orgId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ publicSlug: slugInput.trim() }),
+    });
+    setProfileSaving(false);
     load();
   }
 
@@ -213,6 +272,102 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
             </div>
           )}
         </div>
+
+        {org.orgType === "VENDOR" && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Public marketplace profile</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Shown to Clients in Vendor discovery search — categories, skills, and price band drive whether you turn up in a filtered search.
+              </p>
+            </div>
+            {isOrgAdmin ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <input
+                    placeholder="Headline (e.g. Senior React & Node.js contractors)"
+                    value={profileForm.headline}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, headline: e.target.value }))}
+                    className={`${inputCls} sm:col-span-2`}
+                  />
+                  <input
+                    placeholder="Categories (comma separated)"
+                    value={profileForm.categories}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, categories: e.target.value }))}
+                    className={inputCls}
+                  />
+                  <input
+                    placeholder="Skills (comma separated)"
+                    value={profileForm.skills}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, skills: e.target.value }))}
+                    className={inputCls}
+                  />
+                  <input
+                    placeholder="Price band min ($/hr)"
+                    type="number"
+                    value={profileForm.priceBandMin}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, priceBandMin: e.target.value }))}
+                    className={inputCls}
+                  />
+                  <input
+                    placeholder="Price band max ($/hr)"
+                    type="number"
+                    value={profileForm.priceBandMax}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, priceBandMax: e.target.value }))}
+                    className={inputCls}
+                  />
+                  <input
+                    placeholder="Portfolio URL"
+                    value={profileForm.portfolioUrl}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, portfolioUrl: e.target.value }))}
+                    className={inputCls}
+                  />
+                  <input
+                    placeholder="Logo URL"
+                    value={profileForm.logoUrl}
+                    onChange={(e) => setProfileForm((f) => ({ ...f, logoUrl: e.target.value }))}
+                    className={inputCls}
+                  />
+                </div>
+                <button
+                  onClick={saveProfile}
+                  disabled={profileSaving}
+                  className="px-3 py-1.5 rounded-lg bg-accent-600 text-white text-xs font-medium hover:bg-accent-700 disabled:opacity-50"
+                >
+                  {profileSaving ? "Saving..." : "Save profile"}
+                </button>
+
+                <div className="pt-3 border-t border-slate-100">
+                  <p className="text-xs font-medium text-slate-700 mb-1">Public profile link</p>
+                  {org.publicSlug ? (
+                    <p className="text-xs text-slate-500">
+                      Live at <span className="font-mono text-accent-700">/marketplace/vendors/{org.publicSlug}</span> — visible to anyone, no login required.
+                    </p>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        placeholder="choose-a-url-slug"
+                        value={slugInput}
+                        onChange={(e) => setSlugInput(e.target.value)}
+                        className={inputCls}
+                      />
+                      <button
+                        onClick={claimSlug}
+                        disabled={profileSaving || !slugInput.trim()}
+                        className="shrink-0 px-3 py-2 rounded-lg bg-accent-50 text-accent-600 text-xs font-medium hover:bg-accent-100 disabled:opacity-50"
+                      >
+                        Publish
+                      </button>
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-400 mt-1">Once set, this can&apos;t be changed — pick something you&apos;re happy sharing publicly.</p>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-slate-400">{org.headline || "No public headline set yet."}</p>
+            )}
+          </div>
+        )}
 
         {isOrgAdmin && (
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">

@@ -1296,6 +1296,19 @@ export const scOrganizations = pgTable("sc_organizations", {
   primaryCountry: text("primary_country"),
   verificationStatus: scVerificationStatusEnum("verification_status").notNull().default("PENDING"),
   verifiedAt: timestamp("verified_at"),
+  // Vendor discovery / public-profile fields (see #255 vendor search+filter and #256 public
+  // vendor profile). Populated by a Vendor org's own ORG_ADMIN via the org PATCH route --
+  // all nullable so every pre-existing org (and every Client org, which never fills these
+  // in) is unaffected. publicSlug backs the logged-out /marketplace/vendors/[slug] route;
+  // it's assigned once (immutable after first set) so a public profile URL never rots.
+  headline: text("headline"),
+  categories: text("categories").array(),
+  skills: text("skills").array(),
+  priceBandMin: real("price_band_min"),
+  priceBandMax: real("price_band_max"),
+  portfolioUrl: text("portfolio_url"),
+  logoUrl: text("logo_url"),
+  publicSlug: text("public_slug").unique(),
   // SSO/SAML, configured per Client org by that org's own Client Org Admin (enterprise
   // Client orgs only -- see lib/keelconnect/saml.ts and the KeelConnect admin console).
   ssoEnabled: boolean("sso_enabled").notNull().default(false),

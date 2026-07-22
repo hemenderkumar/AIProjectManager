@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Globe2, Users, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Globe2, Users, Sparkles, Loader2, Search, X } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 type Organization = { id: string; name: string; orgType: "CLIENT" | "VENDOR" };
@@ -19,6 +19,8 @@ type Project = {
   durationWeeks?: number | null;
   rateType?: string | null;
 };
+
+const emptyFilters = { q: "", category: "", skill: "", minBudget: "", maxBudget: "", requestType: "", engagementModel: "" };
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
@@ -57,6 +59,8 @@ export default function KeelConnectProjectsPage() {
   const [draftNote, setDraftNote] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [filters, setFilters] = useState(emptyFilters);
+  const [showFilters, setShowFilters] = useState(false);
 
   async function draftWithAI() {
     if (!draftNote.trim()) return;
@@ -91,10 +95,19 @@ export default function KeelConnectProjectsPage() {
     }
   }
 
-  async function load() {
+  async function load(f: typeof emptyFilters = filters) {
     setLoading(true);
+    const params = new URLSearchParams();
+    if (f.q.trim()) params.set("q", f.q.trim());
+    if (f.category.trim()) params.set("category", f.category.trim());
+    if (f.skill.trim()) params.set("skill", f.skill.trim());
+    if (f.minBudget) params.set("minBudget", f.minBudget);
+    if (f.maxBudget) params.set("maxBudget", f.maxBudget);
+    if (f.requestType) params.set("requestType", f.requestType);
+    if (f.engagementModel) params.set("engagementModel", f.engagementModel);
+    const qs = params.toString();
     const [projectsRes, orgsRes] = await Promise.all([
-      fetch("/api/keelconnect/projects"),
+      fetch(`/api/keelconnect/projects${qs ? `?${qs}` : ""}`),
       fetch("/api/keelconnect/organizations"),
     ]);
     if (projectsRes.ok) setProjects(await projectsRes.json());
@@ -104,8 +117,20 @@ export default function KeelConnectProjectsPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
+    load(emptyFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function applyFilters() {
+    load(filters);
+  }
+
+  function clearFilters() {
+    setFilters(emptyFilters);
+    load(emptyFilters);
+  }
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   const clientOrgs = orgs.filter((o) => o.orgType === "CLIENT");
 
@@ -276,7 +301,85 @@ export default function KeelConnectProjectsPage() {
         )}
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
-          <p className="text-sm font-semibold text-slate-900 mb-3">Projects</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-slate-900">Projects</p>
+            <button
+              onClick={() => setShowFilters((s) => !s)}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium"
+            >
+              <Search size={13} /> Search & filter{activeFilterCount ? ` (${activeFilterCount})` : ""}
+            </button>
+          </div>
+
+          {showFilters && (
+            <div className="mb-4 p-3 rounded-lg border border-slate-100 bg-slate-50/60 space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <input
+                  placeholder="Search title/description"
+                  value={filters.q}
+                  onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+                  className={inputCls}
+                />
+                <input
+                  placeholder="Category"
+                  value={filters.category}
+                  onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
+                  className={inputCls}
+                />
+                <input
+                  placeholder="Skill"
+                  value={filters.skill}
+                  onChange={(e) => setFilters((f) => ({ ...f, skill: e.target.value }))}
+                  className={inputCls}
+                />
+                <input
+                  placeholder="Min budget"
+                  type="number"
+                  value={filters.minBudget}
+                  onChange={(e) => setFilters((f) => ({ ...f, minBudget: e.target.value }))}
+                  className={inputCls}
+                />
+                <input
+                  placeholder="Max budget"
+                  type="number"
+                  value={filters.maxBudget}
+                  onChange={(e) => setFilters((f) => ({ ...f, maxBudget: e.target.value }))}
+                  className={inputCls}
+                />
+                <select value={filters.requestType} onChange={(e) => setFilters((f) => ({ ...f, requestType: e.target.value }))} className={inputCls}>
+                  <option value="">Any type</option>
+                  <option value="PROJECT">Project</option>
+                  <option value="RESOURCE_REQUEST">Resource request</option>
+                </select>
+                <select
+                  value={filters.engagementModel}
+                  onChange={(e) => setFilters((f) => ({ ...f, engagementModel: e.target.value }))}
+                  className={`${inputCls} sm:col-span-2`}
+                >
+                  <option value="">Any engagement model</option>
+                  <option value="MARKETPLACE">Marketplace</option>
+                  <option value="MEDIATOR">Mediator</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={applyFilters}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-accent-600 text-white font-medium hover:bg-accent-700"
+                >
+                  Apply
+                </button>
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={clearFilters}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium"
+                  >
+                    <X size={13} /> Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <p className="text-xs text-slate-400">Loading...</p>
           ) : projects.length === 0 ? (

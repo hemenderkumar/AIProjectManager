@@ -44,9 +44,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ or
   if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const patch: Record<string, unknown> = {};
-  for (const key of ["name", "companyProfile", "taxId", "primaryCountry", "ssoEnabled", "samlEntityId", "samlIdpMetadataUrl", "samlIdpCert"]) {
+  for (const key of [
+    "name",
+    "companyProfile",
+    "taxId",
+    "primaryCountry",
+    "ssoEnabled",
+    "samlEntityId",
+    "samlIdpMetadataUrl",
+    "samlIdpCert",
+    "headline",
+    "categories",
+    "skills",
+    "priceBandMin",
+    "priceBandMax",
+    "portfolioUrl",
+    "logoUrl",
+  ]) {
     if (key in body) patch[key] = body[key];
   }
+
+  // publicSlug backs the logged-out public vendor profile URL (#256) -- once set it's
+  // immutable (never overwritten by a later PATCH) so an existing public link never breaks.
+  // Vendor orgs only; a Client org has no public profile to slug.
+  if (before.orgType === "VENDOR" && !before.publicSlug && typeof body.publicSlug === "string" && body.publicSlug.trim()) {
+    const slug = body.publicSlug
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
+    if (slug) {
+      const [clash] = await db.select({ id: scOrganizations.id }).from(scOrganizations).where(eq(scOrganizations.publicSlug, slug));
+      patch.publicSlug = clash && clash.id !== orgId ? `${slug}-${orgId.slice(-5)}` : slug;
+    }
+  }
+
   if (wantsVerificationChange) {
     if (!VERIFICATION_STATUSES.includes(body.verificationStatus)) {
       return NextResponse.json({ error: `verificationStatus must be one of: ${VERIFICATION_STATUSES.join(", ")}` }, { status: 400 });
