@@ -6,11 +6,13 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge, ExecutionSourceBadge } from "@/components/badges";
 import { formatDate, formatDateInput } from "@/lib/format";
-import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid, List, Globe2 } from "lucide-react";
+import { Plus, Sparkles, Loader2, Bot, Mail, Check, X, Clock, Trash2, LayoutGrid, List, Globe2, GanttChartSquare } from "lucide-react";
 import SprintBoard from "./SprintBoard";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import AiEditChat from "./AiEditChat";
 import TaskComments from "./TaskComments";
+import TaskDependencies from "./TaskDependencies";
+import TimelineView from "./TimelineView";
 import PostToKeelConnectModal from "./PostToKeelConnectModal";
 
 type Resource = { id: string; name: string };
@@ -168,7 +170,7 @@ export default function TasksTab({
 
   const [methodology, setMethodology] = useState<string>(detail.project.executionMethodology ?? "WATERFALL");
   const [savingMethodology, setSavingMethodology] = useState(false);
-  const [taskView, setTaskView] = useState<"list" | "phase">("list");
+  const [taskView, setTaskView] = useState<"list" | "phase" | "timeline">("list");
 
   const resourceName = (id: string | null) => allResources.find((r) => r.id === id)?.name ?? "Unassigned";
   const typeConfig = PROJECT_TYPES[projectType] ?? PROJECT_TYPES.TECHNOLOGY;
@@ -944,6 +946,12 @@ export default function TasksTab({
               >
                 <LayoutGrid size={13} /> By Phase
               </button>
+              <button
+                onClick={() => setTaskView("timeline")}
+                className={`flex items-center gap-1 text-xs px-2 py-1.5 border-l border-slate-200 ${taskView === "timeline" ? "bg-slate-100 text-slate-800" : "text-slate-400 hover:text-slate-600"}`}
+              >
+                <GanttChartSquare size={13} /> Timeline
+              </button>
             </div>
             <button
               onClick={() => setShowForm((s) => !s)}
@@ -1007,6 +1015,12 @@ export default function TasksTab({
               </Field>
             </div>
             <PrimaryButton onClick={addTask} disabled={saving}>{saving ? "Adding..." : "Add Task"}</PrimaryButton>
+          </div>
+        )}
+
+        {taskView === "timeline" && (
+          <div className="mb-2">
+            <TimelineView projectId={detail.project.id} tasks={regularTasks} />
           </div>
         )}
 
@@ -1077,6 +1091,11 @@ export default function TasksTab({
                           placeholder='e.g. "push this out a week and mark it high priority"'
                         />
                         <TaskComments projectId={detail.project.id} taskId={t.id} />
+                        <TaskDependencies
+                          projectId={detail.project.id}
+                          taskId={t.id}
+                          otherTasks={detail.tasks.map((ot) => ({ id: ot.id, title: ot.title }))}
+                        />
                       </div>
                     </td>
                     <td className="py-2.5 text-slate-600">{resourceName(t.assigneeId)}</td>

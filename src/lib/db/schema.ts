@@ -455,6 +455,28 @@ export const tasks = pgTable("tasks", {
   scProjectId: text("sc_project_id").references((): AnyPgColumn => scProjects.id, { onDelete: "set null" }),
 });
 
+// Task dependencies (#264): a directed "taskId depends on dependsOnTaskId" edge -- the Gantt/
+// timeline view and the per-task Dependencies panel both read this the same way ("blocked by").
+// Cycle prevention and project-scoping both happen at the API layer (see
+// /api/projects/[id]/tasks/[taskId]/dependencies), not here -- a DB constraint can't express
+// "no cycles across this graph."
+export const taskDependencies = pgTable(
+  "task_dependencies",
+  {
+    id: cuid(),
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    dependsOnTaskId: text("depends_on_task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("task_dependency_uq").on(t.taskId, t.dependsOnTaskId),
+  })
+);
+
 // In-context task comments (#262). Deliberately plain (no threading/replies) -- a flat,
 // chronological discussion per task, the same shape as most PM tools' task comment feeds.
 // @mentions are parsed out of `body` at write time (see the comments POST route) against
