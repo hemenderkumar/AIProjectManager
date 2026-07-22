@@ -353,6 +353,14 @@ export const projects = pgTable("projects", {
   highLevelRequirements: text("high_level_requirements"),
   architectureDiagram: text("architecture_diagram"), // Mermaid diagram syntax
   internalSupportNeeds: text("internal_support_needs"),
+
+  // Integrations (#263). Both opt-in and off by default; either can be cleared independently
+  // of the other. slackWebhookUrl is a plain incoming-webhook URL (no OAuth flow -- the
+  // fastest thing that actually posts messages); icsToken is the opaque lookup key for the
+  // public read-only calendar feed (see /calendar/[token]/feed.ics), regenerable/revocable
+  // without touching the Slack setting.
+  slackWebhookUrl: text("slack_webhook_url"),
+  icsToken: text("ics_token").unique(),
 });
 
 export const resources = pgTable("resources", {

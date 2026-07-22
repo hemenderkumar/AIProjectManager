@@ -5,7 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
-import { Loader2, Trash2, Boxes } from "lucide-react";
+import { Loader2, Trash2, Boxes, Slack, Calendar, Copy, Check } from "lucide-react";
 import CountryStateFields from "@/components/CountryStateFields";
 import { SUB_STAGE_LABELS } from "@/lib/ideationGates";
 
@@ -76,6 +76,73 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
     } finally {
       setFindingSimilar(false);
     }
+  }
+
+  // Integrations (#263): Slack incoming-webhook + a revocable calendar (.ics) feed token.
+  // Both PM-tier+ settings, mirroring the gate on the PATCH route / dedicated endpoints below.
+  const [slackUrl, setSlackUrl] = useState(p.slackWebhookUrl ?? "");
+  const [savingSlack, setSavingSlack] = useState(false);
+  const [testingSlack, setTestingSlack] = useState(false);
+  const [slackTestResult, setSlackTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [icsToken, setIcsToken] = useState<string | null>(p.icsToken ?? null);
+  const [feedBusy, setFeedBusy] = useState(false);
+  const [copiedFeedUrl, setCopiedFeedUrl] = useState(false);
+
+  async function saveSlackWebhook() {
+    setSavingSlack(true);
+    setSlackTestResult(null);
+    await fetch(`/api/projects/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slackWebhookUrl: slackUrl.trim() || null }),
+    });
+    setSavingSlack(false);
+    router.refresh();
+  }
+
+  async function sendSlackTest() {
+    setTestingSlack(true);
+    setSlackTestResult(null);
+    try {
+      const res = await fetch(`/api/projects/${p.id}/slack-test`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      setSlackTestResult({
+        ok: res.ok,
+        message: res.ok ? "Test message sent — check the channel." : data?.error ?? "Couldn't send a test message.",
+      });
+    } finally {
+      setTestingSlack(false);
+    }
+  }
+
+  async function generateFeedLink() {
+    setFeedBusy(true);
+    try {
+      const res = await fetch(`/api/projects/${p.id}/calendar-token`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setIcsToken(data.icsToken);
+    } finally {
+      setFeedBusy(false);
+    }
+  }
+
+  async function revokeFeedLink() {
+    setFeedBusy(true);
+    try {
+      await fetch(`/api/projects/${p.id}/calendar-token`, { method: "DELETE" });
+      setIcsToken(null);
+    } finally {
+      setFeedBusy(false);
+    }
+  }
+
+  function copyFeedUrl() {
+    if (!icsToken || typeof window === "undefined") return;
+    const url = `${window.location.origin}/calendar/${icsToken}/feed.ics`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedFeedUrl(true);
+      setTimeout(() => setCopiedFeedUrl(false), 2000);
+    });
   }
 
   const [deleting, setDeleting] = useState(false);
@@ -322,6 +389,89 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
           </div>
         )}
       </Card>
+
+      {canDelete && (
+        <Card title="Integrations">
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5 mb-1">
+                <Slack size={14} /> Slack notifications
+              </p>
+              <p className="text-xs text-slate-400 mb-2">
+                Paste a Slack incoming-webhook URL to post new tasks, status changes, and task comments to a channel.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  value={slackUrl}
+                  onChange={(e) => setSlackUrl(e.target.value)}
+                  placeholder="https://hooks.slack.com/services/..."
+                  className={inputCls}
+                />
+                <button
+                  onClick={saveSlackWebhook}
+                  disabled={savingSlack}
+                  className="text-xs px-3 py-2 rounded-lg bg-accent-600 text-white disabled:opacity-50 font-medium shrink-0"
+                >
+                  {savingSlack ? "Saving..." : "Save"}
+                </button>
+                {p.slackWebhookUrl && (
+                  <button
+                    onClick={sendSlackTest}
+                    disabled={testingSlack}
+                    className="text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 font-medium shrink-0"
+                  >
+                    {testingSlack ? "Sending..." : "Send test"}
+                  </button>
+                )}
+              </div>
+              {slackTestResult && (
+                <p className={`text-xs mt-1.5 ${slackTestResult.ok ? "text-emerald-600" : "text-rose-600"}`}>
+                  {slackTestResult.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5 mb-1">
+                <Calendar size={14} /> Calendar feed
+              </p>
+              <p className="text-xs text-slate-400 mb-2">
+                A read-only .ics link with this project&apos;s task due dates — subscribe to it from Google Calendar,
+                Outlook, or Apple Calendar.
+              </p>
+              {icsToken ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-slate-500 truncate">
+                    {typeof window !== "undefined" ? `${window.location.origin}/calendar/${icsToken}/feed.ics` : `/calendar/${icsToken}/feed.ics`}
+                  </div>
+                  <button
+                    onClick={copyFeedUrl}
+                    className="flex items-center gap-1 text-xs px-2.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium shrink-0"
+                  >
+                    {copiedFeedUrl ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedFeedUrl ? "Copied" : "Copy"}
+                  </button>
+                  <button
+                    onClick={revokeFeedLink}
+                    disabled={feedBusy}
+                    className="text-xs px-2.5 py-2 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-50 font-medium shrink-0"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={generateFeedLink}
+                  disabled={feedBusy}
+                  className="text-xs px-3 py-2 rounded-lg bg-accent-600 text-white disabled:opacity-50 font-medium"
+                >
+                  {feedBusy ? "Generating..." : "Get calendar link"}
+                </button>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       {canDelete && (
         <Card title="Danger Zone">

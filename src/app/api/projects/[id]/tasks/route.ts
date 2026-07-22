@@ -4,6 +4,7 @@ import { tasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { syncAllocationsFromEffort } from "@/lib/allocations";
+import { notifySlackForProject } from "@/lib/slack";
 
 export async function GET(
   _req: NextRequest,
@@ -46,6 +47,8 @@ export async function POST(
   if (created.assigneeId) {
     await syncAllocationsFromEffort(id);
   }
+
+  notifySlackForProject(id, `🆕 New task created: *${created.title}*`).catch(() => {});
 
   return NextResponse.json(created, { status: 201 });
 }

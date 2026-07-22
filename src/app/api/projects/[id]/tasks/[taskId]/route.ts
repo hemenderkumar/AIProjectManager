@@ -4,6 +4,7 @@ import { tasks } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { syncAllocationsFromEffort } from "@/lib/allocations";
+import { notifySlackForProject } from "@/lib/slack";
 
 export async function PATCH(
   req: NextRequest,
@@ -39,6 +40,13 @@ export async function PATCH(
   // like for the resources involved — keep allocation % tied to actual assigned effort.
   if ("assigneeId" in body || "estimateHours" in body) {
     await syncAllocationsFromEffort(id);
+  }
+
+  // Status changes are the one task edit worth pinging Slack about by default -- everything
+  // else (title tweaks, re-estimates) is too noisy for a channel to be useful.
+  if (body.status && body.status !== "TODO") {
+    const emoji = body.status === "DONE" ? "✅" : body.status === "BLOCKED" ? "🚧" : "▶️";
+    notifySlackForProject(id, `${emoji} *${updated.title}* is now ${updated.status.replace("_", " ")}`).catch(() => {});
   }
 
   return NextResponse.json(updated);

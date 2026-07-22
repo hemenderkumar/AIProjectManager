@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { notify, findMentionedMembers } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
+import { notifySlackForProject } from "@/lib/slack";
 
 // In-context task comments (#262). A flat, chronological feed per task -- see the
 // task_comments schema comment for why there's no threading. Any project VIEWER+ can read;
@@ -75,6 +76,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       sendEmail(assignee.email, `New comment on "${task.title}"`, `${user.name} commented: ${text}\n\n${appUrl}${link}`).catch(() => false);
     }
   }
+
+  notifySlackForProject(projectId, `💬 ${user.name} commented on *${task.title}*: ${text}`).catch(() => {});
 
   return NextResponse.json({ ...comment, authorName: user.name }, { status: 201 });
 }

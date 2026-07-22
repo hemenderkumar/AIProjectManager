@@ -123,6 +123,16 @@ export async function PATCH(
     }
   }
 
+  // Slack webhook is deliberately not in the general `allowed` list -- it's an integration
+  // credential, not routine field editing, so it needs PM tier or above regardless of what
+  // role can otherwise edit this project (same bar as the stage transitions above).
+  if ("slackWebhookUrl" in body) {
+    if (!roleAtLeast(_authUser.role, "PM")) {
+      return NextResponse.json({ error: "Only a PM or above can configure this project's Slack integration." }, { status: 403 });
+    }
+    update.slackWebhookUrl = body.slackWebhookUrl || null;
+  }
+
   // Mapping a project to a company (or moving it between companies / back to internal-only)
   // is deliberately not in the general `allowed` list — it's a tenancy decision, not routine
   // field editing, so only a Keel administrator can make it, regardless of what role the
@@ -191,6 +201,12 @@ export async function PATCH(
     await logAudit({
       actor: _authUser, action: "architecture.approved", entityType: "project", entityId: id,
       organizationId: updated.organizationId, detail: `Architecture approved by ${updated.architectureApprovedBy ?? _authUser.name} for "${updated.name}".`,
+    });
+  }
+  if ("slackWebhookUrl" in body) {
+    await logAudit({
+      actor: _authUser, action: "project.slack_integration_updated", entityType: "project", entityId: id,
+      organizationId: updated.organizationId, detail: `${_authUser.name} ${body.slackWebhookUrl ? "configured" : "removed"} the Slack integration for "${updated.name}".`,
     });
   }
 
