@@ -537,6 +537,7 @@ export default function KeelConnectOrgDetailPage({ params }: { params: Promise<{
                   <div>
                     <p className="font-medium text-slate-800">{c.type.replace(/_/g, " ")}</p>
                     <p className="text-xs text-slate-400">{c.status}</p>
+                    {c.notes && <p className="text-xs text-slate-400 italic max-w-md">{c.notes}</p>}
                   </div>
                 </div>
                 {isPlatformCompliance && c.status === "PENDING" && (

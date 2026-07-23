@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { scPayments, scOrganizations } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getStripeClient, isStripeConfigured } from "@/lib/keelconnect/stripe";
+import { autoVerifyComplianceFromStripe } from "@/lib/keelconnect/complianceAutoVerify";
 import { logAudit } from "@/lib/audit";
 import Stripe from "stripe";
 
@@ -10,9 +11,10 @@ import Stripe from "stripe";
 // STRIPE_WEBHOOK_SECRET (standard Stripe pattern). Handles the two events this integration
 // actually needs: checkout.session.completed (a Client's payment cleared -> mark the
 // matching sc_payment HELD, escrowed on the Platform's balance) and account.updated (a
-// Vendor's Connect onboarding status changed -> refresh their charges/payouts-enabled
-// flags). Every other event type is accepted and ignored, not rejected, per Stripe's own
-// guidance for forward-compatibility.
+// Vendor's Connect onboarding status changed -> refresh their charges/payouts-enabled flags,
+// and once both are true, auto-verify the compliance records Stripe's own underwriting
+// already covers -- see lib/keelconnect/complianceAutoVerify.ts). Every other event type is
+// accepted and ignored, not rejected, per Stripe's own guidance for forward-compatibility.
 export async function POST(req: NextRequest) {
   if (!isStripeConfigured() || !process.env.STRIPE_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Stripe webhook is not configured on this deployment" }, { status: 501 });
@@ -59,10 +61,21 @@ export async function POST(req: NextRequest) {
     const account = event.data.object as Stripe.Account;
     const [org] = await db.select().from(scOrganizations).where(eq(scOrganizations.stripeAccountId, account.id));
     if (org) {
+      const chargesEnabled = !!account.charges_enabled;
+      const payoutsEnabled = !!account.payouts_enabled;
       await db
         .update(scOrganizations)
-        .set({ stripeChargesEnabled: !!account.charges_enabled, stripePayoutsEnabled: !!account.payouts_enabled })
+        .set({ stripeChargesEnabled: chargesEnabled, stripePayoutsEnabled: payoutsEnabled })
         .where(eq(scOrganizations.id, org.id));
+
+      // Stripe only reaches this fully-enabled state after completing its own business
+      // verification, identity, and sanctions/risk screening -- treat that as satisfying
+      // Keel's own KYB/KYC/Tax Form/Sanctions Screening compliance records (never the org's
+      // overall "Verified" badge, which stays a human compliance-officer decision). See
+      // lib/keelconnect/complianceAutoVerify.ts for exactly what this does and doesn't touch.
+      if (chargesEnabled && payoutsEnabled) {
+        await autoVerifyComplianceFromStripe(org.id);
+      }
     }
   }
 
