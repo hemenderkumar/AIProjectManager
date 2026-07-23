@@ -3,7 +3,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  Home,
   LayoutDashboard,
   FolderKanban,
   Sparkles,
@@ -65,10 +64,11 @@ export default function Sidebar({
   const pathname = usePathname();
   // Two separate product tracks sharing one login: "Keel Deliver" (the original PM/delivery
   // tool -- everything under the routes below) and "KeelConnect" (the B2B marketplace,
-  // everything under /keelconnect/*). Deliberately no direct switcher between the two --
-  // /home is the only place that links into both, so each track's nav only ever shows that
-  // track's own features. This doesn't gate access itself -- that's enforced server-side by
-  // each track's own API routes.
+  // everything under /keelconnect/*). Deliberately no direct switcher between the two, and no
+  // generic "Home" nav item either -- /home (the combined two-lane hub) is only ever reached
+  // via the logo up top, so each track's nav only ever shows that track's own features plus,
+  // for KeelConnect, its own "KeelConnect Home" landing link. This doesn't gate access itself
+  // -- that's enforced server-side by each track's own API routes.
   const onKeelConnect = pathname.startsWith("/keelconnect");
 
   return (
@@ -95,7 +95,6 @@ export default function Sidebar({
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         {onKeelConnect ? (
           <>
-            <NavLink href="/home" icon={<Home size={17} />} pathname={pathname}>Home</NavLink>
             <NavLink href="/keelconnect" icon={<Compass size={17} />} pathname={pathname}>KeelConnect Home</NavLink>
             <NavSection label="Marketplace">
               <NavLink href="/keelconnect/organizations" icon={<Building2 size={17} />} pathname={pathname}>Organizations</NavLink>
@@ -120,7 +119,6 @@ export default function Sidebar({
           </>
         ) : (
           <>
-            <NavLink href="/home" icon={<Home size={17} />} pathname={pathname}>Home</NavLink>
             <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
             <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Keel Works</NavLink>
 

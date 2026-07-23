@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
@@ -44,10 +45,12 @@ export default function AppShell({
         >
           <Menu size={22} />
         </button>
-        <Image src="/keel-mark.svg" alt="Keel" width={22} height={22} />
-        <p className="text-sm font-semibold text-slate-900">
-          Keel{pathname.startsWith("/keelconnect") ? "Connect" : ""}
-        </p>
+        <Link href="/home" className="flex items-center gap-2.5">
+          <Image src="/keel-mark.svg" alt="Keel" width={22} height={22} />
+          <p className="text-sm font-semibold text-slate-900">
+            Keel{pathname.startsWith("/keelconnect") ? "Connect" : ""}
+          </p>
+        </Link>
       </div>
 
       {open && (
