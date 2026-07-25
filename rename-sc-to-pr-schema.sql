@@ -63,5 +63,6 @@ ALTER TABLE pr_disputes RENAME COLUMN sc_agreement_id TO pr_agreement_id;
 ALTER TABLE pr_agreement_change_requests RENAME COLUMN sc_agreement_id TO pr_agreement_id;
 ALTER TABLE pr_reviews RENAME COLUMN sc_project_id TO pr_project_id;
 
--- 4. Constraint (unique index on pr_org_members, was sc_org_member_uq)
-ALTER TABLE IF EXISTS pr_org_members RENAME CONSTRAINT sc_org_member_uq TO pr_org_member_uq;
+-- 4. Index (uniqueIndex() on pr_org_members is a plain Postgres index, not a table
+-- constraint -- ALTER TABLE ... RENAME CONSTRAINT does not apply to it).
+ALTER INDEX IF EXISTS sc_org_member_uq RENAME TO pr_org_member_uq;
