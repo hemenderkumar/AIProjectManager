@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { scProjects, scOrganizations } from "@/lib/db/schema";
+import { prProjects, prOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // Public posting detail (#256). Same OPEN-only rule as the list route -- a project that's
@@ -10,27 +10,27 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pro
   const { projectId } = await params;
   const [row] = await db
     .select({
-      id: scProjects.id,
-      title: scProjects.title,
-      description: scProjects.description,
-      category: scProjects.category,
-      targetBudget: scProjects.targetBudget,
-      currency: scProjects.currency,
-      engagementModel: scProjects.engagementModel,
-      locationRequirement: scProjects.locationRequirement,
-      requestType: scProjects.requestType,
-      skillsRequired: scProjects.skillsRequired,
-      durationWeeks: scProjects.durationWeeks,
-      rateType: scProjects.rateType,
-      deadline: scProjects.deadline,
-      createdAt: scProjects.createdAt,
-      status: scProjects.status,
-      clientOrgName: scOrganizations.name,
-      clientOrgCountry: scOrganizations.primaryCountry,
+      id: prProjects.id,
+      title: prProjects.title,
+      description: prProjects.description,
+      category: prProjects.category,
+      targetBudget: prProjects.targetBudget,
+      currency: prProjects.currency,
+      engagementModel: prProjects.engagementModel,
+      locationRequirement: prProjects.locationRequirement,
+      requestType: prProjects.requestType,
+      skillsRequired: prProjects.skillsRequired,
+      durationWeeks: prProjects.durationWeeks,
+      rateType: prProjects.rateType,
+      deadline: prProjects.deadline,
+      createdAt: prProjects.createdAt,
+      status: prProjects.status,
+      clientOrgName: prOrganizations.name,
+      clientOrgCountry: prOrganizations.primaryCountry,
     })
-    .from(scProjects)
-    .innerJoin(scOrganizations, eq(scProjects.clientOrgId, scOrganizations.id))
-    .where(eq(scProjects.id, projectId));
+    .from(prProjects)
+    .innerJoin(prOrganizations, eq(prProjects.clientOrgId, prOrganizations.id))
+    .where(eq(prProjects.id, projectId));
 
   if (!row || row.status !== "OPEN") return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(row);

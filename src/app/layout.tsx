@@ -4,8 +4,8 @@ import PwaRegister from "@/components/PwaRegister";
 import { getCurrentTheme } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Keel",
-  description: "Keel — from idea to a priced, staffed delivery plan, in one place",
+  title: "Executa",
+  description: "Executa — from idea to a priced, staffed delivery plan, in one place",
   manifest: "/manifest.json",
   icons: {
     icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Keel",
+    title: "Executa",
   },
 };
 

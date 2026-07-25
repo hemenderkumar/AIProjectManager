@@ -3,28 +3,28 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { scOrganizations, scReviews, scProjects, scBids } from "@/lib/db/schema";
+import { prOrganizations, prReviews, prProjects, prBids } from "@/lib/db/schema";
 import { eq, and, avg, count } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { ShieldCheck, Star, ExternalLink, MapPin } from "lucide-react";
 
 async function loadVendor(slug: string) {
-  const [org] = await db.select().from(scOrganizations).where(eq(scOrganizations.publicSlug, slug));
+  const [org] = await db.select().from(prOrganizations).where(eq(prOrganizations.publicSlug, slug));
   if (!org || org.orgType !== "VENDOR") return null;
 
   const [ratingRow] = await db
-    .select({ avgRating: avg(scReviews.rating), reviewCount: count(scReviews.id) })
-    .from(scReviews)
-    .innerJoin(scProjects, eq(scReviews.scProjectId, scProjects.id))
-    .innerJoin(scBids, and(eq(scBids.scProjectId, scProjects.id), eq(scBids.vendorOrgId, org.id), eq(scBids.status, "ACCEPTED")))
-    .where(eq(scReviews.fromOrgType, "CLIENT"));
+    .select({ avgRating: avg(prReviews.rating), reviewCount: count(prReviews.id) })
+    .from(prReviews)
+    .innerJoin(prProjects, eq(prReviews.prProjectId, prProjects.id))
+    .innerJoin(prBids, and(eq(prBids.prProjectId, prProjects.id), eq(prBids.vendorOrgId, org.id), eq(prBids.status, "ACCEPTED")))
+    .where(eq(prReviews.fromOrgType, "CLIENT"));
 
   const completed = await db
-    .select({ id: scBids.id })
-    .from(scBids)
-    .innerJoin(scProjects, and(eq(scBids.scProjectId, scProjects.id), eq(scProjects.status, "COMPLETED")))
-    .where(and(eq(scBids.vendorOrgId, org.id), eq(scBids.status, "ACCEPTED")));
+    .select({ id: prBids.id })
+    .from(prBids)
+    .innerJoin(prProjects, and(eq(prBids.prProjectId, prProjects.id), eq(prProjects.status, "COMPLETED")))
+    .where(and(eq(prBids.vendorOrgId, org.id), eq(prBids.status, "ACCEPTED")));
 
   return {
     org,
@@ -36,10 +36,10 @@ async function loadVendor(slug: string) {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const data = await loadVendor(slug);
-  if (!data) return { title: "Vendor not found | KeelConnect" };
+  if (!data) return { title: "Vendor not found | ProjectRequesta" };
   return {
-    title: `${data.org.name} — Vendor Profile | KeelConnect`,
-    description: data.org.headline || `${data.org.name} is a vendor organization on the KeelConnect marketplace.`,
+    title: `${data.org.name} — Vendor Profile | ProjectRequesta`,
+    description: data.org.headline || `${data.org.name} is a vendor organization on the ProjectRequesta marketplace.`,
   };
 }
 
@@ -57,8 +57,8 @@ export default async function PublicVendorProfilePage({ params }: { params: Prom
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/marketplace" className="flex items-center gap-2.5">
-            <Image src="/keel-mark.svg" alt="Keel" width={24} height={24} />
-            <span className="text-sm font-semibold text-slate-900">KeelConnect Marketplace</span>
+            <Image src="/executa-mark.svg" alt="Executa" width={24} height={24} />
+            <span className="text-sm font-semibold text-slate-900">ProjectRequesta Marketplace</span>
           </Link>
           <Link href="/marketplace/vendors" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
             Vendor Directory
@@ -147,11 +147,11 @@ export default async function PublicVendorProfilePage({ params }: { params: Prom
         <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-5">
           <p className="text-sm font-semibold text-slate-900 mb-1">Want to hire {org.name}?</p>
           <p className="text-xs text-slate-500 mb-3">
-            Post a project or resource request on KeelConnect, and invite this vendor — or let the open
+            Post a project or resource request on ProjectRequesta, and invite this vendor — or let the open
             marketplace bring their bid to you.
           </p>
           <Link
-            href={user ? "/keelconnect/projects" : "/register"}
+            href={user ? "/projectrequesta/projects" : "/register"}
             className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700 transition-colors"
           >
             {user ? "Post a project" : "Sign up to post a project"}

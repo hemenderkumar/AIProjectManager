@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { scOrganizations, scReviews, scProjects, scBids } from "@/lib/db/schema";
+import { prOrganizations, prReviews, prProjects, prBids } from "@/lib/db/schema";
 import { eq, and, avg, count, isNotNull } from "drizzle-orm";
 
 // Logged-out, SEO-indexable vendor search (#256) -- the public counterpart to
-// /api/keelconnect/vendors (#255). Deliberately narrower on two axes: (1) only vendors that
-// have claimed a publicSlug are returned (an org can be a full KeelConnect participant
+// /api/projectrequesta/vendors (#255). Deliberately narrower on two axes: (1) only vendors that
+// have claimed a publicSlug are returned (an org can be a full ProjectRequesta participant
 // without ever opting into a public listing), and (2) the response shape is a hand-picked
 // public-safe subset -- no taxId, no SSO/SAML config, no internal id-only fields beyond what
 // the public profile page itself needs to link to (the slug, not the id).
@@ -17,16 +17,16 @@ export async function GET(req: NextRequest) {
 
   const vendors = await db
     .select()
-    .from(scOrganizations)
-    .where(and(eq(scOrganizations.orgType, "VENDOR"), isNotNull(scOrganizations.publicSlug), eq(scOrganizations.isActive, true)));
+    .from(prOrganizations)
+    .where(and(eq(prOrganizations.orgType, "VENDOR"), isNotNull(prOrganizations.publicSlug), eq(prOrganizations.isActive, true)));
 
   const ratingRows = await db
-    .select({ vendorOrgId: scBids.vendorOrgId, avgRating: avg(scReviews.rating), reviewCount: count(scReviews.id) })
-    .from(scReviews)
-    .innerJoin(scProjects, eq(scReviews.scProjectId, scProjects.id))
-    .innerJoin(scBids, and(eq(scBids.scProjectId, scProjects.id), eq(scBids.status, "ACCEPTED")))
-    .where(eq(scReviews.fromOrgType, "CLIENT"))
-    .groupBy(scBids.vendorOrgId);
+    .select({ vendorOrgId: prBids.vendorOrgId, avgRating: avg(prReviews.rating), reviewCount: count(prReviews.id) })
+    .from(prReviews)
+    .innerJoin(prProjects, eq(prReviews.prProjectId, prProjects.id))
+    .innerJoin(prBids, and(eq(prBids.prProjectId, prProjects.id), eq(prBids.status, "ACCEPTED")))
+    .where(eq(prReviews.fromOrgType, "CLIENT"))
+    .groupBy(prBids.vendorOrgId);
   const ratingByOrg = new Map(ratingRows.map((r) => [r.vendorOrgId, { avgRating: Number(r.avgRating), reviewCount: Number(r.reviewCount) }]));
 
   const results = vendors

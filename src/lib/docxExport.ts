@@ -37,7 +37,7 @@ export type DiagramImage = { svgBase64: string; pngBase64: string; width: number
 // couldn't carry — used to build the cover page, running header/footer, and revision-history
 // page. `companyName` is the whole branding decision: set (the project has a client company on
 // it) means the document is produced FOR that company and leads with their name; null (an
-// internal-only project) means it leads with Keel's own name instead. Nothing here requires a
+// internal-only project) means it leads with Executa's own name instead. Nothing here requires a
 // schema change — every field is already on the project/deliverable/sow rows.
 export type DocMeta = {
   documentType: string; // e.g. "Deliverable — Detailed Design" or "Statement of Work"
@@ -56,7 +56,7 @@ function fmtDate(d: Date | null | undefined): string {
 }
 
 function brandName(meta: DocMeta): string {
-  return meta.companyName?.trim() || "Keel";
+  return meta.companyName?.trim() || "Executa";
 }
 
 function diagramParagraph(diagram: DiagramImage): Paragraph {
@@ -97,7 +97,7 @@ function pageBreak(): Paragraph {
 
 // The cover page — its own un-numbered, header/footer-free section so it reads as a title
 // page rather than "page 1" of the running document. Leads with the company's name when the
-// project has one, otherwise Keel's; either way a small "Prepared with Keel" credit keeps the
+// project has one, otherwise Executa's; either way a small "Prepared with Executa" credit keeps the
 // tool attributed without competing with whichever name is the actual headline.
 function coverPageChildren(title: string, subtitle: string, meta: DocMeta): Paragraph[] {
   const brand = brandName(meta);
@@ -143,7 +143,7 @@ function coverPageChildren(title: string, subtitle: string, meta: DocMeta): Para
       new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 1000 },
-        children: [new TextRun({ text: "Prepared with Keel", color: "94A3B8", size: 16 })],
+        children: [new TextRun({ text: "Prepared with Executa", color: "94A3B8", size: 16 })],
       })
     );
   }

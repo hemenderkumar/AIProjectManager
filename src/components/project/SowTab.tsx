@@ -251,7 +251,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
       >
         <p className="text-xs text-slate-400 mb-3">
           The formal contract between your company and a vendor for this project — scope, deliverables,
-          timeline, funding, risks, and issues. Only a company owner (or Keel admin) can create or edit one.
+          timeline, funding, risks, and issues. Only a company owner (or Executa admin) can create or edit one.
         </p>
 
         {showForm && canManage && (

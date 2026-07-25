@@ -1,4 +1,4 @@
-import { BRAND, createKeelPdf, finalizeKeelPdf, coverMasthead, sectionTitle } from "./brand";
+import { BRAND, createExecutaPdf, finalizeExecutaPdf, coverMasthead, sectionTitle } from "./brand";
 import { splitSections } from "./reportExport";
 import type { RfpRow } from "./rfp";
 
@@ -10,7 +10,7 @@ import type { RfpRow } from "./rfp";
 export function generateRfpPdf(rfp: RfpRow, projectName: string | null): Promise<Buffer> {
   const generatedAt = new Date();
   return new Promise((resolve, reject) => {
-    const doc = createKeelPdf({ margin: 56 });
+    const doc = createExecutaPdf({ margin: 56 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -50,7 +50,7 @@ export function generateRfpPdf(rfp: RfpRow, projectName: string | null): Promise
       }
     }
 
-    finalizeKeelPdf(doc, generatedAt);
+    finalizeExecutaPdf(doc, generatedAt);
     doc.end();
   });
 }

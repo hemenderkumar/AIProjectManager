@@ -18,7 +18,7 @@ type SimilarResult = {
 // Surfaces recurring requirement/risk/vendor patterns from OTHER projects to help this one
 // avoid repeating past mistakes. The comparison pool is filtered through the exact same
 // filterProjectsForUser() rule the portfolio list uses, so this can never show a project (or
-// its charter/risks) to someone who couldn't already see it elsewhere in Keel — a PM only gets
+// its charter/risks) to someone who couldn't already see it elsewhere in Executa — a PM only gets
 // patterns from their own assigned projects, a SUPER_USER from their whole company, an ADMIN
 // from everything.
 export async function POST(req: NextRequest) {

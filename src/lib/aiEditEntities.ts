@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { db } from "./db";
-import { sows, deliverables, riskItems, tasks, solutionOptions, projects, organizations, scOrganizations, scProjects, scAgreements } from "./db/schema";
+import { sows, deliverables, riskItems, tasks, solutionOptions, projects, organizations, prOrganizations, prProjects, prAgreements } from "./db/schema";
 import type { SessionUser } from "./auth";
-import type { ScRole } from "./keelconnect/access";
+import type { PrRole } from "./projectrequesta/access";
 
 export type EntityType =
   | "sow"
@@ -12,10 +12,10 @@ export type EntityType =
   | "solutionOption"
   | "project"
   | "organization"
-  | "scOrganization"
-  | "scOrganizationAdmin"
-  | "scProject"
-  | "scAgreement";
+  | "prOrganization"
+  | "prOrganizationAdmin"
+  | "prProject"
+  | "prAgreement";
 
 export type FieldDef = {
   key: string;
@@ -31,29 +31,29 @@ export type FieldDef = {
 // exactly as if the user had edited the field by hand — this endpoint only PROPOSES which
 // fields should change, grounded to a fixed whitelist per type.
 //
-// Five access-control paths share this one registry. Keel Deliver entities use
-// requireProjectAccess + minRole. Most KeelConnect entities are scoped to a single org, so
-// they use requireScOrgRole + scRoles ("keelconnect"). "keelconnect-platform" is the
+// Five access-control paths share this one registry. Executa entities use
+// requireProjectAccess + minRole. Most ProjectRequesta entities are scoped to a single org, so
+// they use requirePrOrgRole + prRoles ("projectrequesta"). "projectrequesta-platform" is the
 // admin-console-only counterpart used for fields only a Platform Admin/Compliance Officer may
-// set (verificationStatus, isActive) -- gated to requireScPlatform instead of that org's own
-// roles, so it's used from the KeelConnect admin console, never from an org's own self-service
-// profile page. A KeelConnect Agreement is a special case -- it can have two or three party
-// orgs (Client + Vendor, or + Platform for Mediator), so no single scOrganizationId/role-set
-// captures "any party admin"; "keelconnect-agreement" tells /api/ai/edit-entity to gate on
-// canAccessScAgreement instead (see that route). A Deliver company (base `organizations` row,
+// set (verificationStatus, isActive) -- gated to requirePrPlatform instead of that org's own
+// roles, so it's used from the ProjectRequesta admin console, never from an org's own self-service
+// profile page. A ProjectRequesta Agreement is a special case -- it can have two or three party
+// orgs (Client + Vendor, or + Platform for Mediator), so no single prOrganizationId/role-set
+// captures "any party admin"; "projectrequesta-agreement" tells /api/ai/edit-entity to gate on
+// canAccessPrAgreement instead (see that route). A Deliver company (base `organizations` row,
 // used from the admin console) has no projectId at all, so it can't use requireProjectAccess
 // either -- "admin" tells the route to gate on requireRole("ADMIN") instead, mirroring how
 // /api/admin/organizations itself is gated. Entries that omit `system` default to "deliver"
-// (every entry that predates KeelConnect support).
+// (every entry that predates ProjectRequesta support).
 export const ENTITY_CONFIG: Record<
   EntityType,
   {
     label: string;
-    system?: "deliver" | "keelconnect" | "keelconnect-platform" | "keelconnect-agreement" | "admin";
+    system?: "deliver" | "projectrequesta" | "projectrequesta-platform" | "projectrequesta-agreement" | "admin";
     minRole?: SessionUser["role"];
-    scRoles?: ScRole[];
+    prRoles?: PrRole[];
     fields: FieldDef[];
-    load: (entityId: string) => Promise<{ row: Record<string, unknown>; projectId?: string; scOrganizationId?: string } | null>;
+    load: (entityId: string) => Promise<{ row: Record<string, unknown>; projectId?: string; prOrganizationId?: string } | null>;
     patchUrl: (entityId: string, projectId?: string) => string;
   }
 > = {
@@ -192,51 +192,51 @@ export const ENTITY_CONFIG: Record<
     patchUrl: (id) => `/api/admin/organizations/${id}`,
   },
 
-  scOrganization: {
-    label: "KeelConnect Organization",
-    system: "keelconnect",
-    scRoles: ["CLIENT_ORG_ADMIN", "VENDOR_ORG_ADMIN"],
+  prOrganization: {
+    label: "ProjectRequesta Organization",
+    system: "projectrequesta",
+    prRoles: ["CLIENT_ORG_ADMIN", "VENDOR_ORG_ADMIN"],
     fields: [
       { key: "name", label: "Company name", kind: "text" },
       { key: "companyProfile", label: "Company profile", kind: "text" },
       { key: "taxId", label: "Tax ID", kind: "text" },
       { key: "primaryCountry", label: "Primary country", kind: "text" },
       // verificationStatus and isActive deliberately excluded -- both are Platform-only
-      // fields (see /api/keelconnect/organizations/[orgId] PATCH), so an org can't use this
+      // fields (see /api/projectrequesta/organizations/[orgId] PATCH), so an org can't use this
       // self-service chat to self-declare "VERIFIED" or reactivate itself after being
-      // disabled. The admin console uses the separate scOrganizationAdmin entity below for
+      // disabled. The admin console uses the separate prOrganizationAdmin entity below for
       // those two fields instead, gated to Platform Admin/Compliance Officer.
     ],
     load: async (id) => {
-      const [row] = await db.select().from(scOrganizations).where(eq(scOrganizations.id, id));
-      return row ? { row, scOrganizationId: row.id } : null;
+      const [row] = await db.select().from(prOrganizations).where(eq(prOrganizations.id, id));
+      return row ? { row, prOrganizationId: row.id } : null;
     },
-    patchUrl: (id) => `/api/keelconnect/organizations/${id}`,
+    patchUrl: (id) => `/api/projectrequesta/organizations/${id}`,
   },
 
-  // Platform-admin-only counterpart to scOrganization above, used from the KeelConnect admin
+  // Platform-admin-only counterpart to prOrganization above, used from the ProjectRequesta admin
   // console (not the org's own self-service profile page) to edit the two fields only
   // Platform Admin/Compliance Officer may set. Kept as a separate entity type rather than
-  // just adding these fields to scOrganization so the self-service AiEditChat on an org's own
+  // just adding these fields to prOrganization so the self-service AiEditChat on an org's own
   // page never even offers them (see the comment above).
-  scOrganizationAdmin: {
-    label: "KeelConnect Organization (Platform)",
-    system: "keelconnect-platform",
+  prOrganizationAdmin: {
+    label: "ProjectRequesta Organization (Platform)",
+    system: "projectrequesta-platform",
     fields: [
       { key: "verificationStatus", label: "Verification status", kind: "enum", options: ["PENDING", "VERIFIED", "REJECTED"] },
       { key: "isActive", label: "Active (visible in discovery, vs. disabled)", kind: "boolean" },
     ],
     load: async (id) => {
-      const [row] = await db.select().from(scOrganizations).where(eq(scOrganizations.id, id));
-      return row ? { row, scOrganizationId: row.id } : null;
+      const [row] = await db.select().from(prOrganizations).where(eq(prOrganizations.id, id));
+      return row ? { row, prOrganizationId: row.id } : null;
     },
-    patchUrl: (id) => `/api/keelconnect/organizations/${id}`,
+    patchUrl: (id) => `/api/projectrequesta/organizations/${id}`,
   },
 
-  scProject: {
-    label: "KeelConnect Project Posting",
-    system: "keelconnect",
-    scRoles: ["CLIENT_ORG_ADMIN", "CLIENT_REQUESTER"],
+  prProject: {
+    label: "ProjectRequesta Project Posting",
+    system: "projectrequesta",
+    prRoles: ["CLIENT_ORG_ADMIN", "CLIENT_REQUESTER"],
     fields: [
       { key: "title", label: "Title", kind: "text" },
       { key: "description", label: "Description", kind: "text" },
@@ -249,15 +249,15 @@ export const ENTITY_CONFIG: Record<
       // action with transition validation (see PATCH route), not a free-text AI edit.
     ],
     load: async (id) => {
-      const [row] = await db.select().from(scProjects).where(eq(scProjects.id, id));
-      return row ? { row, scOrganizationId: row.clientOrgId } : null;
+      const [row] = await db.select().from(prProjects).where(eq(prProjects.id, id));
+      return row ? { row, prOrganizationId: row.clientOrgId } : null;
     },
-    patchUrl: (id) => `/api/keelconnect/projects/${id}`,
+    patchUrl: (id) => `/api/projectrequesta/projects/${id}`,
   },
 
-  scAgreement: {
-    label: "KeelConnect Agreement",
-    system: "keelconnect-agreement",
+  prAgreement: {
+    label: "ProjectRequesta Agreement",
+    system: "projectrequesta-agreement",
     fields: [
       { key: "governingLaw", label: "Governing law", kind: "text" },
       { key: "governingLanguage", label: "Governing language", kind: "text" },
@@ -266,10 +266,10 @@ export const ENTITY_CONFIG: Record<
       // document to point signedDocumentUrl at (see the PDF export's attestation-clause note).
     ],
     load: async (id) => {
-      const [row] = await db.select().from(scAgreements).where(eq(scAgreements.id, id));
+      const [row] = await db.select().from(prAgreements).where(eq(prAgreements.id, id));
       return row ? { row } : null;
     },
-    patchUrl: (id) => `/api/keelconnect/agreements/${id}`,
+    patchUrl: (id) => `/api/projectrequesta/agreements/${id}`,
   },
 };
 

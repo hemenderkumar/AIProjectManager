@@ -3,7 +3,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bug, X, Camera, Loader2, Check } from "lucide-react";
 
-const PANEL_ID = "keel-issue-reporter-panel";
+const PANEL_ID = "executa-issue-reporter-panel";
 
 // Floating "Report an issue" widget, available on every page (mounted once in AppShell,
 // same as the AI PM avatar). Stacked above the avatar on the right edge — bottom-left is

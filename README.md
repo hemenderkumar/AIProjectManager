@@ -1,4 +1,4 @@
-# Keel
+# Executa
 
 An AI-driven project portfolio tracker that acts like an AI project manager — not just a
 place you go update, but an agent that plans work, assigns tasks, chases people for status,
@@ -63,7 +63,7 @@ Admin tab, or re-seed with your own values, before using this for anything real.
 cd kpi-tracker
 git init
 git add .
-git commit -m "Initial commit: Keel"
+git commit -m "Initial commit: Executa"
 git branch -M main
 git remote add origin https://github.com/<your-username>/<your-repo>.git
 git push -u origin main

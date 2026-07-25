@@ -64,7 +64,7 @@ export async function requireInternal(min: SessionUser["role"]) {
 
 // Rate Cards are scoped per company, not internal-only: ADMIN can see/edit any company's
 // rates (or everything, if none is specified); a SUPER_USER is confined to their own
-// company's rates; internal Keel staff (no organization) get the global default list.
+// company's rates; internal Executa staff (no organization) get the global default list.
 // Any other role — including a PM/CONTRIBUTOR/VIEWER inside a client org, which covers a
 // self-registered "individual" account — has no rate card access at all: that's company-wide
 // configuration, not something a single project-scoped teammate should see or change.

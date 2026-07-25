@@ -18,7 +18,7 @@ const TYPE_LABELS: Record<string, string> = {
   OTHER: "Deliverable",
 };
 
-// Batch-regenerates every deliverable this user can see, in the new formal Keel/company-branded
+// Batch-regenerates every deliverable this user can see, in the new formal Executa/company-branded
 // template, as a single downloadable .zip — one folder per project. Scoped through the same
 // filterProjectsForUser used by the portfolio dashboard/list pages, so an ADMIN gets everything,
 // a SUPER_USER gets only their own company's projects, and a PM/CONTRIBUTOR gets only the
@@ -109,7 +109,7 @@ export async function GET() {
   return new NextResponse(new Uint8Array(zipBuffer), {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="keel-deliverables-${stamp}.zip"`,
+      "Content-Disposition": `attachment; filename="executa-deliverables-${stamp}.zip"`,
     },
   });
 }

@@ -7,13 +7,13 @@ import { logAudit } from "@/lib/audit";
 import { generatePlaceholderPasswordHash, sendAccountSetupEmail } from "@/lib/passwordReset";
 
 // Roles a SUPER_USER is allowed to hand out to their own teammates. Deliberately excludes
-// ADMIN (platform-wide) and SUPER_USER (account-owner tier) — only a Keel administrator
+// ADMIN (platform-wide) and SUPER_USER (account-owner tier) — only a Executa administrator
 // can create another org owner or grant platform access, so an org can never accidentally
 // lock itself out of ownership or escalate a teammate above the account owner.
 const ASSIGNABLE_ROLES = ["PM", "CONTRIBUTOR", "VIEWER"] as const;
 
 // Self-service: a SUPER_USER manages the other logins within their own organization —
-// inviting a PM/CONTRIBUTOR/VIEWER teammate without needing a Keel administrator to do it
+// inviting a PM/CONTRIBUTOR/VIEWER teammate without needing a Executa administrator to do it
 // for them. Every query is scoped to the caller's own organizationId; there's no way to see
 // or touch a user outside it. Only teammates the SUPER_USER can actually manage are
 // returned — their own account-owner row is excluded, so the UI never shows a role
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   const role = ASSIGNABLE_ROLES.includes(body.role) ? body.role : "VIEWER";
 
   // Default: email them a one-time setup link instead of the owner typing/communicating a
-  // temporary password themselves — same choice as the Keel-admin "Add User" flow.
+  // temporary password themselves — same choice as the Executa-admin "Add User" flow.
   const passwordHash = body.password ? await hashPassword(body.password) : await generatePlaceholderPasswordHash();
   let created;
   try {

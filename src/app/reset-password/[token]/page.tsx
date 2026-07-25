@@ -18,9 +18,9 @@ export default async function ResetPasswordPage({
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 gap-6">
       <div className="flex items-center gap-2.5">
-        <Image src="/keel-mark.svg" alt="Keel" width={36} height={36} />
+        <Image src="/executa-mark.svg" alt="Executa" width={36} height={36} />
         <div>
-          <p className="text-sm font-semibold text-slate-900 leading-tight">Keel</p>
+          <p className="text-sm font-semibold text-slate-900 leading-tight">Executa</p>
           <p className="text-xs text-slate-400 leading-tight">Guiding project success</p>
         </div>
       </div>
@@ -37,7 +37,7 @@ export default async function ResetPasswordPage({
         ) : (
           <>
             <p className="text-sm font-semibold text-slate-900 mb-1">Set a new password</p>
-            <p className="text-xs text-slate-400 mb-4">Choose a new password for your Keel account.</p>
+            <p className="text-xs text-slate-400 mb-4">Choose a new password for your Executa account.</p>
             <ResetPasswordForm token={token} />
           </>
         )}

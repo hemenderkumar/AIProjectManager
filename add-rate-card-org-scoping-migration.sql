@@ -1,5 +1,5 @@
--- Rate Cards become per-company: organization_id = null stays Keel's own internal default
--- list (used for internal/Keel-run projects, and as a fallback for any client company that
+-- Rate Cards become per-company: organization_id = null stays Executa's own internal default
+-- list (used for internal/Executa-run projects, and as a fallback for any client company that
 -- hasn't set its own rates yet); non-null = that specific client company's own rates.
 ALTER TABLE rate_cards ADD COLUMN IF NOT EXISTS organization_id text REFERENCES organizations(id) ON DELETE CASCADE;
 

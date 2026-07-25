@@ -1,5 +1,5 @@
 import type PptxGenJS from "pptxgenjs";
-import { BRAND, BRAND_HEX, createKeelPdf, finalizeKeelPdf, coverMasthead, setupKeelPptx, titleSlide } from "./brand";
+import { BRAND, BRAND_HEX, createExecutaPdf, finalizeExecutaPdf, coverMasthead, setupExecutaPptx, titleSlide } from "./brand";
 
 // PDFKit's `ellipsis: true` + `lineBreak: false` combination does NOT reliably stop long
 // text from wrapping onto a second line inside a fixed-height row — confirmed by rendering
@@ -40,7 +40,7 @@ export function generateTablePdf<T>(
   generatedAt: Date
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = createKeelPdf({ margin: 48 });
+    const doc = createExecutaPdf({ margin: 48 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -99,7 +99,7 @@ export function generateTablePdf<T>(
       doc.font("Helvetica").fontSize(9).fillColor(BRAND.muted).text("No rows to show.");
     }
 
-    finalizeKeelPdf(doc, generatedAt);
+    finalizeExecutaPdf(doc, generatedAt);
     doc.end();
   });
 }
@@ -111,7 +111,7 @@ export async function generateTablePptx<T>(
   rows: T[],
   generatedAt: Date
 ): Promise<Buffer> {
-  const pptx = setupKeelPptx();
+  const pptx = setupExecutaPptx();
   titleSlide(pptx, title, subtitle, generatedAt);
 
   const header = columns.map((c) => ({
@@ -146,7 +146,7 @@ export async function generateTablePptx<T>(
 }
 
 function titleTableSlide(pptx: PptxGenJS, heading: string) {
-  const slide = pptx.addSlide({ masterName: "KEEL_MASTER" });
+  const slide = pptx.addSlide({ masterName: "EXECUTA_MASTER" });
   slide.addText(heading, { x: 0.5, y: 0.35, w: 12, h: 0.55, fontSize: 20, bold: true, color: BRAND_HEX.navy });
   return slide;
 }

@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
     // nothing to surface back to the caller either way.
     await sendEmail(
       user.email,
-      "Reset your Keel password",
-      `Hi ${user.name},\n\nSomeone requested a password reset for your Keel account. If this was you, set a new password here:\n\n${link}\n\nThis link expires in 1 hour. If you didn't request this, you can ignore this email.`
+      "Reset your Executa password",
+      `Hi ${user.name},\n\nSomeone requested a password reset for your Executa account. If this was you, set a new password here:\n\n${link}\n\nThis link expires in 1 hour. If you didn't request this, you can ignore this email.`
     ).catch(() => false);
   }
 

@@ -2,20 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { askClaudeJSON } from "@/lib/ai";
 import { ENTITY_CONFIG, describeSnapshot, type EntityType } from "@/lib/aiEditEntities";
 import { requireProjectAccess } from "@/lib/tenancy";
-import { requireScOrgRole, requireScPlatform, canAccessScAgreement } from "@/lib/keelconnect/access";
+import { requirePrOrgRole, requirePrPlatform, canAccessPrAgreement } from "@/lib/projectrequesta/access";
 import { getCurrentUser, requireRole } from "@/lib/auth";
 
 type EditProposal = { changes: Record<string, string | number | boolean | null>; explanation: string };
 
-// A KeelConnect Agreement can have two or three party orgs (Client + Vendor, or + Platform
-// for Mediator), so no single scOrganizationId/role-set captures "any party admin" the way
-// requireScOrgRole expects. This just gates who may PROPOSE an edit (read-level access to the
+// A ProjectRequesta Agreement can have two or three party orgs (Client + Vendor, or + Platform
+// for Mediator), so no single prOrganizationId/role-set captures "any party admin" the way
+// requirePrOrgRole expects. This just gates who may PROPOSE an edit (read-level access to the
 // agreement); the real authorization -- and the ACTIVE-status change-request detour -- is
 // enforced independently by the agreement's own PATCH route regardless of what happens here.
-async function resolveKeelConnectAgreementUser(entityId: string) {
+async function resolveProjectRequestaAgreementUser(entityId: string) {
   const user = await getCurrentUser();
   if (!user) return null;
-  return (await canAccessScAgreement(user, entityId)) ? user : null;
+  return (await canAccessPrAgreement(user, entityId)) ? user : null;
 }
 
 // The generic "edit anything via AI chat" endpoint: wherever a record was created (by AI or by
@@ -39,18 +39,18 @@ export async function POST(req: NextRequest) {
   if (!loaded) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Several access-control systems share this one endpoint -- see the comment on
-  // ENTITY_CONFIG in aiEditEntities.ts. KeelConnect org/vendor/client entities are scoped to
-  // an org + a set of KeelConnect roles; "keelconnect-platform" is the admin-console-only
+  // ENTITY_CONFIG in aiEditEntities.ts. ProjectRequesta org/vendor/client entities are scoped to
+  // an org + a set of ProjectRequesta roles; "projectrequesta-platform" is the admin-console-only
   // counterpart gated to Platform Admin/Compliance instead of that org's own roles; "admin"
-  // is Keel Deliver's own platform-wide admin console (no project or org scoping at all);
+  // is Executa's own platform-wide admin console (no project or org scoping at all);
   // everything else (the default) is a project-scoped Deliver entity.
   const user =
-    config.system === "keelconnect"
-      ? (await requireScOrgRole(loaded.scOrganizationId!, config.scRoles!))?.user ?? null
-      : config.system === "keelconnect-platform"
-      ? (await requireScPlatform(["PLATFORM_ADMIN", "PLATFORM_COMPLIANCE_OFFICER"]))?.user ?? null
-      : config.system === "keelconnect-agreement"
-      ? await resolveKeelConnectAgreementUser(entityId)
+    config.system === "projectrequesta"
+      ? (await requirePrOrgRole(loaded.prOrganizationId!, config.prRoles!))?.user ?? null
+      : config.system === "projectrequesta-platform"
+      ? (await requirePrPlatform(["PLATFORM_ADMIN", "PLATFORM_COMPLIANCE_OFFICER"]))?.user ?? null
+      : config.system === "projectrequesta-agreement"
+      ? await resolveProjectRequestaAgreementUser(entityId)
       : config.system === "admin"
       ? await requireRole("ADMIN")
       : await requireProjectAccess(config.minRole!, loaded.projectId!);

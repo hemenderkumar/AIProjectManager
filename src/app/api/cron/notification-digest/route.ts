@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     const more = items.length > 10 ? `\n...and ${items.length - 10} more.` : "";
     const ok = await sendEmail(
       user.email,
-      `You have ${items.length} unread Keel notification${items.length === 1 ? "" : "s"}`,
+      `You have ${items.length} unread Executa notification${items.length === 1 ? "" : "s"}`,
       `${lines}${more}\n\nReview them at ${appUrl}.`
     );
     if (ok) usersNotified += 1;

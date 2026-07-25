@@ -49,10 +49,10 @@ export async function POST(
   // Best-effort — a failed notification shouldn't undo the rejection.
   await sendEmail(
     request.email,
-    "Your Keel access request",
+    "Your Executa access request",
     request.type === "INDIVIDUAL" && request.resultingUserId
-      ? `Hi ${request.name},\n\nYour Keel account access has been disabled. If you think this is a mistake, please reach out to your Keel administrator.`
-      : `Hi ${request.name},\n\nYour registration request was not approved. If you think this is a mistake, please reach out to your Keel administrator.`
+      ? `Hi ${request.name},\n\nYour Executa account access has been disabled. If you think this is a mistake, please reach out to your Executa administrator.`
+      : `Hi ${request.name},\n\nYour registration request was not approved. If you think this is a mistake, please reach out to your Executa administrator.`
   ).catch(() => false);
 
   return NextResponse.json({ ok: true }, { status: 200 });

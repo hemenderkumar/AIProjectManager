@@ -1,7 +1,7 @@
 {
-  "name": "Keel — Project Delivery",
-  "short_name": "Keel",
-  "description": "Keel — from idea to a priced, staffed delivery plan, in one place",
+  "name": "Executa — Project Delivery",
+  "short_name": "Executa",
+  "description": "Executa — from idea to a priced, staffed delivery plan, in one place",
   "start_url": "/home",
   "id": "/home",
   "display": "standalone",

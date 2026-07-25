@@ -1,5 +1,5 @@
 import type { PortfolioOnePager } from "./portfolioReportData";
-import { BRAND, BRAND_HEX, createKeelPdf, finalizeKeelPdf, sectionTitle, coverMasthead, setupKeelPptx, titleSlide, keelSlide } from "./brand";
+import { BRAND, BRAND_HEX, createExecutaPdf, finalizeExecutaPdf, sectionTitle, coverMasthead, setupExecutaPptx, titleSlide, executaSlide } from "./brand";
 
 const RAG_HEX: Record<string, string> = { GREEN: "10b981", YELLOW: "f59e0b", RED: "ef4444" };
 
@@ -120,7 +120,7 @@ export function drawPortfolioSnapshotBody(doc: PDFKit.PDFDocument, data: Portfol
 
 export function generatePortfolioOnePagerPdf(data: PortfolioOnePager, generatedAt: Date): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = createKeelPdf({ margin: 44 });
+    const doc = createExecutaPdf({ margin: 44 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -129,15 +129,15 @@ export function generatePortfolioOnePagerPdf(data: PortfolioOnePager, generatedA
     coverMasthead(doc, "Portfolio Executive Summary");
     drawPortfolioSnapshotBody(doc, data);
 
-    finalizeKeelPdf(doc, generatedAt);
+    finalizeExecutaPdf(doc, generatedAt);
     doc.end();
   });
 }
 
 export async function generatePortfolioOnePagerPptx(data: PortfolioOnePager, generatedAt: Date): Promise<Buffer> {
-  const pptx = setupKeelPptx();
+  const pptx = setupExecutaPptx();
 
-  const slide = keelSlide(pptx);
+  const slide = executaSlide(pptx);
   slide.addText(BRAND.name, { x: 0.5, y: 0.2, w: 6, h: 0.4, fontSize: 13, bold: true, color: BRAND_HEX.indigo, charSpacing: 1 });
   slide.addText("Portfolio Executive Summary", { x: 0.5, y: 0.55, w: 12, h: 0.6, fontSize: 26, bold: true, color: BRAND_HEX.navy });
   slide.addText(`Generated ${generatedAt.toLocaleDateString("en-US")}`, {

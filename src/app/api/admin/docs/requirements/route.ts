@@ -4,7 +4,7 @@ import { buildSectionedDocx, docxHeaders, type DocMeta } from "@/lib/docxExport"
 import { REQUIREMENTS_SECTIONS, APP_DOC_VERSION, APP_DOC_DATE } from "@/lib/appDocs";
 
 // ADMIN-only. Generates the whole-application Requirements Specification on demand from
-// the static content in src/lib/appDocs.ts, through the same formal Keel template every
+// the static content in src/lib/appDocs.ts, through the same formal Executa template every
 // other export in this app uses — cover page, TOC, revision history, running header/footer.
 export async function GET() {
   const admin = await requireRole("ADMIN");
@@ -12,7 +12,7 @@ export async function GET() {
 
   const meta: DocMeta = {
     documentType: "Requirements Specification",
-    projectName: "Keel",
+    projectName: "Executa",
     companyName: null,
     status: "CURRENT",
     createdAt: APP_DOC_DATE,
@@ -25,5 +25,5 @@ export async function GET() {
     REQUIREMENTS_SECTIONS,
     meta
   );
-  return new NextResponse(new Uint8Array(buffer), { headers: docxHeaders("keel-requirements-specification.docx") });
+  return new NextResponse(new Uint8Array(buffer), { headers: docxHeaders("executa-requirements-specification.docx") });
 }

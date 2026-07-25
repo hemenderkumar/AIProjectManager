@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
 
-// Invites an existing Keel user to weigh in on this idea — the unanimous-approval gate in
+// Invites an existing Executa user to weigh in on this idea — the unanimous-approval gate in
 // idea-reviewers/[reviewerId]/route.ts won't let Idea & Alignment advance until every row
 // created here reaches APPROVED. Gated at PM-and-above rather than just project access, so
 // this includes the company owner (SUPER_USER) "pulling in" people for their org's idea, not

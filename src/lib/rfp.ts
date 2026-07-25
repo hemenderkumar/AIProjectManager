@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/auth";
 
 // Shared guard used by every /api/rfps/[id]/** route: fetch the RFP and confirm the caller
 // is allowed to touch it. A SUPER_USER (client company owner) is confined to their own
-// company's RFPs. An ADMIN (Keel staff) can act on ANY company's RFP — same "internal staff
+// company's RFPs. An ADMIN (Executa staff) can act on ANY company's RFP — same "internal staff
 // cross company lines" convention used for project access — since Vendor Evaluation is meant
 // to be usable from the Admin side too, not just by a client logging in as their own owner.
 export async function requireOwnedRfp(rfpId: string) {

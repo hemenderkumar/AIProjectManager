@@ -51,8 +51,8 @@ export async function sendAccountSetupEmail(
   const link = buildResetLink(token, origin);
   const emailed = await sendEmail(
     user.email,
-    "Set up your Keel account",
-    `Hi ${user.name},\n\nAn account has been created for you on Keel. Set your password to get started:\n\n${link}\n\nThis link expires in 1 hour.`
+    "Set up your Executa account",
+    `Hi ${user.name},\n\nAn account has been created for you on Executa. Set your password to get started:\n\n${link}\n\nThis link expires in 1 hour.`
   ).catch(() => false);
   return { emailed, link };
 }

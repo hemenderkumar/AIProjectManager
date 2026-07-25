@@ -22,10 +22,10 @@ const PREVIEW_RAG_STYLES: Record<string, { bg: string; text: string; dot: string
 // personalized hero and direct entry points into both products instead of the login form.
 //
 // Two products, two CTAs, everywhere a CTA appears: a single "Go to Tracker" button used to
-// stand in for both, which read as if Keel Deliver were the only real product and
-// KeelConnect an afterthought. Header, hero, and the two product cards each now offer
-// "Keel Deliver" and "KeelConnect" as equal-weight, separately-clickable destinations --
-// /dashboard and /keelconnect respectively -- for signed-in visitors.
+// stand in for both, which read as if Executa were the only real product and
+// ProjectRequesta an afterthought. Header, hero, and the two product cards each now offer
+// "Executa" and "ProjectRequesta" as equal-weight, separately-clickable destinations --
+// /dashboard and /projectrequesta respectively -- for signed-in visitors.
 export default async function HomePage() {
   const user = await getCurrentUser();
 
@@ -38,12 +38,12 @@ export default async function HomePage() {
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Image src="/keel-mark.svg" alt="Keel" width={24} height={24} />
-            <span className="text-sm font-semibold text-slate-900">Keel</span>
+            <Image src="/executa-mark.svg" alt="Executa" width={24} height={24} />
+            <span className="text-sm font-semibold text-slate-900">Executa</span>
           </div>
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-500">
-            <a href="#keel-deliver" className="hover:text-slate-900 transition-colors">Keel Deliver</a>
-            <a href="#keelconnect" className="hover:text-slate-900 transition-colors">KeelConnect</a>
+            <a href="#executa-deliver" className="hover:text-slate-900 transition-colors">Executa</a>
+            <a href="#projectrequesta" className="hover:text-slate-900 transition-colors">ProjectRequesta</a>
             <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How it works</a>
           </nav>
           {user ? (
@@ -52,13 +52,13 @@ export default async function HomePage() {
                 href="/dashboard"
                 className="text-sm font-medium px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
               >
-                Keel Deliver
+                Executa
               </Link>
               <Link
-                href="/keelconnect"
+                href="/projectrequesta"
                 className="text-sm font-medium px-3.5 py-2 rounded-lg bg-slate-900 text-white shadow-sm shadow-slate-900/20 transition-colors hover:bg-slate-800"
               >
-                KeelConnect
+                ProjectRequesta
               </Link>
             </div>
           ) : (
@@ -82,10 +82,10 @@ export default async function HomePage() {
               Run delivery in-house, or source it from vetted vendors — same tracker, either way.
             </h1>
             <p className="text-base text-slate-600 mb-8 max-w-lg">
-              <span className="font-medium text-slate-800">Keel Deliver</span> is an AI-driven project and
+              <span className="font-medium text-slate-800">Executa</span> is an AI-driven project and
               portfolio tracker for running your own team&apos;s engagements end to end.{" "}
-              <span className="font-medium text-slate-800">KeelConnect</span> is the B2B marketplace layer
-              on top — post a project, receive bids from vetted vendors, and let Keel handle the
+              <span className="font-medium text-slate-800">ProjectRequesta</span> is the B2B marketplace layer
+              on top — post a project, receive bids from vetted vendors, and let Executa handle the
               agreement and payments, without ever leaving the platform.
             </p>
             <a
@@ -96,7 +96,7 @@ export default async function HomePage() {
             </a>
             {!user && (
               <p className="text-xs text-slate-400">
-                Keel is invite-only — your Keel administrator sets up your account and organization.
+                Executa is invite-only — your Executa administrator sets up your account and organization.
               </p>
             )}
           </div>
@@ -112,13 +112,13 @@ export default async function HomePage() {
                     href="/dashboard"
                     className="flex items-center justify-center gap-2 w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 transition-colors"
                   >
-                    <Rocket size={15} /> Go to Keel Deliver
+                    <Rocket size={15} /> Go to Executa
                   </Link>
                   <Link
-                    href="/keelconnect"
+                    href="/projectrequesta"
                     className="flex items-center justify-center gap-2 w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-slate-900 text-white shadow-sm shadow-slate-900/20 hover:bg-slate-800 transition-colors"
                   >
-                    <Globe2 size={15} /> Go to KeelConnect
+                    <Globe2 size={15} /> Go to ProjectRequesta
                   </Link>
                 </div>
                 <Link href="/home" className="block mt-3 text-xs text-slate-400 hover:text-slate-600">
@@ -134,11 +134,11 @@ export default async function HomePage() {
 
       <section className="max-w-5xl mx-auto px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div id="keel-deliver" className="scroll-mt-16 rounded-xl border border-slate-200 p-6">
+          <div id="executa-deliver" className="scroll-mt-16 rounded-xl border border-slate-200 p-6">
             <div className="h-9 w-9 rounded-lg bg-accent-50 flex items-center justify-center mb-4">
               <Rocket size={18} className="text-accent-600" />
             </div>
-            <p className="text-base font-semibold text-slate-900 mb-1">Keel Deliver</p>
+            <p className="text-base font-semibold text-slate-900 mb-1">Executa</p>
             <p className="text-xs text-slate-400 mb-3">Run your own team&apos;s delivery</p>
             <p className="text-sm text-slate-600 leading-relaxed mb-4">
               Ideation, AI-drafted charters, sprints or waterfall phases, risk and budget tracking, and
@@ -146,7 +146,7 @@ export default async function HomePage() {
             </p>
             {user ? (
               <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-                Open Keel Deliver <ArrowRight size={14} />
+                Open Executa <ArrowRight size={14} />
               </Link>
             ) : (
               <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
@@ -154,22 +154,22 @@ export default async function HomePage() {
               </a>
             )}
           </div>
-          <div id="keelconnect" className="scroll-mt-16 relative rounded-xl border-2 border-accent-600 p-6">
+          <div id="projectrequesta" className="scroll-mt-16 relative rounded-xl border-2 border-accent-600 p-6">
             <span className="absolute -top-2.5 left-5 bg-accent-600 text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full">
               New
             </span>
             <div className="h-9 w-9 rounded-lg bg-accent-50 flex items-center justify-center mb-4">
               <Globe2 size={18} className="text-accent-600" />
             </div>
-            <p className="text-base font-semibold text-slate-900 mb-1">KeelConnect</p>
+            <p className="text-base font-semibold text-slate-900 mb-1">ProjectRequesta</p>
             <p className="text-xs text-slate-400 mb-3">Source work from vetted vendors</p>
             <p className="text-sm text-slate-600 leading-relaxed mb-4">
               Post a project, receive bids from verified vendor organizations, negotiate terms, and let
-              Keel generate the agreement and manage milestone payments.
+              Executa generate the agreement and manage milestone payments.
             </p>
             {user ? (
-              <Link href="/keelconnect" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-                Open KeelConnect <ArrowRight size={14} />
+              <Link href="/projectrequesta" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
+                Open ProjectRequesta <ArrowRight size={14} />
               </Link>
             ) : (
               <Link href="/marketplace" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
@@ -183,7 +183,7 @@ export default async function HomePage() {
       <section className="max-w-5xl mx-auto px-6 pb-16">
         <div className="rounded-xl border border-slate-200 shadow-sm shadow-slate-200/60 overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-900">Keel Deliver: Portfolio Dashboard</p>
+            <p className="text-sm font-semibold text-slate-900">Executa: Portfolio Dashboard</p>
             <p className="text-xs text-slate-400">Sample data shown</p>
           </div>
           <div className="p-5">
@@ -218,7 +218,7 @@ export default async function HomePage() {
       </section>
 
       <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-16 scroll-mt-16">
-        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">How Keel Deliver works</p>
+        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">How Executa works</p>
         <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">From a first idea to a board-ready report, in four steps.</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Step
@@ -250,7 +250,7 @@ export default async function HomePage() {
           <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything a boutique consultancy needs, whether you&apos;re delivering or sourcing the work.</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10">
             <div>
-              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide mb-1">Keel Deliver</p>
+              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide mb-1">Executa</p>
               <FeatureRow
                 icon={<Rocket size={16} />}
                 title="Full project lifecycle"
@@ -273,7 +273,7 @@ export default async function HomePage() {
               />
             </div>
             <div>
-              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide mb-1">KeelConnect</p>
+              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide mb-1">ProjectRequesta</p>
               <FeatureRow
                 icon={<Globe2 size={16} />}
                 title="A sealed bidding marketplace"
@@ -282,12 +282,12 @@ export default async function HomePage() {
               <FeatureRow
                 icon={<ShieldCheck size={16} />}
                 title="KYC/KYB compliance, built in"
-                description="Every organization is verified before it can transact — KYC, KYB, sanctions screening, and tax forms, reviewed by Keel's compliance team."
+                description="Every organization is verified before it can transact — KYC, KYB, sanctions screening, and tax forms, reviewed by Executa's compliance team."
               />
               <FeatureRow
                 icon={<FileText size={16} />}
                 title="Agreements generated automatically"
-                description="Accepting a bid generates the right contract for the engagement — a single Client-Vendor agreement, or Keel-mediated agreements on both sides."
+                description="Accepting a bid generates the right contract for the engagement — a single Client-Vendor agreement, or Executa-mediated agreements on both sides."
               />
               <FeatureRow
                 icon={<KeyRound size={16} />}
@@ -302,7 +302,7 @@ export default async function HomePage() {
       <section className="max-w-5xl mx-auto px-6 py-16 border-t border-slate-200">
         <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">Not just another task tracker</p>
         <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-4 max-w-2xl">
-          Asana and Monday manage tasks once a project already exists. Keel manages the decision
+          Asana and Monday manage tasks once a project already exists. Executa manages the decision
           to start one — and everything after.
         </h2>
         <p className="text-sm text-slate-600 max-w-2xl mb-10">
@@ -342,7 +342,7 @@ export default async function HomePage() {
             government-adjacent teams require before they&apos;ll touch outsourced work at all.
           </h2>
           <p className="text-sm text-slate-300 max-w-2xl mb-10">
-            Upwork and similar marketplaces are built for speed, not scrutiny. KeelConnect is built for
+            Upwork and similar marketplaces are built for speed, not scrutiny. ProjectRequesta is built for
             teams whose procurement, security, and audit functions won&apos;t sign off without it.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
@@ -373,7 +373,7 @@ export default async function HomePage() {
 
       <footer className="bg-white">
         <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between text-xs text-slate-400">
-          <span>© {new Date().getFullYear()} Keel</span>
+          <span>© {new Date().getFullYear()} Executa</span>
           <div className="flex items-center gap-3">
             <Link href="/privacy" className="hover:text-slate-600">Privacy</Link>
             <Link href="/terms" className="hover:text-slate-600">Terms</Link>

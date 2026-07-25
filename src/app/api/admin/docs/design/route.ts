@@ -11,7 +11,7 @@ export async function GET() {
 
   const meta: DocMeta = {
     documentType: "Design Document",
-    projectName: "Keel",
+    projectName: "Executa",
     companyName: null,
     status: "CURRENT",
     createdAt: APP_DOC_DATE,
@@ -24,5 +24,5 @@ export async function GET() {
     DESIGN_SECTIONS,
     meta
   );
-  return new NextResponse(new Uint8Array(buffer), { headers: docxHeaders("keel-design-document.docx") });
+  return new NextResponse(new Uint8Array(buffer), { headers: docxHeaders("executa-design-document.docx") });
 }

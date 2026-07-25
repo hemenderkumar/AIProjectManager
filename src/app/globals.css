@@ -184,7 +184,7 @@ body {
   animation: ai-wait-slide 1.4s ease-in-out infinite;
 }
 
-/* Step transition for the "How Keel Works" process-flow guide — a soft fade + rise rather
+/* Step transition for the "How Executa Works" process-flow guide — a soft fade + rise rather
    than an instant swap, so moving between lifecycle stages reads as a guided walkthrough. */
 @keyframes step-fade-in {
   0% { opacity: 0; transform: translateY(8px); }

@@ -87,7 +87,7 @@ export default function ResourcesTab({
         </p>
         {!isInternal && (
           <p className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 mb-3">
-            Staffing is managed by your Keel team — reach out to them to adjust who&apos;s allocated to this project.
+            Staffing is managed by your Executa team — reach out to them to adjust who&apos;s allocated to this project.
           </p>
         )}
         {isInternal && showForm && (

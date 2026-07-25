@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 // Posting a comment also does the @mention pass: any project member whose name appears as
 // "@Name" in the body gets an in-app notification (+ best-effort email); the task's own
-// assignee (a Resource, not necessarily a Keel login) gets a plain best-effort email via
+// assignee (a Resource, not necessarily a Executa login) gets a plain best-effort email via
 // their Resource.email regardless of whether they were explicitly @mentioned, since "someone
 // commented on your task" is useful even without typing their name.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string; taskId: string }> }) {
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (task.assigneeId) {
     const [assignee] = await db.select({ email: resources.email }).from(resources).where(eq(resources.id, task.assigneeId));
     if (assignee?.email) {
-      // The assignee is a Resource, not necessarily a Keel login -- email only, no in-app row.
+      // The assignee is a Resource, not necessarily a Executa login -- email only, no in-app row.
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
       sendEmail(assignee.email, `New comment on "${task.title}"`, `${user.name} commented: ${text}\n\n${appUrl}${link}`).catch(() => false);
     }

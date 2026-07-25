@@ -8,7 +8,7 @@ type NotificationType = (typeof notificationTypeEnum.enumValues)[number];
 // Single entry point for writing to the in-app notification feed (#262) -- always inserts
 // the row (so the bell/digest have something to show) and, if the recipient's email is
 // known, best-effort emails them too via the existing sendEmail util. Never throws past its
-// own boundary, matching the fire-and-forget convention used by keelconnect/notify.ts.
+// own boundary, matching the fire-and-forget convention used by projectrequesta/notify.ts.
 export async function notify(opts: {
   userId: string;
   type: NotificationType;

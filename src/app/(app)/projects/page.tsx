@@ -29,7 +29,7 @@ export default async function ProjectsPage() {
           <div className="flex items-center gap-2">
             <DownloadPdfLink
               href="/api/deliverables/export-all"
-              filename={`keel-deliverables-${new Date().toISOString().slice(0, 10)}.zip`}
+              filename={`executa-deliverables-${new Date().toISOString().slice(0, 10)}.zip`}
               label="Export all deliverables (.zip)"
               className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
             />

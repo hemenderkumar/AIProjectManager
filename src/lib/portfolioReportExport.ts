@@ -3,13 +3,13 @@ import { splitSections } from "./reportExport";
 import {
   BRAND,
   BRAND_HEX,
-  createKeelPdf,
-  finalizeKeelPdf,
+  createExecutaPdf,
+  finalizeExecutaPdf,
   sectionTitle,
   coverMasthead,
-  setupKeelPptx,
+  setupExecutaPptx,
   titleSlide,
-  keelSlide,
+  executaSlide,
 } from "./brand";
 import { drawPortfolioSnapshotBody } from "./portfolioExport";
 
@@ -25,7 +25,7 @@ export function generatePortfolioNarrativeReportPdf(
   generatedAt: Date
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = createKeelPdf({ margin: 44 });
+    const doc = createExecutaPdf({ margin: 44 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -43,7 +43,7 @@ export function generatePortfolioNarrativeReportPdf(
       doc.moveDown(0.9);
     }
 
-    finalizeKeelPdf(doc, generatedAt);
+    finalizeExecutaPdf(doc, generatedAt);
     doc.end();
   });
 }
@@ -54,12 +54,12 @@ export async function generatePortfolioNarrativeReportPptx(
   reportText: string,
   generatedAt: Date
 ): Promise<Buffer> {
-  const pptx = setupKeelPptx();
+  const pptx = setupExecutaPptx();
 
   titleSlide(pptx, title, undefined, generatedAt);
 
   // Snapshot slide — same numbers as the Dashboard one-pager's native pie/bar charts.
-  const snapSlide = keelSlide(pptx);
+  const snapSlide = executaSlide(pptx);
   snapSlide.addText("Portfolio Snapshot", { x: 0.5, y: 0.3, w: 12, h: 0.5, fontSize: 22, bold: true, color: BRAND_HEX.navy });
 
   const kpis: { label: string; value: string; color?: string }[] = [
@@ -108,7 +108,7 @@ export async function generatePortfolioNarrativeReportPptx(
   // One slide per narrative section — same treatment as the per-project status report.
   const sections = splitSections(reportText);
   for (const s of sections) {
-    const slide = keelSlide(pptx);
+    const slide = executaSlide(pptx);
     if (s.heading) {
       slide.addText(s.heading, { x: 0.5, y: 0.35, w: 12, h: 0.6, fontSize: 22, bold: true, color: BRAND_HEX.navy });
     }

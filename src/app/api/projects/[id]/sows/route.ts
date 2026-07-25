@@ -6,8 +6,8 @@ import { requireProjectAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
 
 // Any project member can see the SOWs (they're bound by whatever's in them), but only the
-// company owner (SUPER_USER) or a Keel admin can create one — same reasoning as the existing
-// "only a Keel administrator can create another account owner" restriction: an SOW is a
+// company owner (SUPER_USER) or a Executa admin can create one — same reasoning as the existing
+// "only a Executa administrator can create another account owner" restriction: an SOW is a
 // contractual document, not a working artifact any teammate should be issuing.
 export async function GET(
   _req: NextRequest,

@@ -33,8 +33,8 @@ export default function LoginCard({ next, id }: { next?: string; id?: string }) 
 
   return (
     <div id={id} className="w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
-      <p className="text-sm font-semibold text-slate-900 mb-1">Log in to Keel</p>
-      <p className="text-xs text-slate-400 mb-4">Use the credentials your Keel administrator set up for you.</p>
+      <p className="text-sm font-semibold text-slate-900 mb-1">Log in to Executa</p>
+      <p className="text-xs text-slate-400 mb-4">Use the credentials your Executa administrator set up for you.</p>
       <form onSubmit={submit} className="space-y-3">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>

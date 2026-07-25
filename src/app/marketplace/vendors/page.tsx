@@ -2,16 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
-import { scOrganizations, scReviews, scProjects, scBids } from "@/lib/db/schema";
+import { prOrganizations, prReviews, prProjects, prBids } from "@/lib/db/schema";
 import { eq, and, isNotNull, avg, count } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { ShieldCheck, Star, Search } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Vendor Directory — Verified Outsourcing Partners | KeelConnect",
+  title: "Vendor Directory — Verified Outsourcing Partners | ProjectRequesta",
   description:
-    "Browse verified vendor organizations on the KeelConnect marketplace — portfolios, ratings, and price bands, no login required.",
+    "Browse verified vendor organizations on the ProjectRequesta marketplace — portfolios, ratings, and price bands, no login required.",
 };
 
 export default async function PublicVendorDirectoryPage({
@@ -25,16 +25,16 @@ export default async function PublicVendorDirectoryPage({
 
   const vendors = await db
     .select()
-    .from(scOrganizations)
-    .where(and(eq(scOrganizations.orgType, "VENDOR"), isNotNull(scOrganizations.publicSlug)));
+    .from(prOrganizations)
+    .where(and(eq(prOrganizations.orgType, "VENDOR"), isNotNull(prOrganizations.publicSlug)));
 
   const ratingRows = await db
-    .select({ vendorOrgId: scBids.vendorOrgId, avgRating: avg(scReviews.rating), reviewCount: count(scReviews.id) })
-    .from(scReviews)
-    .innerJoin(scProjects, eq(scReviews.scProjectId, scProjects.id))
-    .innerJoin(scBids, and(eq(scBids.scProjectId, scProjects.id), eq(scBids.status, "ACCEPTED")))
-    .where(eq(scReviews.fromOrgType, "CLIENT"))
-    .groupBy(scBids.vendorOrgId);
+    .select({ vendorOrgId: prBids.vendorOrgId, avgRating: avg(prReviews.rating), reviewCount: count(prReviews.id) })
+    .from(prReviews)
+    .innerJoin(prProjects, eq(prReviews.prProjectId, prProjects.id))
+    .innerJoin(prBids, and(eq(prBids.prProjectId, prProjects.id), eq(prBids.status, "ACCEPTED")))
+    .where(eq(prReviews.fromOrgType, "CLIENT"))
+    .groupBy(prBids.vendorOrgId);
   const ratingByOrg = new Map(ratingRows.map((r) => [r.vendorOrgId, { avgRating: Number(r.avgRating), reviewCount: Number(r.reviewCount) }]));
 
   const ql = q.trim().toLowerCase();
@@ -52,14 +52,14 @@ export default async function PublicVendorDirectoryPage({
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/marketplace" className="flex items-center gap-2.5">
-            <Image src="/keel-mark.svg" alt="Keel" width={24} height={24} />
-            <span className="text-sm font-semibold text-slate-900">KeelConnect Marketplace</span>
+            <Image src="/executa-mark.svg" alt="Executa" width={24} height={24} />
+            <span className="text-sm font-semibold text-slate-900">ProjectRequesta Marketplace</span>
           </Link>
           <nav className="flex items-center gap-5 text-sm font-medium text-slate-500">
             <Link href="/marketplace" className="hover:text-slate-900 transition-colors">Postings</Link>
             {user ? (
-              <Link href="/keelconnect" className="px-3.5 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700 transition-colors">
-                Open KeelConnect
+              <Link href="/projectrequesta" className="px-3.5 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700 transition-colors">
+                Open ProjectRequesta
               </Link>
             ) : (
               <Link href="/register" className="px-3.5 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700 transition-colors">
@@ -73,11 +73,11 @@ export default async function PublicVendorDirectoryPage({
       <section className="max-w-5xl mx-auto px-6 py-12">
         <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">Vendor directory</p>
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight mb-3">
-          Verified outsourcing partners on KeelConnect
+          Verified outsourcing partners on ProjectRequesta
         </h1>
         <p className="text-sm text-slate-600 max-w-2xl mb-8">
           Every vendor below has opted into a public profile. Ratings are computed from real client
-          reviews left after a completed KeelConnect engagement.
+          reviews left after a completed ProjectRequesta engagement.
         </p>
 
         <form method="GET" className="flex flex-col sm:flex-row gap-2.5 mb-8">

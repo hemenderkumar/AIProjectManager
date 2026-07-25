@@ -1,5 +1,5 @@
 import type { PlannedVsActual } from "./reportData";
-import { BRAND, BRAND_HEX, createKeelPdf, finalizeKeelPdf, sectionTitle, coverMasthead, setupKeelPptx, titleSlide, keelSlide } from "./brand";
+import { BRAND, BRAND_HEX, createExecutaPdf, finalizeExecutaPdf, sectionTitle, coverMasthead, setupExecutaPptx, titleSlide, executaSlide } from "./brand";
 
 type ReportInput = {
   projectName: string;
@@ -44,7 +44,7 @@ function truncate(text: string, maxChars: number): string {
 
 export function generateReportPdf(input: ReportInput): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = createKeelPdf({ margin: 56 });
+    const doc = createExecutaPdf({ margin: 56 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -77,7 +77,7 @@ export function generateReportPdf(input: ReportInput): Promise<Buffer> {
       doc.moveDown(0.9);
     }
 
-    finalizeKeelPdf(doc, input.generatedAt);
+    finalizeExecutaPdf(doc, input.generatedAt);
     doc.end();
   });
 }
@@ -130,12 +130,12 @@ function drawPlannedVsActualChart(doc: PDFKit.PDFDocument, data: PlannedVsActual
 }
 
 export async function generateReportPptx(input: ReportInput): Promise<Buffer> {
-  const pptx = setupKeelPptx();
+  const pptx = setupExecutaPptx();
 
   titleSlide(pptx, "Executive Status Report", input.projectName, input.generatedAt);
 
   // Planned vs Actual chart slide (native chart)
-  const chartSlide = keelSlide(pptx);
+  const chartSlide = executaSlide(pptx);
   chartSlide.addText("Planned vs Actual", { x: 0.5, y: 0.35, w: 12, h: 0.6, fontSize: 24, bold: true, color: BRAND_HEX.navy });
 
   const categories = ["Budget ($)", "Schedule (%)", "Effort (hrs)"];
@@ -167,7 +167,7 @@ export async function generateReportPptx(input: ReportInput): Promise<Buffer> {
   // Narrative slides — one per report section, chunked so text isn't cramped
   const sections = splitSections(input.reportText);
   for (const s of sections) {
-    const slide = keelSlide(pptx);
+    const slide = executaSlide(pptx);
     if (s.heading) {
       slide.addText(s.heading, { x: 0.5, y: 0.35, w: 12, h: 0.6, fontSize: 22, bold: true, color: BRAND_HEX.navy });
     }
@@ -193,7 +193,7 @@ export async function generateReportPptx(input: ReportInput): Promise<Buffer> {
 // Recommended Actions), each truncated so nothing overflows the page.
 export function generateReportOnePagerPdf(input: ReportInput): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = createKeelPdf({ margin: 44 });
+    const doc = createExecutaPdf({ margin: 44 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -217,15 +217,15 @@ export function generateReportOnePagerPdf(input: ReportInput): Promise<Buffer> {
     sectionTitle(doc, "Recommended Actions", 11);
     doc.font("Helvetica").fontSize(9.5).fillColor(BRAND.slate).text(actions ? truncate(actions, 500) : "—");
 
-    finalizeKeelPdf(doc, input.generatedAt);
+    finalizeExecutaPdf(doc, input.generatedAt);
     doc.end();
   });
 }
 
 export async function generateReportOnePagerPptx(input: ReportInput): Promise<Buffer> {
-  const pptx = setupKeelPptx();
+  const pptx = setupExecutaPptx();
 
-  const slide = keelSlide(pptx);
+  const slide = executaSlide(pptx);
   slide.addText(BRAND.name, { x: 0.5, y: 0.2, w: 6, h: 0.4, fontSize: 13, bold: true, color: BRAND_HEX.indigo, charSpacing: 1 });
   slide.addText("Executive Status Report — 1-Pager", { x: 0.5, y: 0.55, w: 12, h: 0.5, fontSize: 22, bold: true, color: BRAND_HEX.navy });
   slide.addText(input.projectName, { x: 0.5, y: 1.0, w: 12, h: 0.4, fontSize: 15, color: BRAND_HEX.slate });

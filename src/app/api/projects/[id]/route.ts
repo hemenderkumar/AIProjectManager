@@ -135,12 +135,12 @@ export async function PATCH(
 
   // Mapping a project to a company (or moving it between companies / back to internal-only)
   // is deliberately not in the general `allowed` list — it's a tenancy decision, not routine
-  // field editing, so only a Keel administrator can make it, regardless of what role the
+  // field editing, so only a Executa administrator can make it, regardless of what role the
   // caller otherwise has on this project.
   let orgChanged = false;
   if ("organizationId" in body) {
     if (_authUser.role !== "ADMIN") {
-      return NextResponse.json({ error: "Only a Keel administrator can map a project to a company." }, { status: 403 });
+      return NextResponse.json({ error: "Only a Executa administrator can map a project to a company." }, { status: 403 });
     }
     const [existing] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, id));
     const newOrgId: string | null = body.organizationId || null;

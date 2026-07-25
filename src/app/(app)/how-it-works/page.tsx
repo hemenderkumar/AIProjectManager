@@ -94,7 +94,7 @@ export default function HowItWorksPage() {
   return (
     <div>
       <Topbar
-        title="How Keel Works"
+        title="How Executa Works"
         subtitle="A guided walk-through of the project lifecycle, from first idea to signed-off delivery"
       />
       <div className="p-8 max-w-4xl mx-auto space-y-8">

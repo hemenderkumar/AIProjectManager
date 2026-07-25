@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { scProjects, scOrganizations } from "@/lib/db/schema";
+import { prProjects, prOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // Logged-out, SEO-indexable postings list (#256). Only OPEN projects are ever public --
@@ -10,23 +10,23 @@ import { eq } from "drizzle-orm";
 export async function GET() {
   const rows = await db
     .select({
-      id: scProjects.id,
-      title: scProjects.title,
-      description: scProjects.description,
-      category: scProjects.category,
-      targetBudget: scProjects.targetBudget,
-      currency: scProjects.currency,
-      engagementModel: scProjects.engagementModel,
-      requestType: scProjects.requestType,
-      skillsRequired: scProjects.skillsRequired,
-      durationWeeks: scProjects.durationWeeks,
-      rateType: scProjects.rateType,
-      createdAt: scProjects.createdAt,
-      clientOrgName: scOrganizations.name,
+      id: prProjects.id,
+      title: prProjects.title,
+      description: prProjects.description,
+      category: prProjects.category,
+      targetBudget: prProjects.targetBudget,
+      currency: prProjects.currency,
+      engagementModel: prProjects.engagementModel,
+      requestType: prProjects.requestType,
+      skillsRequired: prProjects.skillsRequired,
+      durationWeeks: prProjects.durationWeeks,
+      rateType: prProjects.rateType,
+      createdAt: prProjects.createdAt,
+      clientOrgName: prOrganizations.name,
     })
-    .from(scProjects)
-    .innerJoin(scOrganizations, eq(scProjects.clientOrgId, scOrganizations.id))
-    .where(eq(scProjects.status, "OPEN"));
+    .from(prProjects)
+    .innerJoin(prOrganizations, eq(prProjects.clientOrgId, prOrganizations.id))
+    .where(eq(prProjects.status, "OPEN"));
 
   return NextResponse.json(rows);
 }

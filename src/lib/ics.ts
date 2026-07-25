@@ -22,7 +22,7 @@ export function buildIcsFeed(calendarName: string, events: IcsEvent[]): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Keel//Task Calendar Feed//EN",
+    "PRODID:-//Executa//Task Calendar Feed//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
@@ -33,7 +33,7 @@ export function buildIcsFeed(calendarName: string, events: IcsEvent[]): string {
     const next = formatIcsDate(new Date(e.date.getTime() + 24 * 60 * 60 * 1000));
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${e.uid}@keel`,
+      `UID:${e.uid}@executa`,
       `DTSTAMP:${now}`,
       `DTSTART;VALUE=DATE:${day}`,
       `DTEND;VALUE=DATE:${next}`,

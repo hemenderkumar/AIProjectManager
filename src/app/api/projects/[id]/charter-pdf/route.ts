@@ -3,7 +3,7 @@ import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { isDownloadBlocked, getCurrentUser } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
-import { BRAND, createKeelPdf, finalizeKeelPdf, coverMasthead, sectionTitle } from "@/lib/brand";
+import { BRAND, createExecutaPdf, finalizeExecutaPdf, coverMasthead, sectionTitle } from "@/lib/brand";
 import type { DiagramImage } from "@/lib/docxExport";
 
 type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProjectDetail>>>;
@@ -34,7 +34,7 @@ function generateCharterPdf(detail: ProjectDetail, diagram: DiagramImage | null)
   const project = detail.project;
   const generatedAt = new Date();
   return new Promise((resolve, reject) => {
-    const doc = createKeelPdf({ margin: 56 });
+    const doc = createExecutaPdf({ margin: 56 });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -200,7 +200,7 @@ function generateCharterPdf(detail: ProjectDetail, diagram: DiagramImage | null)
       .fillColor(BRAND.slate)
       .text(`Approved on: ${formatDate(project.charterApprovedAt)}`);
 
-    finalizeKeelPdf(doc, generatedAt);
+    finalizeExecutaPdf(doc, generatedAt);
     doc.end();
   });
 }

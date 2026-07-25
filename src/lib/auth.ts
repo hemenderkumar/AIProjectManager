@@ -106,7 +106,7 @@ export async function requireRole(min: SessionUser["role"]) {
 }
 
 // Gates downloads/exports specifically — NOT login, NOT the rest of the app. An
-// auto-provisioned INDIVIDUAL self-registration (see /api/auth/register) can use Keel right
+// auto-provisioned INDIVIDUAL self-registration (see /api/auth/register) can use Executa right
 // away, but every document export (Word/PDF/PowerPoint, single or batch) stays blocked until
 // an admin has reviewed the account (Admin > Pending Registrations > Confirm) — and, in the
 // future, once billing is set up, this is also where a payment check would plug in. A live DB

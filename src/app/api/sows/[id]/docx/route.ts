@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
 
-  // Company vs Keel branding: a project's organizationId is the client company it's for (null =
+  // Company vs Executa branding: a project's organizationId is the client company it's for (null =
   // internal-only) — see the matching comment in the deliverables docx route.
   const [project] = await db
     .select({ name: projects.name, organizationId: projects.organizationId })

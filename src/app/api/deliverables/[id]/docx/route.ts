@@ -19,7 +19,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 type DeliverableRow = typeof deliverables.$inferSelect;
 
-// Company vs Keel branding: a project's organizationId is the client company it's for (null =
+// Company vs Executa branding: a project's organizationId is the client company it's for (null =
 // internal-only, per the schema comment on projects.organizationId) — that's the whole decision,
 // no separate "company" concept or logo/branding table exists. Resolved fresh per export rather
 // than cached, so renaming a company or moving a project to a different one is picked up

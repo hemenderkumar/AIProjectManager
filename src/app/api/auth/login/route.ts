@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   if (user.disabledAt) {
     return NextResponse.json(
-      { error: "This account has been disabled. Contact your Keel administrator if you think this is a mistake." },
+      { error: "This account has been disabled. Contact your Executa administrator if you think this is a mistake." },
       { status: 403 }
     );
   }

@@ -11,10 +11,10 @@ export type AiEditEntityType =
   | "solutionOption"
   | "project"
   | "organization"
-  | "scOrganization"
-  | "scOrganizationAdmin"
-  | "scProject"
-  | "scAgreement";
+  | "prOrganization"
+  | "prOrganizationAdmin"
+  | "prProject"
+  | "prAgreement";
 
 type Proposal = {
   changes: Record<string, string | number | boolean | null>;
@@ -89,7 +89,7 @@ export default function AiEditChat({
       onApplied?.(proposal.changes);
       setProposal(null);
       setInstruction("");
-      // A 202 with `pending: true` (currently only KeelConnect Agreements while ACTIVE) means
+      // A 202 with `pending: true` (currently only ProjectRequesta Agreements while ACTIVE) means
       // this didn't apply directly -- it was filed as a Change Request awaiting the other
       // party's approval. Surface that distinction instead of closing silently, since to the
       // user "Apply" otherwise implies the field changed right now.

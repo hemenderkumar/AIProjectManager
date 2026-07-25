@@ -11,7 +11,7 @@ export async function GET() {
 
   const meta: DocMeta = {
     documentType: "Training Manual",
-    projectName: "Keel",
+    projectName: "Executa",
     companyName: null,
     status: "CURRENT",
     createdAt: APP_DOC_DATE,
@@ -20,9 +20,9 @@ export async function GET() {
 
   const buffer = await buildSectionedDocx(
     "Training Manual",
-    `How to Use Keel — v${APP_DOC_VERSION}`,
+    `How to Use Executa — v${APP_DOC_VERSION}`,
     TRAINING_SECTIONS,
     meta
   );
-  return new NextResponse(new Uint8Array(buffer), { headers: docxHeaders("keel-training-manual.docx") });
+  return new NextResponse(new Uint8Array(buffer), { headers: docxHeaders("executa-training-manual.docx") });
 }

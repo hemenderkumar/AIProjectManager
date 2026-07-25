@@ -8,7 +8,7 @@ const GREETING = "Hi, I'm your AI PM. What are you looking to do today?";
 // Sticks for the length of the browser tab's session (cleared when the tab closes, not
 // persisted forever) — so the greeting pops up once per visit instead of every single
 // page navigation, but a returning visitor still gets greeted again next time.
-const GREETED_KEY = "keel.assistantGreeted";
+const GREETED_KEY = "executa.assistantGreeted";
 
 export default function AvatarAssistant() {
   const router = useRouter();

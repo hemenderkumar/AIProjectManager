@@ -23,7 +23,7 @@ export async function POST(
 
   const ok = await sendSlackMessage(
     project.slackWebhookUrl,
-    `Keel is now connected to Slack for "${project.name}". Task activity will post here.`
+    `Executa is now connected to Slack for "${project.name}". Task activity will post here.`
   );
   if (!ok) return NextResponse.json({ error: "Slack rejected that message — double check the webhook URL." }, { status: 502 });
   return NextResponse.json({ ok: true });

@@ -17,7 +17,7 @@ export default function RootError({ error, reset }: { error: Error & { digest?: 
       <div className="max-w-md text-center">
         <div className="flex items-center justify-center gap-2 mb-6 text-slate-900">
           <Compass size={22} />
-          <span className="font-semibold text-lg">Keel</span>
+          <span className="font-semibold text-lg">Executa</span>
         </div>
         <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center">
           <AlertTriangle size={22} className="text-rose-600" />

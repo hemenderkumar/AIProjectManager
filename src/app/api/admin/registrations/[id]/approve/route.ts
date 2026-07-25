@@ -52,7 +52,7 @@ export async function POST(
 
   // INDIVIDUAL: a lightweight, invisible-to-them "personal" organization, purely so
   // organizationId is non-null — isInternalStaff() in tenancy.ts treats organizationId === null
-  // as internal Keel staff, which would wrongly grant them Resources/Rate Cards/Admin access.
+  // as internal Executa staff, which would wrongly grant them Resources/Rate Cards/Admin access.
   // An admin can still re-map them to a real company later from Users & roles, same as any
   // other user. COMPANY_OWNER: a real named organization, mirroring the existing "New Company"
   // admin flow (org + its first SUPER_USER owner, created together).
@@ -93,7 +93,7 @@ export async function POST(
   // Best-effort — the request already succeeded either way; this just lets them know sooner.
   await sendEmail(
     request.email,
-    "Your Keel access has been approved",
+    "Your Executa access has been approved",
     `Hi ${request.name},\n\nYour registration request has been approved. You can log in now with the email and password you signed up with.`
   ).catch(() => false);
 

@@ -28,13 +28,13 @@ export async function GET(
     .where(and(eq(tasks.projectId, project.id), isNotNull(tasks.dueDate)));
 
   const body = buildIcsFeed(
-    `Keel: ${project.name}`,
+    `Executa: ${project.name}`,
     dueTasks
       .filter((t) => t.dueDate)
       .map((t) => ({
         uid: t.id,
         title: `${t.title} (${t.status.replace("_", " ")})`,
-        description: `Task due date from Keel project "${project.name}".`,
+        description: `Task due date from Executa project "${project.name}".`,
         date: t.dueDate as Date,
       }))
   );

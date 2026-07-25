@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   // as the admin approve route creates for one — see the file-level comment for why this is
   // safe to do without waiting on a human. A lightweight, invisible-to-them "personal"
   // organization keeps organizationId non-null (isInternalStaff() in tenancy.ts treats
-  // organizationId === null as internal Keel staff, which would wrongly grant Resources/
+  // organizationId === null as internal Executa staff, which would wrongly grant Resources/
   // Rate Cards/Admin access). An admin can still re-map them to a real company later.
   let resultingUserId: string | null = null;
   let resultingOrganizationId: string | null = null;
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       : `${name} (${email}) registered as an individual and can already log in — review it from Admin > Pending Registrations.`;
   await Promise.all(
     admins.map((a) =>
-      sendEmail(a.email, "New Keel registration", `${summary}\n\nReview it from Admin > Pending Registrations.`).catch(() => false)
+      sendEmail(a.email, "New Executa registration", `${summary}\n\nReview it from Admin > Pending Registrations.`).catch(() => false)
     )
   );
 

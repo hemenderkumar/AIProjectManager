@@ -24,7 +24,7 @@ export async function PATCH(
     .where(and(eq(users.id, id), eq(users.organizationId, actor.organizationId)));
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (target.role === "SUPER_USER" || target.role === "ADMIN") {
-    return NextResponse.json({ error: "Only a Keel administrator can change an account owner's role." }, { status: 403 });
+    return NextResponse.json({ error: "Only a Executa administrator can change an account owner's role." }, { status: 403 });
   }
 
   const body = await req.json();
@@ -70,7 +70,7 @@ export async function DELETE(
     .where(and(eq(users.id, id), eq(users.organizationId, actor.organizationId)));
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (target.role === "SUPER_USER" || target.role === "ADMIN") {
-    return NextResponse.json({ error: "Only a Keel administrator can remove an account owner." }, { status: 403 });
+    return NextResponse.json({ error: "Only a Executa administrator can remove an account owner." }, { status: 403 });
   }
 
   await db.delete(users).where(and(eq(users.id, id), eq(users.organizationId, actor.organizationId)));

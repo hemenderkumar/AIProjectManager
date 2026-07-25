@@ -7,7 +7,7 @@ import { logAudit } from "@/lib/audit";
 
 // Vendor Evaluation is usable two ways: a client's SUPER_USER manages their own company's
 // RFPs (scoped strictly to their own organizationId, same convention as
-// /api/organization/divisions and /stakeholders), OR a Keel ADMIN manages RFPs on behalf of
+// /api/organization/divisions and /stakeholders), OR a Executa ADMIN manages RFPs on behalf of
 // ANY company from the Admin side — since ADMIN has no organization of its own, it must say
 // which company it's acting for via an explicit organizationId (query param on GET, body
 // field on POST) rather than having one inferred from the session.

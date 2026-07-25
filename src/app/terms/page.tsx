@@ -15,12 +15,12 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">1. Acceptance</h2>
-          <p>By accessing or using Keel, you agree to these terms. If you&apos;re using it on behalf of an organization, you&apos;re confirming you have authority to bind that organization.</p>
+          <p>By accessing or using Executa, you agree to these terms. If you&apos;re using it on behalf of an organization, you&apos;re confirming you have authority to bind that organization.</p>
         </section>
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">2. The service</h2>
-          <p>Keel helps teams take an idea from ideation through a priced, staffed delivery plan and execution — tracking projects, tasks, budgets, risks, status, rate cards, and delivery pricing, with optional AI-assisted planning, drafting, and reporting features. It is provided &quot;as is&quot; without warranty of any kind, express or implied, including fitness for a particular purpose or non-infringement.</p>
+          <p>Executa helps teams take an idea from ideation through a priced, staffed delivery plan and execution — tracking projects, tasks, budgets, risks, status, rate cards, and delivery pricing, with optional AI-assisted planning, drafting, and reporting features. It is provided &quot;as is&quot; without warranty of any kind, express or implied, including fitness for a particular purpose or non-infringement.</p>
         </section>
 
         <section>
@@ -30,7 +30,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">4. Organizations, accounts & roles</h2>
-          <p>If you use Keel on behalf of a client company or business unit, that company is set up as an organization within the platform, and Keel enforces role-based access so one organization&apos;s data (projects, rate cards, incidents, and users) is never visible to another. You&apos;re responsible for safeguarding your login credentials and for all activity under your account. Organization owners (SUPER_USER role) and platform administrators are responsible for assigning appropriate roles and access to their team members.</p>
+          <p>If you use Executa on behalf of a client company or business unit, that company is set up as an organization within the platform, and Executa enforces role-based access so one organization&apos;s data (projects, rate cards, incidents, and users) is never visible to another. You&apos;re responsible for safeguarding your login credentials and for all activity under your account. Organization owners (SUPER_USER role) and platform administrators are responsible for assigning appropriate roles and access to their team members.</p>
         </section>
 
         <section>
@@ -40,12 +40,12 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">6. Data export & deletion</h2>
-          <p>An organization owner can export all of their organization&apos;s data at any time, and can request permanent deletion of their organization&apos;s data. Deletion requests are reviewed and confirmed by a Keel administrator before anything is removed, so a request can be cancelled at any point before it&apos;s confirmed. Once confirmed, deletion is permanent and cannot be undone.</p>
+          <p>An organization owner can export all of their organization&apos;s data at any time, and can request permanent deletion of their organization&apos;s data. Deletion requests are reviewed and confirmed by a Executa administrator before anything is removed, so a request can be cancelled at any point before it&apos;s confirmed. Once confirmed, deletion is permanent and cannot be undone.</p>
         </section>
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">7. Limitation of liability</h2>
-          <p>To the maximum extent permitted by law, Keel is not liable for indirect, incidental, special, or consequential damages, or for any loss of profits, data, or business arising from use of the service, including reliance on AI-generated content or pricing recommendations.</p>
+          <p>To the maximum extent permitted by law, Executa is not liable for indirect, incidental, special, or consequential damages, or for any loss of profits, data, or business arising from use of the service, including reliance on AI-generated content or pricing recommendations.</p>
         </section>
 
         <section>
@@ -55,7 +55,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">9. Governing law</h2>
-          <p>These terms are governed by the laws of [JURISDICTION — not yet specified; consult a licensed attorney to determine the appropriate governing law for where Keel is operated and sold], without regard to conflict-of-law principles.</p>
+          <p>These terms are governed by the laws of [JURISDICTION — not yet specified; consult a licensed attorney to determine the appropriate governing law for where Executa is operated and sold], without regard to conflict-of-law principles.</p>
         </section>
 
         <section>

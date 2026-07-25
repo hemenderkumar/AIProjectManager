@@ -247,8 +247,8 @@ export default function OrganizationPage() {
             </button>
           </div>
           <p className="text-xs text-slate-500 mb-4">
-            Add PM, Contributor, or Viewer logins for people at {org.name} — no need to ask Keel support.
-            Only a Keel administrator can create another account owner.
+            Add PM, Contributor, or Viewer logins for people at {org.name} — no need to ask Executa support.
+            Only a Executa administrator can create another account owner.
           </p>
 
           {showTeamForm && (
@@ -384,7 +384,7 @@ export default function OrganizationPage() {
           </div>
           <p className="text-xs text-slate-500 mb-4">
             Business stakeholders at {org.name} who can be picked as a project&apos;s sponsor — they don&apos;t
-            need a Keel login of their own.
+            need a Executa login of their own.
           </p>
 
           {showStakeholderForm && (
@@ -466,7 +466,7 @@ export default function OrganizationPage() {
           <p className="text-sm font-semibold text-slate-900 mb-1">Delete your organization&apos;s data</p>
           <p className="text-xs text-slate-500 mb-4">
             This permanently deletes every project, task, and record tied to {org.name}, and removes all
-            of your organization&apos;s user accounts. It does not happen immediately — a Keel administrator
+            of your organization&apos;s user accounts. It does not happen immediately — a Executa administrator
             reviews and confirms the request before anything is deleted, so there&apos;s no accidental loss.
           </p>
 

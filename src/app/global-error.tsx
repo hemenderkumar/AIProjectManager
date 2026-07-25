@@ -17,7 +17,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     <html lang="en">
       <body style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif", background: "#f8fafc", margin: 0 }}>
         <div style={{ maxWidth: 420, textAlign: "center", padding: 24 }}>
-          <p style={{ fontWeight: 600, fontSize: 18, color: "#0f172a", marginBottom: 8 }}>Keel</p>
+          <p style={{ fontWeight: 600, fontSize: 18, color: "#0f172a", marginBottom: 8 }}>Executa</p>
           <h1 style={{ fontSize: 17, fontWeight: 600, color: "#0f172a", marginBottom: 6 }}>Something went wrong</h1>
           <p style={{ fontSize: 14, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>
             This is usually temporary — often a brief hiccup reaching the database under load. Try again in a

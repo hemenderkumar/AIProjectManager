@@ -52,24 +52,24 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
 export default function Sidebar({
   user,
   open,
-  isKeelConnectMember,
-  isScPlatform,
+  isProjectRequestaMember,
+  isPrPlatform,
 }: {
   user: SessionUser | null;
   open?: boolean;
-  isKeelConnectMember?: boolean;
-  isScPlatform?: boolean;
+  isProjectRequestaMember?: boolean;
+  isPrPlatform?: boolean;
 }) {
   const isInternal = !!user && user.organizationId == null;
   const pathname = usePathname();
-  // Two separate product tracks sharing one login: "Keel Deliver" (the original PM/delivery
-  // tool -- everything under the routes below) and "KeelConnect" (the B2B marketplace,
-  // everything under /keelconnect/*). Deliberately no direct switcher between the two, and no
+  // Two separate product tracks sharing one login: "Executa" (the original PM/delivery
+  // tool -- everything under the routes below) and "ProjectRequesta" (the B2B marketplace,
+  // everything under /projectrequesta/*). Deliberately no direct switcher between the two, and no
   // generic "Home" nav item either -- /home (the combined two-lane hub) is only ever reached
   // via the logo up top, so each track's nav only ever shows that track's own features plus,
-  // for KeelConnect, its own "KeelConnect Home" landing link. This doesn't gate access itself
+  // for ProjectRequesta, its own "ProjectRequesta Home" landing link. This doesn't gate access itself
   // -- that's enforced server-side by each track's own API routes.
-  const onKeelConnect = pathname.startsWith("/keelconnect");
+  const onProjectRequesta = pathname.startsWith("/projectrequesta");
 
   return (
     <aside
@@ -80,39 +80,44 @@ export default function Sidebar({
     >
       <div className="px-5 py-5 border-b border-slate-100">
         <Link href="/home" className="flex items-center gap-2.5 group">
-          <Image src="/keel-mark.svg" alt="Keel" width={32} height={32} />
+          <Image
+            src={onProjectRequesta ? "/projectrequesta-mark.svg" : "/executa-mark.svg"}
+            alt={onProjectRequesta ? "ProjectRequesta" : "Executa"}
+            width={40}
+            height={40}
+          />
           <div>
             <p className="text-sm font-semibold text-slate-900 leading-tight group-hover:text-accent-700">
-              {onKeelConnect ? "KeelConnect" : "Keel"}
+              {onProjectRequesta ? "ProjectRequesta" : "Executa"}
             </p>
             <p className="text-xs text-slate-400 leading-tight">
-              {onKeelConnect ? "B2B outsourcing marketplace" : "Guiding project success"}
+              {onProjectRequesta ? "B2B outsourcing marketplace" : "Guiding project success"}
             </p>
           </div>
         </Link>
       </div>
 
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {onKeelConnect ? (
+        {onProjectRequesta ? (
           <>
-            <NavLink href="/keelconnect" icon={<Compass size={17} />} pathname={pathname}>KeelConnect Home</NavLink>
+            <NavLink href="/projectrequesta" icon={<Compass size={17} />} pathname={pathname}>ProjectRequesta Home</NavLink>
             <NavSection label="Marketplace">
-              <NavLink href="/keelconnect/organizations" icon={<Building2 size={17} />} pathname={pathname}>Organizations</NavLink>
-              <NavLink href="/keelconnect/projects" icon={<Globe2 size={17} />} pathname={pathname}>Projects</NavLink>
-              <NavLink href="/keelconnect/vendors" icon={<Users size={17} />} pathname={pathname}>Vendor Directory</NavLink>
+              <NavLink href="/projectrequesta/organizations" icon={<Building2 size={17} />} pathname={pathname}>Organizations</NavLink>
+              <NavLink href="/projectrequesta/projects" icon={<Globe2 size={17} />} pathname={pathname}>Projects</NavLink>
+              <NavLink href="/projectrequesta/vendors" icon={<Users size={17} />} pathname={pathname}>Vendor Directory</NavLink>
             </NavSection>
             <NavSection label="My Work">
-              <NavLink href="/keelconnect/disputes" icon={<Gavel size={17} />} pathname={pathname}>Disputes</NavLink>
-              <NavLink href="/keelconnect/mfa" icon={<ShieldCheck size={17} />} pathname={pathname}>Two-Factor Auth</NavLink>
+              <NavLink href="/projectrequesta/disputes" icon={<Gavel size={17} />} pathname={pathname}>Disputes</NavLink>
+              <NavLink href="/projectrequesta/mfa" icon={<ShieldCheck size={17} />} pathname={pathname}>Two-Factor Auth</NavLink>
             </NavSection>
-            {isScPlatform && (
+            {isPrPlatform && (
               <NavSection label="Platform">
-                <NavLink href="/keelconnect/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Admin Console</NavLink>
+                <NavLink href="/projectrequesta/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Admin Console</NavLink>
               </NavSection>
             )}
-            {!isKeelConnectMember && !isScPlatform && (
+            {!isProjectRequestaMember && !isPrPlatform && (
               <p className="px-3 pt-4 text-xs text-slate-400 leading-relaxed">
-                You&apos;re not part of a KeelConnect organization yet. Create a Client or Vendor
+                You&apos;re not part of a ProjectRequesta organization yet. Create a Client or Vendor
                 organization to start posting or bidding on projects.
               </p>
             )}
@@ -120,7 +125,7 @@ export default function Sidebar({
         ) : (
           <>
             <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
-            <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Keel Works</NavLink>
+            <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Executa Works</NavLink>
 
             <NavSection label="Project Lifecycle">
               <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
@@ -161,9 +166,9 @@ export default function Sidebar({
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">
         <ThemeSwitcher />
-        {onKeelConnect ? (
+        {onProjectRequesta ? (
           <Link
-            href="/keelconnect/organizations"
+            href="/projectrequesta/organizations"
             className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
           >
             <PlusCircle size={16} />

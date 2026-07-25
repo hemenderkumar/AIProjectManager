@@ -28,8 +28,8 @@ export async function POST(
 
   const emailed = await sendEmail(
     user.email,
-    "Reset your Keel password",
-    `Hi ${user.name},\n\nAn administrator has started a password reset for your Keel account. Set a new password here:\n\n${link}\n\nThis link expires in 1 hour.`
+    "Reset your Executa password",
+    `Hi ${user.name},\n\nAn administrator has started a password reset for your Executa account. Set a new password here:\n\n${link}\n\nThis link expires in 1 hour.`
   ).catch(() => false);
 
   await logAudit({

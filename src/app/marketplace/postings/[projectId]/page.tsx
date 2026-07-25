@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { scProjects, scOrganizations } from "@/lib/db/schema";
+import { prProjects, prOrganizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
@@ -12,27 +12,27 @@ import { Globe2, Users, MapPin, Calendar } from "lucide-react";
 async function loadPosting(projectId: string) {
   const [row] = await db
     .select({
-      id: scProjects.id,
-      title: scProjects.title,
-      description: scProjects.description,
-      category: scProjects.category,
-      targetBudget: scProjects.targetBudget,
-      currency: scProjects.currency,
-      engagementModel: scProjects.engagementModel,
-      locationRequirement: scProjects.locationRequirement,
-      requestType: scProjects.requestType,
-      skillsRequired: scProjects.skillsRequired,
-      durationWeeks: scProjects.durationWeeks,
-      rateType: scProjects.rateType,
-      deadline: scProjects.deadline,
-      createdAt: scProjects.createdAt,
-      status: scProjects.status,
-      clientOrgName: scOrganizations.name,
-      clientOrgCountry: scOrganizations.primaryCountry,
+      id: prProjects.id,
+      title: prProjects.title,
+      description: prProjects.description,
+      category: prProjects.category,
+      targetBudget: prProjects.targetBudget,
+      currency: prProjects.currency,
+      engagementModel: prProjects.engagementModel,
+      locationRequirement: prProjects.locationRequirement,
+      requestType: prProjects.requestType,
+      skillsRequired: prProjects.skillsRequired,
+      durationWeeks: prProjects.durationWeeks,
+      rateType: prProjects.rateType,
+      deadline: prProjects.deadline,
+      createdAt: prProjects.createdAt,
+      status: prProjects.status,
+      clientOrgName: prOrganizations.name,
+      clientOrgCountry: prOrganizations.primaryCountry,
     })
-    .from(scProjects)
-    .innerJoin(scOrganizations, eq(scProjects.clientOrgId, scOrganizations.id))
-    .where(eq(scProjects.id, projectId));
+    .from(prProjects)
+    .innerJoin(prOrganizations, eq(prProjects.clientOrgId, prOrganizations.id))
+    .where(eq(prProjects.id, projectId));
   if (!row || row.status !== "OPEN") return null;
   return row;
 }
@@ -40,10 +40,10 @@ async function loadPosting(projectId: string) {
 export async function generateMetadata({ params }: { params: Promise<{ projectId: string }> }): Promise<Metadata> {
   const { projectId } = await params;
   const posting = await loadPosting(projectId);
-  if (!posting) return { title: "Posting not found | KeelConnect" };
+  if (!posting) return { title: "Posting not found | ProjectRequesta" };
   return {
-    title: `${posting.title} — ${posting.clientOrgName} | KeelConnect Marketplace`,
-    description: posting.description?.slice(0, 160) || `${posting.title}, posted by ${posting.clientOrgName} on the KeelConnect marketplace.`,
+    title: `${posting.title} — ${posting.clientOrgName} | ProjectRequesta Marketplace`,
+    description: posting.description?.slice(0, 160) || `${posting.title}, posted by ${posting.clientOrgName} on the ProjectRequesta marketplace.`,
   };
 }
 
@@ -62,8 +62,8 @@ export default async function PublicPostingDetailPage({ params }: { params: Prom
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/marketplace" className="flex items-center gap-2.5">
-            <Image src="/keel-mark.svg" alt="Keel" width={24} height={24} />
-            <span className="text-sm font-semibold text-slate-900">KeelConnect Marketplace</span>
+            <Image src="/executa-mark.svg" alt="Executa" width={24} height={24} />
+            <span className="text-sm font-semibold text-slate-900">ProjectRequesta Marketplace</span>
           </Link>
           <Link href="/marketplace" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">
             All postings
@@ -109,7 +109,7 @@ export default async function PublicPostingDetailPage({ params }: { params: Prom
           )}
           <div className="rounded-lg bg-slate-50 px-3 py-2.5">
             <p className="text-xs text-slate-400">Engagement model</p>
-            <p className="text-sm font-semibold text-slate-800">{posting.engagementModel === "MEDIATOR" ? "Keel-mediated" : "Direct marketplace"}</p>
+            <p className="text-sm font-semibold text-slate-800">{posting.engagementModel === "MEDIATOR" ? "Executa-mediated" : "Direct marketplace"}</p>
           </div>
           <div className="rounded-lg bg-slate-50 px-3 py-2.5">
             <p className="text-xs text-slate-400">Location</p>
@@ -133,13 +133,13 @@ export default async function PublicPostingDetailPage({ params }: { params: Prom
             {isResourceRequest ? "Ready to offer a rate?" : "Ready to bid on this project?"}
           </p>
           <p className="text-xs text-slate-500 mb-3">
-            Create a free Vendor account on KeelConnect to {isResourceRequest ? "offer your rate" : "submit a bid"} — verification is quick, and you only pay a marketplace fee once you win the work.
+            Create a free Vendor account on ProjectRequesta to {isResourceRequest ? "offer your rate" : "submit a bid"} — verification is quick, and you only pay a marketplace fee once you win the work.
           </p>
           <Link
-            href={user ? `/keelconnect/projects/${posting.id}` : "/register"}
+            href={user ? `/projectrequesta/projects/${posting.id}` : "/register"}
             className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700 transition-colors"
           >
-            {user ? "View in KeelConnect" : "Sign up to respond"}
+            {user ? "View in ProjectRequesta" : "Sign up to respond"}
           </Link>
         </div>
       </section>

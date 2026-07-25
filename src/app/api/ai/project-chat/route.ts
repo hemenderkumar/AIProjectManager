@@ -36,7 +36,7 @@ ${summarizeSows(sowRows)}
 Deliverables:
 ${summarizeDeliverables(deliverableRows)}`;
 
-  const system = `You are Keel's project assistant, answering a teammate's question about ONE specific
+  const system = `You are Executa's project assistant, answering a teammate's question about ONE specific
 project using ONLY the context below. If the answer genuinely isn't in this context, say so plainly rather
 than guessing or inventing numbers, dates, or names that aren't given. Keep the answer concise — a few
 sentences, or a short list if the question calls for one.

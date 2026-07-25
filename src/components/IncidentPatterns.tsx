@@ -21,7 +21,7 @@ type IncidentPattern = {
 // converting recurring support incidents into systematic improvement projects, instead of
 // each incident just getting resolved and forgotten one at a time. "Convert to Improvement
 // Project" creates the project record directly (stage: IDEATION, ideaType: PROBLEM) so it
-// flows into Keel's existing Ideation -> Charter -> Execution pipeline.
+// flows into Executa's existing Ideation -> Charter -> Execution pipeline.
 export default function IncidentPatterns() {
   const router = useRouter();
   const [patterns, setPatterns] = useState<IncidentPattern[] | null>(null);

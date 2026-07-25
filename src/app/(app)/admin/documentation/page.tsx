@@ -16,30 +16,30 @@ const DOCS: DocCard[] = [
   {
     icon: <FileText size={18} />,
     title: "Requirements Specification",
-    description: "Every module Keel supports, organized by area — ideation through delivery, admin, AI, and mobile.",
+    description: "Every module Executa supports, organized by area — ideation through delivery, admin, AI, and mobile.",
     href: "/api/admin/docs/requirements",
-    filename: "keel-requirements-specification.docx",
+    filename: "executa-requirements-specification.docx",
   },
   {
     icon: <FileText size={18} />,
     title: "Design Document",
     description: "Tech stack, architecture, data model, multi-tenancy, AI integration, and key design decisions.",
     href: "/api/admin/docs/design",
-    filename: "keel-design-document.docx",
+    filename: "executa-design-document.docx",
   },
   {
     icon: <FileText size={18} />,
     title: "Training Manual",
     description: "How to use every feature, organized to match the app's own navigation — for whenever you forget.",
     href: "/api/admin/docs/training-manual",
-    filename: "keel-training-manual.docx",
+    filename: "executa-training-manual.docx",
   },
   {
     icon: <Presentation size={18} />,
     title: "Product & Growth Overview",
-    description: "The pitch deck: problem statement, what Keel can do, SWOT, illustrative revenue/growth scenarios, target clients.",
-    href: "/docs/keel-product-growth-overview.pptx",
-    filename: "keel-product-growth-overview.pptx",
+    description: "The pitch deck: problem statement, what Executa can do, SWOT, illustrative revenue/growth scenarios, target clients.",
+    href: "/docs/executa-product-growth-overview.pptx",
+    filename: "executa-product-growth-overview.pptx",
   },
 ];
 
@@ -48,7 +48,7 @@ export default function DocumentationPage() {
     <div>
       <Topbar
         title="Documentation"
-        subtitle="Reference documents about Keel itself — download any of these any time"
+        subtitle="Reference documents about Executa itself — download any of these any time"
         action={
           <Link href="/admin" className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800">
             <ArrowLeft size={14} /> Back to Admin

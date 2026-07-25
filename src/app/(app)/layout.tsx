@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { getCurrentUser } from "@/lib/auth";
-import { getScMemberships, hasPlatformRole } from "@/lib/keelconnect/access";
+import { getPrMemberships, hasPlatformRole } from "@/lib/projectrequesta/access";
 
 export default async function AppLayout({
   children,
@@ -14,17 +14,17 @@ export default async function AppLayout({
   }
 
   // Resolved server-side (not fetched client-side) so the Sidebar's track switcher and
-  // KeelConnect-only nav items are correct on the very first paint, with no flash of the
+  // ProjectRequesta-only nav items are correct on the very first paint, with no flash of the
   // wrong nav while a client fetch resolves. Only two booleans cross the server/client
   // boundary -- not the raw membership rows -- since Sidebar is a client component and
-  // lib/keelconnect/access.ts pulls in the db client, which must never end up in a client
+  // lib/projectrequesta/access.ts pulls in the db client, which must never end up in a client
   // bundle.
-  const scMemberships = await getScMemberships(user.id);
-  const isKeelConnectMember = scMemberships.length > 0;
-  const isScPlatform = hasPlatformRole(scMemberships);
+  const prMemberships = await getPrMemberships(user.id);
+  const isProjectRequestaMember = prMemberships.length > 0;
+  const isPrPlatform = hasPlatformRole(prMemberships);
 
   return (
-    <AppShell user={user} isKeelConnectMember={isKeelConnectMember} isScPlatform={isScPlatform}>
+    <AppShell user={user} isProjectRequestaMember={isProjectRequestaMember} isPrPlatform={isPrPlatform}>
       {children}
     </AppShell>
   );

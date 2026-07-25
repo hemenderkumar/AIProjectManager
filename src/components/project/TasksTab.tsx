@@ -13,7 +13,7 @@ import AiEditChat from "./AiEditChat";
 import TaskComments from "./TaskComments";
 import TaskDependencies from "./TaskDependencies";
 import TimelineView from "./TimelineView";
-import PostToKeelConnectModal from "./PostToKeelConnectModal";
+import PostToProjectRequestaModal from "./PostToProjectRequestaModal";
 
 type Resource = { id: string; name: string };
 
@@ -1116,9 +1116,9 @@ export default function TasksTab({
                         <option value="VENDOR">Vendor</option>
                       </select>
                       {t.executionSource === "VENDOR" && (
-                        t.scProjectId ? (
+                        t.prProjectId ? (
                           <Link
-                            href={`/keelconnect/projects/${t.scProjectId}`}
+                            href={`/projectrequesta/projects/${t.prProjectId}`}
                             className="flex items-center gap-1 mt-1 text-xs text-accent-600 hover:text-accent-700"
                           >
                             <Globe2 size={11} /> Posted
@@ -1128,7 +1128,7 @@ export default function TasksTab({
                             onClick={() => setPostingTask(t)}
                             className="flex items-center gap-1 mt-1 text-xs text-slate-500 hover:text-accent-600"
                           >
-                            <Globe2 size={11} /> Post to KeelConnect
+                            <Globe2 size={11} /> Post to ProjectRequesta
                           </button>
                         )
                       )}
@@ -1255,7 +1255,7 @@ export default function TasksTab({
       )}
 
       {postingTask && (
-        <PostToKeelConnectModal
+        <PostToProjectRequestaModal
           projectId={detail.project.id}
           task={postingTask}
           onClose={() => setPostingTask(null)}

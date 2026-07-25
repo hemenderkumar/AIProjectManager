@@ -3,11 +3,11 @@ import PptxGenJS from "pptxgenjs";
 import path from "path";
 import fs from "fs";
 
-// The Keel compass-mark logo, used in the PDF header and PPTX title slide/master so every
+// The Executa compass-mark logo, used in the PDF header and PPTX title slide/master so every
 // exported document carries the same mark as the app itself. Read once and cached — every
-// export route calls createKeelPdf/setupKeelPptx, so re-reading the file per call would be
+// export route calls createExecutaPdf/setupExecutaPptx, so re-reading the file per call would be
 // wasteful.
-const LOGO_PNG_PATH = path.join(process.cwd(), "public", "keel-mark.png");
+const LOGO_PNG_PATH = path.join(process.cwd(), "public", "executa-mark.png");
 let cachedLogoBuffer: Buffer | null | undefined;
 function getLogoBuffer(): Buffer | null {
   if (cachedLogoBuffer !== undefined) return cachedLogoBuffer;
@@ -19,12 +19,12 @@ function getLogoBuffer(): Buffer | null {
   return cachedLogoBuffer;
 }
 
-// Single source of truth for Keel's export branding (PDF + PPTX) — colors, wordmark, and
+// Single source of truth for Executa's export branding (PDF + PPTX) — colors, wordmark, and
 // the header/footer chrome every generated document should share so a status report, a
 // charter, and a portfolio summary all look like they came from the same product.
 export const BRAND = {
-  name: "Keel",
-  tagline: "Idea to delivery, on one keel",
+  name: "Executa",
+  tagline: "Idea to delivery, on one executa",
   navy: "#0f172a",
   slate: "#334155",
   muted: "#94a3b8",
@@ -57,12 +57,12 @@ export const BRAND_HEX = {
 export const PDF_HEADER_HEIGHT = 34;
 
 /**
- * Creates a PDFKit document pre-wired with a Keel header on every page and a page-numbered
+ * Creates a PDFKit document pre-wired with a Executa header on every page and a page-numbered
  * footer added at the very end (via bufferPages + a post-pass, since the total page count
  * isn't known until all content is drawn). Content should start being written immediately
  * after calling this — the cursor (doc.y) is already positioned below the header.
  */
-export function createKeelPdf(opts: { size?: string | [number, number]; margin?: number } = {}) {
+export function createExecutaPdf(opts: { size?: string | [number, number]; margin?: number } = {}) {
   const margin = opts.margin ?? 50;
   const doc = new PDFDocument({
     margin,
@@ -108,7 +108,7 @@ export function createKeelPdf(opts: { size?: string | [number, number]; margin?:
 }
 
 /** Call once, immediately before doc.end() — stamps every buffered page with a footer. */
-export function finalizeKeelPdf(doc: PDFKit.PDFDocument, generatedAt: Date) {
+export function finalizeExecutaPdf(doc: PDFKit.PDFDocument, generatedAt: Date) {
   const range = doc.bufferedPageRange();
   for (let i = range.start; i < range.start + range.count; i++) {
     doc.switchToPage(i);
@@ -142,7 +142,7 @@ export function finalizeKeelPdf(doc: PDFKit.PDFDocument, generatedAt: Date) {
   }
 }
 
-/** Draws a standard section title with the Keel accent tick, keeping section headers consistent. */
+/** Draws a standard section title with the Executa accent tick, keeping section headers consistent. */
 export function sectionTitle(doc: PDFKit.PDFDocument, text: string, fontSize = 12) {
   const left = doc.page.margins.left;
   const y = doc.y;
@@ -169,10 +169,10 @@ export function coverMasthead(doc: PDFKit.PDFDocument, title: string, subtitle?:
 
 // --- PPTX ---
 
-const MASTER_NAME = "KEEL_MASTER";
+const MASTER_NAME = "EXECUTA_MASTER";
 
-/** Registers a Keel-branded slide master (thin top accent bar + footer wordmark + page number). Call once per presentation before adding slides. */
-export function registerKeelMaster(pptx: PptxGenJS) {
+/** Registers a Executa-branded slide master (thin top accent bar + footer wordmark + page number). Call once per presentation before adding slides. */
+export function registerExecutaMaster(pptx: PptxGenJS) {
   const logo = getLogoBuffer();
   const objects: NonNullable<Parameters<PptxGenJS["defineSlideMaster"]>[0]["objects"]> = [
     { rect: { x: 0, y: 0, w: "100%", h: 0.08, fill: { color: BRAND_HEX.indigo } } },
@@ -195,21 +195,21 @@ export function registerKeelMaster(pptx: PptxGenJS) {
   return MASTER_NAME;
 }
 
-export function keelSlide(pptx: PptxGenJS) {
+export function executaSlide(pptx: PptxGenJS) {
   return pptx.addSlide({ masterName: MASTER_NAME });
 }
 
-/** Standard wide layout every Keel presentation uses, for visual consistency across exports. */
-export function setupKeelPptx(): PptxGenJS {
+/** Standard wide layout every Executa presentation uses, for visual consistency across exports. */
+export function setupExecutaPptx(): PptxGenJS {
   const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: "KEEL_WIDE", width: 13.33, height: 7.5 });
-  pptx.layout = "KEEL_WIDE";
-  registerKeelMaster(pptx);
+  pptx.defineLayout({ name: "EXECUTA_WIDE", width: 13.33, height: 7.5 });
+  pptx.layout = "EXECUTA_WIDE";
+  registerExecutaMaster(pptx);
   return pptx;
 }
 
 export function titleSlide(pptx: PptxGenJS, title: string, subtitle: string | undefined, generatedAt: Date) {
-  const slide = keelSlide(pptx);
+  const slide = executaSlide(pptx);
   const logo = getLogoBuffer();
   let nameX = 0.6;
   if (logo) {

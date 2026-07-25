@@ -41,12 +41,12 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">6. Multi-tenancy & data isolation</h2>
-          <p>If your organization is one of several client companies using Keel through the same operator, your organization&apos;s projects, users, and incidents are scoped so that no other client organization can see them. Internal-only reference data (such as the operator&apos;s staffing roster and rate cards) is never shared with any client organization.</p>
+          <p>If your organization is one of several client companies using Executa through the same operator, your organization&apos;s projects, users, and incidents are scoped so that no other client organization can see them. Internal-only reference data (such as the operator&apos;s staffing roster and rate cards) is never shared with any client organization.</p>
         </section>
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">7. Data export & deletion</h2>
-          <p>An organization owner (SUPER_USER) can export a full copy of their organization&apos;s data at any time from the &quot;My Organization&quot; page, and can request deletion of their organization&apos;s data from the same page. Deletion requests are reviewed and confirmed by a Keel administrator before anything is permanently deleted — this two-step process exists to prevent accidental or coerced data loss. You can cancel a pending deletion request at any time before it is confirmed. You can also reach hemender.kumar@gmail.com directly to request export or deletion.</p>
+          <p>An organization owner (SUPER_USER) can export a full copy of their organization&apos;s data at any time from the &quot;My Organization&quot; page, and can request deletion of their organization&apos;s data from the same page. Deletion requests are reviewed and confirmed by a Executa administrator before anything is permanently deleted — this two-step process exists to prevent accidental or coerced data loss. You can cancel a pending deletion request at any time before it is confirmed. You can also reach hemender.kumar@gmail.com directly to request export or deletion.</p>
         </section>
 
         <section>

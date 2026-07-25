@@ -1,12 +1,12 @@
 // Static content for the three whole-app reference documents generated under
 // Admin > Documentation (Requirements Specification, Design Document, Training Manual).
-// Unlike every other docx export in this codebase, these describe Keel itself rather than
+// Unlike every other docx export in this codebase, these describe Executa itself rather than
 // a row in the database, so there's no organization/project to load — the content lives
 // here as plain data and is rendered through the same buildSectionedDocx formal template
 // (cover page, TOC, revision history, running header/footer) used everywhere else.
 //
 // Keep this in sync by hand when a feature is added or changed materially — there is no
-// automated way to derive "what Keel does" from the codebase, so this is the source of
+// automated way to derive "what Executa does" from the codebase, so this is the source of
 // truth for what these three documents say.
 
 export type DocSection = { heading: string; body: string };
@@ -21,19 +21,19 @@ export const REQUIREMENTS_SECTIONS: DocSection[] = [
   {
     heading: "1. Purpose & Scope",
     body:
-      "Keel is a single system of record for running client and internal projects end to end — from an early idea, through a costed and staffed delivery plan, through execution, to a signed-off deliverable and ongoing support. It replaces the usual patchwork of spreadsheets for budgets, chat threads for status, generic task boards with no project context, and hand-built decks for steering committees.\n" +
-      "This document describes what Keel does today, organized by module. It is a living reference, not a contractual specification — update it when a feature changes materially.",
+      "Executa is a single system of record for running client and internal projects end to end — from an early idea, through a costed and staffed delivery plan, through execution, to a signed-off deliverable and ongoing support. It replaces the usual patchwork of spreadsheets for budgets, chat threads for status, generic task boards with no project context, and hand-built decks for steering committees.\n" +
+      "This document describes what Executa does today, organized by module. It is a living reference, not a contractual specification — update it when a feature changes materially.",
   },
   {
     heading: "2. User Roles & Access Model",
     body:
-      "Keel has five roles, each a strict superset of the one below it in day-to-day capability:\n" +
+      "Executa has five roles, each a strict superset of the one below it in day-to-day capability:\n" +
       "- ADMIN — full platform access. Manages users, companies (organizations), roles, automation settings, the audit log, user activity, and reported issues. The only role that can see across every organization.\n" +
       "- SUPER_USER — a client company's own account owner. Manages their organization's users (PM/CONTRIBUTOR/VIEWER), divisions, stakeholders, and rate cards. Sees only their own organization's projects.\n" +
       "- PM — creates and runs projects, drafts charters/plans/SOWs/deliverables, manages tasks and risks. Sees only projects they are an explicit member of (or all of them, if internal staff with no organization).\n" +
       "- CONTRIBUTOR — works within assigned projects: updates tasks, logs communications, reports issues.\n" +
       "- VIEWER — read-only access to projects they are a member of.\n" +
-      "A user with no organization (organizationId = null) is \"internal staff\" — Keel's own team — and can see cross-portfolio surfaces (Resources, Rate Cards, Reports) that a client-side user cannot.",
+      "A user with no organization (organizationId = null) is \"internal staff\" — Executa's own team — and can see cross-portfolio surfaces (Resources, Rate Cards, Reports) that a client-side user cannot.",
   },
   {
     heading: "3. Ideation",
@@ -58,7 +58,7 @@ export const REQUIREMENTS_SECTIONS: DocSection[] = [
   {
     heading: "7. Delivery & Pricing",
     body:
-      "For each project, Keel can recommend a delivery role mix (which roles, how many hours, and the onsite/offshore/contractor split) and a pricing model (Fixed Bid or Time & Materials), with an AI-generated rationale. Cost estimation combines role-mix hours x rate cards, a configurable contingency percentage, one-off material costs, and recurring ongoing-support costs into a full project budget.",
+      "For each project, Executa can recommend a delivery role mix (which roles, how many hours, and the onsite/offshore/contractor split) and a pricing model (Fixed Bid or Time & Materials), with an AI-generated rationale. Cost estimation combines role-mix hours x rate cards, a configurable contingency percentage, one-off material costs, and recurring ongoing-support costs into a full project budget.",
   },
   {
     heading: "8. Risk Management",
@@ -113,7 +113,7 @@ export const REQUIREMENTS_SECTIONS: DocSection[] = [
   {
     heading: "18. Document Export",
     body:
-      "Every major artifact (charter, SOW, deliverables, status reports, steering packs, the executive dashboard, and the whole-portfolio deliverable set) can be exported as a formally branded document: Word (.docx) with a cover page, real Word table-of-contents field, revision history, and running header/footer; PDF; or PowerPoint, depending on the artifact. A document is branded with the client organization's name when the project belongs to one, or with Keel's own branding for internal-only projects.",
+      "Every major artifact (charter, SOW, deliverables, status reports, steering packs, the executive dashboard, and the whole-portfolio deliverable set) can be exported as a formally branded document: Word (.docx) with a cover page, real Word table-of-contents field, revision history, and running header/footer; PDF; or PowerPoint, depending on the artifact. A document is branded with the client organization's name when the project belongs to one, or with Executa's own branding for internal-only projects.",
   },
   {
     heading: "19. Multi-Tenancy & Organizations",
@@ -138,7 +138,7 @@ export const REQUIREMENTS_SECTIONS: DocSection[] = [
   {
     heading: "23. Mobile & Installability",
     body:
-      "The application shell is fully responsive: on phone-sized screens the sidebar becomes an off-canvas drawer opened via a hamburger button, with base font sizes bumped for legibility. Keel can also be installed to a phone's home screen (Android and iOS) via a web app manifest and a minimal service worker, opening full-screen without a browser address bar, with no app-store listing required.",
+      "The application shell is fully responsive: on phone-sized screens the sidebar becomes an off-canvas drawer opened via a hamburger button, with base font sizes bumped for legibility. Executa can also be installed to a phone's home screen (Android and iOS) via a web app manifest and a minimal service worker, opening full-screen without a browser address bar, with no app-store listing required.",
   },
   {
     heading: "24. Non-Functional Requirements",
@@ -158,7 +158,7 @@ export const DESIGN_SECTIONS: DocSection[] = [
   {
     heading: "1. Overview & Goals",
     body:
-      "Keel is a Next.js (App Router) application backed by a single Postgres database via Drizzle ORM, deployed on Vercel. The guiding design principle across this build has been: every artifact a delivery team already produces by hand (a charter, a status deck, a SOW, a test script) should be a first-class, structured record in the system — not a document that happens to get attached to it — so it can be AI-drafted, AI-edited, reported on, and exported consistently.",
+      "Executa is a Next.js (App Router) application backed by a single Postgres database via Drizzle ORM, deployed on Vercel. The guiding design principle across this build has been: every artifact a delivery team already produces by hand (a charter, a status deck, a SOW, a test script) should be a first-class, structured record in the system — not a document that happens to get attached to it — so it can be AI-drafted, AI-edited, reported on, and exported consistently.",
   },
   {
     heading: "2. Technology Stack",
@@ -184,7 +184,7 @@ export const DESIGN_SECTIONS: DocSection[] = [
   {
     heading: "5. Multi-Tenancy Design",
     body:
-      "There is no separate \"company\" entity distinct from organizations — organizations IS both the client-company record and the multi-tenant scoping root. projects.organizationId (nullable) is the single branding and visibility signal: null means internal-only (Keel-branded, visible to any internal staff PM), set means it belongs to that client (branded with their name, visible only to that organization's SUPER_USER/PM/CONTRIBUTOR/VIEWER members). src/lib/tenancy.ts centralizes the scoping rule (filterProjectsForUser, requireProjectAccess) so every list/detail page and API route enforces the same rule from one place rather than re-deriving it.",
+      "There is no separate \"company\" entity distinct from organizations — organizations IS both the client-company record and the multi-tenant scoping root. projects.organizationId (nullable) is the single branding and visibility signal: null means internal-only (Executa-branded, visible to any internal staff PM), set means it belongs to that client (branded with their name, visible only to that organization's SUPER_USER/PM/CONTRIBUTOR/VIEWER members). src/lib/tenancy.ts centralizes the scoping rule (filterProjectsForUser, requireProjectAccess) so every list/detail page and API route enforces the same rule from one place rather than re-deriving it.",
   },
   {
     heading: "6. Authentication & Authorization",
@@ -214,7 +214,7 @@ export const DESIGN_SECTIONS: DocSection[] = [
   {
     heading: "11. Mobile & PWA Architecture",
     body:
-      "Responsiveness is handled entirely with Tailwind breakpoints and one piece of client state (AppShell's drawer-open boolean) — there is no separate mobile codebase or route tree. Installability adds a standard web manifest (public/manifest.json), a set of generated icons (including a maskable variant), and a deliberately no-op service worker (public/sw.js) registered client-side — it exists only to satisfy Chrome's installability requirement and performs no caching, since Keel is a fully authenticated, live-data application where stale or cross-user cached content would be a correctness/security risk.",
+      "Responsiveness is handled entirely with Tailwind breakpoints and one piece of client state (AppShell's drawer-open boolean) — there is no separate mobile codebase or route tree. Installability adds a standard web manifest (public/manifest.json), a set of generated icons (including a maskable variant), and a deliberately no-op service worker (public/sw.js) registered client-side — it exists only to satisfy Chrome's installability requirement and performs no caching, since Executa is a fully authenticated, live-data application where stale or cross-user cached content would be a correctness/security risk.",
   },
   {
     heading: "12. Deployment & Environments",
@@ -238,12 +238,12 @@ export const TRAINING_SECTIONS: DocSection[] = [
   {
     heading: "1. Getting Started",
     body:
-      "Log in with the email and password (or setup link) an admin gave you. What you see depends on your role: internal staff and PMs see the full portfolio; a client company's users see only their own organization's projects. The left sidebar (or, on a phone, the menu behind the top-left hamburger icon) is how you get everywhere in Keel. Two floating buttons are available on every page: the AI PM avatar (bottom-right) and the bug icon for reporting an issue (stacked just above it).",
+      "Log in with the email and password (or setup link) an admin gave you. What you see depends on your role: internal staff and PMs see the full portfolio; a client company's users see only their own organization's projects. The left sidebar (or, on a phone, the menu behind the top-left hamburger icon) is how you get everywhere in Executa. Two floating buttons are available on every page: the AI PM avatar (bottom-right) and the bug icon for reporting an issue (stacked just above it).",
   },
   {
     heading: "2. Home",
     body:
-      "The landing page after login. Three big entry points: start a new Idea, jump into Project Execution, or get help from Ongoing Support — the three stages of Keel's own lifecycle.",
+      "The landing page after login. Three big entry points: start a new Idea, jump into Project Execution, or get help from Ongoing Support — the three stages of Executa's own lifecycle.",
   },
   {
     heading: "3. Dashboard",
@@ -251,7 +251,7 @@ export const TRAINING_SECTIONS: DocSection[] = [
       "Your portfolio at a glance: project health (RAG), percent complete, budget actual vs. planned, and overdue tasks across every project you can see. Click any project to open it.",
   },
   {
-    heading: "4. How Keel Works",
+    heading: "4. How Executa Works",
     body:
       "An animated, illustrated walkthrough of the whole product lifecycle. Point a new team member here first.",
   },
@@ -278,7 +278,7 @@ export const TRAINING_SECTIONS: DocSection[] = [
   {
     heading: "9. Project Execution — Risks, Communications, Milestones tabs",
     body:
-      "Log risks and communications as they happen — use \"Draft with AI\" if you just want to describe what happened in plain language and let Keel structure it. Track key dates on Milestones, optionally tied to a specific SOW.",
+      "Log risks and communications as they happen — use \"Draft with AI\" if you just want to describe what happened in plain language and let Executa structure it. Track key dates on Milestones, optionally tied to a specific SOW.",
   },
   {
     heading: "10. Project Execution — Status/Reports tab",
@@ -333,7 +333,7 @@ export const TRAINING_SECTIONS: DocSection[] = [
   {
     heading: "20. Admin — Audit Log & User Activity",
     body:
-      "(ADMIN only.) Audit Log is a trace of every sensitive action (approvals, rate changes, role changes, deletions) — who, what, when. User Activity shows login counts and a recent feed of logins and public-link visits, for a quick read on who is actually using Keel.",
+      "(ADMIN only.) Audit Log is a trace of every sensitive action (approvals, rate changes, role changes, deletions) — who, what, when. User Activity shows login counts and a recent feed of logins and public-link visits, for a quick read on who is actually using Executa.",
   },
   {
     heading: "21. Admin — Issue Reports",
@@ -348,7 +348,7 @@ export const TRAINING_SECTIONS: DocSection[] = [
   {
     heading: "23. Reporting an Issue or Giving Feedback",
     body:
-      "Click the bug icon (bottom-right, just above the AI avatar) on any page. Keel automatically captures a screenshot of what you were looking at — no permission prompt, it happens instantly. Type what went wrong or what you'd like to see changed, and send. An admin will see it in Admin > Issue Reports.",
+      "Click the bug icon (bottom-right, just above the AI avatar) on any page. Executa automatically captures a screenshot of what you were looking at — no permission prompt, it happens instantly. Type what went wrong or what you'd like to see changed, and send. An admin will see it in Admin > Issue Reports.",
   },
   {
     heading: "24. Switching Themes",
@@ -356,9 +356,9 @@ export const TRAINING_SECTIONS: DocSection[] = [
       "Open the sidebar (or the mobile drawer) and use the row of colored dots near the bottom to switch between six color themes instantly. Your choice is remembered on that browser/device.",
   },
   {
-    heading: "25. Installing Keel on Your Phone",
+    heading: "25. Installing Executa on Your Phone",
     body:
-      "On Android (Chrome): open the site, tap the browser menu, and choose \"Add to Home screen\" or \"Install app.\" On iPhone (Safari): open the site, tap the Share icon, then \"Add to Home Screen.\" Either way you get a Keel icon on your home screen that opens full-screen, like a native app — no app store involved.",
+      "On Android (Chrome): open the site, tap the browser menu, and choose \"Add to Home screen\" or \"Install app.\" On iPhone (Safari): open the site, tap the Share icon, then \"Add to Home Screen.\" Either way you get a Executa icon on your home screen that opens full-screen, like a native app — no app store involved.",
   },
   {
     heading: "26. Account & Logout",
