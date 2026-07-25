@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import { getSessionUserEdge, SESSION_COOKIE_NAME } from "@/lib/session-edge";
 import { labelForApiMutation } from "@/lib/activityLabels";
+import { getProductLock, isExecutaOnlyPath } from "@/lib/productHost";
 
 // Builds the "what did this user do" activity trail two ways, for every logged-in
 // request that reaches here:
@@ -21,27 +22,39 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
-  // Domain-based product routing. Executa and ProjectRequesta are two independent public
-  // homepages on one deployment -- executa.<domain> and projectrequesta.<domain> can both
-  // point here as custom domains. "/" always renders Executa's own homepage (src/app/page.tsx)
-  // by default; on a host that starts with "projectrequesta", silently rewrite "/" to
-  // "/marketplace" (ProjectRequesta's own homepage) instead, so that domain's root shows the
-  // right pitch without ever exposing the internal /marketplace path in the address bar.
-  // Everything past "/" (deep links, the authenticated app, /api/**) is unaffected -- domain
-  // only decides which pitch loads at the bare root, not which product a session can reach.
-  if (pathname === "/" && method === "GET") {
-    const host = (request.headers.get("host") ?? "").toLowerCase();
-    if (host.startsWith("projectrequesta")) {
+  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  const user = await getSessionUserEdge(token);
+
+  // Domain-based product isolation. executa.<domain> and projectrequesta.<domain> are two
+  // dedicated custom domains that must each behave like a genuinely separate site -- no
+  // visible or reachable link into the other product, even by typing the URL directly.
+  // getProductLock() only recognizes those two hostnames; every other host (the legacy
+  // keel.<domain> domain, Vercel preview/production URLs, localhost) falls through
+  // untouched, keeping today's combined /home experience for bookmarks, webhooks, and local
+  // dev.
+  if (method === "GET" && !pathname.startsWith("/api/")) {
+    const lock = getProductLock(request.headers.get("host"));
+
+    if (lock === "projectrequesta") {
+      if (pathname === "/") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/marketplace";
+        return NextResponse.rewrite(url);
+      }
+      if (isExecutaOnlyPath(pathname)) {
+        const url = request.nextUrl.clone();
+        url.pathname = user ? "/projectrequesta" : "/marketplace";
+        return NextResponse.redirect(url);
+      }
+    } else if (lock === "executa" && pathname.startsWith("/projectrequesta")) {
       const url = request.nextUrl.clone();
-      url.pathname = "/marketplace";
-      return NextResponse.rewrite(url);
+      url.pathname = user ? "/home" : "/";
+      return NextResponse.redirect(url);
     }
   }
 
   if (request.headers.get("next-router-prefetch")) return NextResponse.next();
 
-  const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  const user = await getSessionUserEdge(token);
   if (!user) return NextResponse.next();
 
   let payload: { type: "PAGE_VIEW" | "ACTION"; path: string; detail?: string; userId: string; userName: string } | null = null;
