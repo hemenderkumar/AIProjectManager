@@ -90,7 +90,7 @@ export default async function MarketplaceLandingPage({
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
           <div>
             <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-5">
-              The right vendor, on your terms
+              On your terms, the right vendor
             </p>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-slate-900 leading-tight tracking-tight mb-5">
               Post a project or a resource request. Receive bids. Negotiate. Get to work.

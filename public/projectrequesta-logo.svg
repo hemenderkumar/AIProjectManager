@@ -7,7 +7,7 @@
     <polygon points="250.0,120.0 256.9,203.4 291.0,179.0 266.6,213.1 350.0,220.0 266.6,226.9 291.0,261.0 256.9,236.6 250.0,320.0 243.1,236.6 209.0,261.0 233.4,226.9 150.0,220.0 233.4,213.1 209.0,179.0 243.1,203.4"/>
 
     <text x="250" y="465" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="800" letter-spacing="1">ProjectRequesta</text>
-    <text x="250" y="515" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="#1a1a1a">THE RIGHT VENDOR, ON YOUR TERMS</text>
+    <text x="250" y="515" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="#1a1a1a">ON YOUR TERMS, THE RIGHT VENDOR</text>
   </g>
 
   <line x1="295" y1="205" x2="359" y2="104" stroke="#C08A2E" stroke-width="24" stroke-linecap="butt"/>

@@ -21,6 +21,23 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
+  // Domain-based product routing. Executa and ProjectRequesta are two independent public
+  // homepages on one deployment -- executa.<domain> and projectrequesta.<domain> can both
+  // point here as custom domains. "/" always renders Executa's own homepage (src/app/page.tsx)
+  // by default; on a host that starts with "projectrequesta", silently rewrite "/" to
+  // "/marketplace" (ProjectRequesta's own homepage) instead, so that domain's root shows the
+  // right pitch without ever exposing the internal /marketplace path in the address bar.
+  // Everything past "/" (deep links, the authenticated app, /api/**) is unaffected -- domain
+  // only decides which pitch loads at the bare root, not which product a session can reach.
+  if (pathname === "/" && method === "GET") {
+    const host = (request.headers.get("host") ?? "").toLowerCase();
+    if (host.startsWith("projectrequesta")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/marketplace";
+      return NextResponse.rewrite(url);
+    }
+  }
+
   if (request.headers.get("next-router-prefetch")) return NextResponse.next();
 
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
