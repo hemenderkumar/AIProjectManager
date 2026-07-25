@@ -19,6 +19,7 @@ import {
   Compass,
   Globe2,
   Gavel,
+  Map,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
@@ -129,6 +130,7 @@ export default function Sidebar({
 
             <NavSection label="Project Lifecycle">
               <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
+              <NavLink href="/roadmap" icon={<Map size={17} />} pathname={pathname}>Roadmap</NavLink>
               <NavLink href="/execution" icon={<Rocket size={17} />} pathname={pathname}>Project Execution</NavLink>
               <NavLink href="/support" icon={<LifeBuoy size={17} />} pathname={pathname}>Ongoing Support</NavLink>
             </NavSection>

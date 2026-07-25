@@ -10,6 +10,7 @@ import {
   Globe2,
   FolderKanban,
   FileBarChart,
+  Map,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getPrMemberships } from "@/lib/projectrequesta/access";
@@ -67,6 +68,7 @@ export default async function HomePage() {
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Quick start</p>
             <div className="space-y-1.5 mb-4">
               <QuickRow href="/ideation" icon={<Lightbulb size={15} />} label="New Ideation" hint="Brainstorm & feasibility" />
+              <QuickRow href="/roadmap" icon={<Map size={15} />} label="Roadmap" hint="Quick wins vs long-term" />
               <QuickRow href="/execution" icon={<Rocket size={15} />} label="New Project" hint="Skip straight to planning" />
               <QuickRow href="/support" icon={<LifeBuoy size={15} />} label="Project Support" hint="Incidents & ongoing cost" />
             </div>

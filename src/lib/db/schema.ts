@@ -1897,3 +1897,61 @@ export const prReviewsRelations = relations(prReviews, ({ one }) => ({
   project: one(prProjects, { fields: [prReviews.prProjectId], references: [prProjects.id] }),
   author: one(users, { fields: [prReviews.authorUserId], references: [users.id] }),
 }));
+
+// Roadmap: an on-demand, independent action a PM can run after ideas clear Feasibility --
+// not a gate in the Ideation sequence itself, since it looks across many ideas at once rather
+// than advancing one. Answers "of everything we've assessed, what's a quick win vs a longer
+// bet, and in what order." Mirrors the same "known inputs -> AI drafts a prioritized roadmap"
+// approach as the standalone ai-strategy-blueprint lead-gen tool, but fed by data already
+// collected on each idea (feasibility score, architecture notes, cost/effort) instead of a
+// fresh six-question intake. Regenerable -- each run creates a new roadmap row rather than
+// overwriting the last, so a portfolio's prioritization history isn't lost.
+export const roadmaps = pgTable("roadmaps", {
+  id: cuid(),
+  // null = internal Executa's own portfolio roadmap; set = a specific client organization's.
+  // Same null-means-internal convention as rateCards.organizationId.
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  executiveSummary: text("executive_summary"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// One row per idea included in a given roadmap run. impact/effort/quickWin are the AI's
+// classification (PM-editable afterward, same as every other AI-drafted field in the app);
+// rationale is the 1-2 sentence "why" so the placement isn't a black box.
+export const roadmapItems = pgTable("roadmap_items", {
+  id: cuid(),
+  roadmapId: text("roadmap_id").notNull().references(() => roadmaps.id, { onDelete: "cascade" }),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  impact: priorityEnum("impact").notNull().default("MEDIUM"),
+  effort: priorityEnum("effort").notNull().default("MEDIUM"),
+  quickWin: boolean("quick_win").notNull().default(false),
+  rationale: text("rationale"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+// Phased sequencing for a roadmap run (e.g. "Days 1-30" / "31-60" / "61-90"). `actions` is
+// newline "- " bulleted free text, the same convention already used for
+// projects.architectureProsCons, rather than a separate child table for a short bullet list.
+export const roadmapPhases = pgTable("roadmap_phases", {
+  id: cuid(),
+  roadmapId: text("roadmap_id").notNull().references(() => roadmaps.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  focus: text("focus"),
+  actions: text("actions"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const roadmapsRelations = relations(roadmaps, ({ many }) => ({
+  items: many(roadmapItems),
+  phases: many(roadmapPhases),
+}));
+
+export const roadmapItemsRelations = relations(roadmapItems, ({ one }) => ({
+  roadmap: one(roadmaps, { fields: [roadmapItems.roadmapId], references: [roadmaps.id] }),
+  project: one(projects, { fields: [roadmapItems.projectId], references: [projects.id] }),
+}));
+
+export const roadmapPhasesRelations = relations(roadmapPhases, ({ one }) => ({
+  roadmap: one(roadmaps, { fields: [roadmapPhases.roadmapId], references: [roadmaps.id] }),
+}));
