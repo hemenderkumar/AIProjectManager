@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import LoginCard from "@/components/LoginCard";
-import { Rocket, Sparkles, FileSearch, FileBarChart, Globe2, ShieldCheck, FileText, KeyRound, ArrowRight } from "lucide-react";
+import { Rocket, Sparkles, FileSearch, FileBarChart, ArrowRight } from "lucide-react";
 
 const PREVIEW_PROJECTS = [
   { name: "Core Platform Migration", stage: "Execution", pct: 62, rag: "GREEN" as const },
@@ -17,15 +17,11 @@ const PREVIEW_RAG_STYLES: Record<string, { bg: string; text: string; dot: string
   RED: { bg: "bg-rose-100", text: "text-rose-700", dot: "bg-rose-500", bar: "bg-rose-500" },
 };
 
-// The single homepage at "/" -- for everyone, signed in or not. Logged-out visitors get
-// the pitch + an embedded login form; signed-in visitors get the same page with a
-// personalized hero and direct entry points into both products instead of the login form.
-//
-// Two products, two CTAs, everywhere a CTA appears: a single "Go to Tracker" button used to
-// stand in for both, which read as if Executa were the only real product and
-// ProjectRequesta an afterthought. Header, hero, and the two product cards each now offer
-// "Executa" and "ProjectRequesta" as equal-weight, separately-clickable destinations --
-// /dashboard and /projectrequesta respectively -- for signed-in visitors.
+// Executa's own dedicated public homepage -- deliberately no ProjectRequesta mentions, cards,
+// or cross-links here. Executa and ProjectRequesta are two independent products that happen to
+// share a backend; each gets its own standalone pitch (see /marketplace for ProjectRequesta's).
+// Logged-out visitors get the pitch + an embedded login form; signed-in visitors get the same
+// page with a personalized hero and a direct entry point into the product instead.
 export default async function HomePage() {
   const user = await getCurrentUser();
 
@@ -42,25 +38,16 @@ export default async function HomePage() {
             <span className="text-sm font-semibold text-slate-900">Executa</span>
           </div>
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-500">
-            <a href="#executa-deliver" className="hover:text-slate-900 transition-colors">Executa</a>
-            <a href="#projectrequesta" className="hover:text-slate-900 transition-colors">ProjectRequesta</a>
+            <a href="#features" className="hover:text-slate-900 transition-colors">Product</a>
             <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How it works</a>
           </nav>
           {user ? (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
-              >
-                Executa
-              </Link>
-              <Link
-                href="/projectrequesta"
-                className="text-sm font-medium px-3.5 py-2 rounded-lg bg-slate-900 text-white shadow-sm shadow-slate-900/20 transition-colors hover:bg-slate-800"
-              >
-                ProjectRequesta
-              </Link>
-            </div>
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
+            >
+              Go to Executa
+            </Link>
           ) : (
             <a
               href="#login"
@@ -76,17 +63,15 @@ export default async function HomePage() {
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
           <div>
             <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-5">
-              One platform, two ways to deliver
+              Guiding project success
             </p>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-slate-900 leading-tight tracking-tight mb-5">
-              Run delivery in-house, or source it from vetted vendors — same tracker, either way.
+              From a first idea to a board-ready report, without leaving one tracker.
             </h1>
             <p className="text-base text-slate-600 mb-8 max-w-lg">
-              <span className="font-medium text-slate-800">Executa</span> is an AI-driven project and
-              portfolio tracker for running your own team&apos;s engagements end to end.{" "}
-              <span className="font-medium text-slate-800">ProjectRequesta</span> is the B2B marketplace layer
-              on top — post a project, receive bids from vetted vendors, and let Executa handle the
-              agreement and payments, without ever leaving the platform.
+              Executa is an AI-driven project and portfolio tracker for running your own team&apos;s
+              engagements end to end — ideation, AI-drafted charters, sprints or waterfall
+              phases, risk and budget tracking, and board-ready reports.
             </p>
             <a
               href="#how-it-works"
@@ -104,25 +89,12 @@ export default async function HomePage() {
             {user ? (
               <div id="login" className="w-full max-w-sm bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6 text-center">
                 <p className="text-sm font-semibold text-slate-900 mb-1.5">Welcome back, {user.name.split(" ")[0]}</p>
-                <p className="text-xs text-slate-500 mb-5">
-                  Pick a product to jump into — or see both side by side on your home page.
-                </p>
-                <div className="space-y-2">
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center justify-center gap-2 w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 transition-colors"
-                  >
-                    <Rocket size={15} /> Go to Executa
-                  </Link>
-                  <Link
-                    href="/projectrequesta"
-                    className="flex items-center justify-center gap-2 w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-slate-900 text-white shadow-sm shadow-slate-900/20 hover:bg-slate-800 transition-colors"
-                  >
-                    <Globe2 size={15} /> Go to ProjectRequesta
-                  </Link>
-                </div>
-                <Link href="/home" className="block mt-3 text-xs text-slate-400 hover:text-slate-600">
-                  Or see both on your home page →
+                <p className="text-xs text-slate-500 mb-5">Jump back into your portfolio.</p>
+                <Link
+                  href="/dashboard"
+                  className="flex items-center justify-center gap-2 w-full text-sm font-medium px-4 py-2.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 transition-colors"
+                >
+                  <Rocket size={15} /> Go to Executa
                 </Link>
               </div>
             ) : (
@@ -133,54 +105,6 @@ export default async function HomePage() {
       </section>
 
       <section className="max-w-5xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div id="executa-deliver" className="scroll-mt-16 rounded-xl border border-slate-200 p-6">
-            <div className="h-9 w-9 rounded-lg bg-accent-50 flex items-center justify-center mb-4">
-              <Rocket size={18} className="text-accent-600" />
-            </div>
-            <p className="text-base font-semibold text-slate-900 mb-1">Executa</p>
-            <p className="text-xs text-slate-400 mb-3">Run your own team&apos;s delivery</p>
-            <p className="text-sm text-slate-600 leading-relaxed mb-4">
-              Ideation, AI-drafted charters, sprints or waterfall phases, risk and budget tracking, and
-              board-ready reports — one tracker from first idea to steady-state support.
-            </p>
-            {user ? (
-              <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-                Open Executa <ArrowRight size={14} />
-              </Link>
-            ) : (
-              <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-                See how it works <ArrowRight size={14} />
-              </a>
-            )}
-          </div>
-          <div id="projectrequesta" className="scroll-mt-16 relative rounded-xl border-2 border-accent-600 p-6">
-            <span className="absolute -top-2.5 left-5 bg-accent-600 text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full">
-              New
-            </span>
-            <div className="h-9 w-9 rounded-lg bg-accent-50 flex items-center justify-center mb-4">
-              <Globe2 size={18} className="text-accent-600" />
-            </div>
-            <p className="text-base font-semibold text-slate-900 mb-1">ProjectRequesta</p>
-            <p className="text-xs text-slate-400 mb-3">Source work from vetted vendors</p>
-            <p className="text-sm text-slate-600 leading-relaxed mb-4">
-              Post a project, receive bids from verified vendor organizations, negotiate terms, and let
-              Executa generate the agreement and manage milestone payments.
-            </p>
-            {user ? (
-              <Link href="/projectrequesta" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-                Open ProjectRequesta <ArrowRight size={14} />
-              </Link>
-            ) : (
-              <Link href="/marketplace" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-600 hover:text-accent-700">
-                Browse the open marketplace <ArrowRight size={14} />
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="max-w-5xl mx-auto px-6 pb-16">
         <div className="rounded-xl border border-slate-200 shadow-sm shadow-slate-200/60 overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-900">Executa: Portfolio Dashboard</p>
@@ -247,10 +171,9 @@ export default async function HomePage() {
       <section id="features" className="bg-slate-50 border-y border-slate-200 scroll-mt-16">
         <div className="max-w-5xl mx-auto px-6 py-16">
           <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">What you get</p>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything a boutique consultancy needs, whether you&apos;re delivering or sourcing the work.</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10">
+          <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything a boutique consultancy needs to run its own delivery.</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10">
             <div>
-              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide mb-1">Executa</p>
               <FeatureRow
                 icon={<Rocket size={16} />}
                 title="Full project lifecycle"
@@ -261,6 +184,8 @@ export default async function HomePage() {
                 title="An AI project manager"
                 description="Drafts charters and plans, estimates effort, suggests assignments, briefs you out loud, and answers questions about your whole portfolio."
               />
+            </div>
+            <div>
               <FeatureRow
                 icon={<FileSearch size={16} />}
                 title="Vendor evaluation, built in"
@@ -270,29 +195,6 @@ export default async function HomePage() {
                 icon={<FileBarChart size={16} />}
                 title="Reports that look the part"
                 description="Branded, board-ready PDF and PowerPoint exports for status reports, steering committee decks, and executive one-pagers — generated on demand."
-              />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-accent-600 uppercase tracking-wide mb-1">ProjectRequesta</p>
-              <FeatureRow
-                icon={<Globe2 size={16} />}
-                title="A sealed bidding marketplace"
-                description="Post a project as open or restricted to certain countries, and let vetted Vendor organizations submit and negotiate bids privately."
-              />
-              <FeatureRow
-                icon={<ShieldCheck size={16} />}
-                title="KYC/KYB compliance, built in"
-                description="Every organization is verified before it can transact — KYC, KYB, sanctions screening, and tax forms, reviewed by Executa's compliance team."
-              />
-              <FeatureRow
-                icon={<FileText size={16} />}
-                title="Agreements generated automatically"
-                description="Accepting a bid generates the right contract for the engagement — a single Client-Vendor agreement, or Executa-mediated agreements on both sides."
-              />
-              <FeatureRow
-                icon={<KeyRound size={16} />}
-                title="Enterprise SSO and MFA"
-                description="SAML single sign-on for enterprise Client organizations, with two-factor authentication enforced for Finance Approvers and platform staff."
               />
             </div>
           </div>
@@ -330,43 +232,6 @@ export default async function HomePage() {
               Evaluate vendors, generate a Statement of Work, and track deliverables against it —
               without exporting anything to a separate procurement tool.
             </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-slate-900 text-white">
-        <div className="max-w-5xl mx-auto px-6 py-16">
-          <p className="text-xs font-medium tracking-widest uppercase text-accent-300 mb-2">Built for regulated industries</p>
-          <h2 className="text-xl font-semibold tracking-tight mb-4 max-w-2xl">
-            The compliance depth other marketplaces skip is exactly what finance, healthcare, and
-            government-adjacent teams require before they&apos;ll touch outsourced work at all.
-          </h2>
-          <p className="text-sm text-slate-300 max-w-2xl mb-10">
-            Upwork and similar marketplaces are built for speed, not scrutiny. ProjectRequesta is built for
-            teams whose procurement, security, and audit functions won&apos;t sign off without it.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <div>
-              <p className="text-sm font-semibold mb-1.5">KYC/KYB on every organization</p>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Every Client and Vendor is verified — identity, business, sanctions screening, and tax
-                forms — before either side can transact. Nothing self-declared.
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold mb-1.5">MFA enforced where it matters</p>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Two-factor authentication is required, not optional, for Finance Approvers and every
-                Platform role — the roles that can move money or override a decision.
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold mb-1.5">Role-scoped access, full audit trail</p>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Org Admin, Requester, Finance Approver, and Vendor roles are each scoped to exactly what
-                they need — with every material action logged for your own compliance review.
-              </p>
-            </div>
           </div>
         </div>
       </section>
