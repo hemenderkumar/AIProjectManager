@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Loader2, Sparkles, Zap, Clock, AlertCircle, Send, MessageCircleQuestion, ArrowRight } from "lucide-react";
+import { Loader2, Sparkles, Zap, Clock, AlertCircle, Send, MessageCircleQuestion, ArrowRight, ListChecks } from "lucide-react";
 
+type EligibleIdea = { id: string; name: string; feasibilityScore: number; organizationId: string | null; organizationName: string | null };
 type RoadmapSummary = { id: string; createdAt: string; createdBy: string | null; executiveSummary: string | null; itemCount: number };
 type RoadmapItem = {
   id: string;
@@ -23,14 +24,27 @@ function tagCls(level: string) {
   return "bg-emerald-50 text-emerald-700";
 }
 
+function scoreCls(score: number) {
+  if (score >= 70) return "bg-emerald-50 text-emerald-700";
+  if (score >= 40) return "bg-amber-50 text-amber-700";
+  return "bg-rose-50 text-rose-700";
+}
+
 export default function RoadmapPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<RoadmapSummary[]>([]);
-  const [eligibleCount, setEligibleCount] = useState(0);
+  const [eligibleIdeas, setEligibleIdeas] = useState<EligibleIdea[]>([]);
   const [canGenerate, setCanGenerate] = useState(false);
   const [selected, setSelected] = useState<RoadmapDetail | null>(null);
+  // Which eligible ideas to actually include the next time "Generate Roadmap" runs -- lets
+  // someone build a roadmap for a single idea, or any hand-picked combination, instead of
+  // always every eligible idea at once. Defaults to "everything" on first load (the common
+  // case), then only reconciles against ideas that disappear (score cleared, stage advanced)
+  // rather than resetting a selection the user deliberately narrowed down.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const initializedSelection = useRef(false);
   // Simulated progress -- there's no server-sent progress event for a single AI call, so this
   // eases toward 90% over the AI generation's typical duration and only snaps to 100% once the
   // response actually lands, rather than pretending to know real completion percentage.
@@ -42,7 +56,15 @@ export default function RoadmapPage() {
     if (res.ok) {
       const data = await res.json();
       setSummaries(data.roadmaps || []);
-      setEligibleCount(data.eligibleCount || 0);
+      const ideas: EligibleIdea[] = data.eligibleIdeas || [];
+      setEligibleIdeas(ideas);
+      const ids = new Set(ideas.map((i) => i.id));
+      if (!initializedSelection.current) {
+        setSelectedIds(ids);
+        initializedSelection.current = true;
+      } else {
+        setSelectedIds((prev) => new Set([...prev].filter((id) => ids.has(id))));
+      }
       setCanGenerate(!!data.canGenerate);
       if (data.roadmaps?.[0]) {
         const detailRes = await fetch(`/api/roadmap/${data.roadmaps[0].id}`);
@@ -51,6 +73,15 @@ export default function RoadmapPage() {
     }
     setLoading(false);
   }, []);
+
+  function toggleIdea(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -72,7 +103,11 @@ export default function RoadmapPage() {
       setProgress((p) => (p < 90 ? p + Math.max(1, (90 - p) * 0.08) : p));
     }, 400);
     try {
-      const res = await fetch("/api/ai/roadmap", { method: "POST" });
+      const res = await fetch("/api/ai/roadmap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectIds: Array.from(selectedIds) }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Couldn't generate a roadmap");
@@ -111,11 +146,12 @@ export default function RoadmapPage() {
           canGenerate ? (
             <button
               onClick={generate}
-              disabled={generating || eligibleCount === 0}
+              disabled={generating || selectedIds.size === 0}
+              title={selectedIds.size === 0 ? "Select at least one idea below first" : undefined}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {generating ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
-              {generating ? "Generating..." : "Generate Roadmap"}
+              {generating ? "Generating..." : selectedIds.size > 0 ? `Generate Roadmap (${selectedIds.size})` : "Generate Roadmap"}
             </button>
           ) : null
         }
@@ -136,7 +172,7 @@ export default function RoadmapPage() {
           </div>
         )}
 
-        {eligibleCount === 0 && !selected && (
+        {eligibleIdeas.length === 0 && !selected && (
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
             <p className="text-sm font-semibold text-slate-900 mb-1 text-center">Nothing to prioritize yet</p>
             <p className="text-xs text-slate-500 max-w-md mx-auto text-center mb-4">
@@ -256,12 +292,55 @@ export default function RoadmapPage() {
           </>
         )}
 
-        {!selected && eligibleCount > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6 text-center">
-            <p className="text-sm font-semibold text-slate-900 mb-1">
-              {eligibleCount} idea{eligibleCount === 1 ? "" : "s"} ready to prioritize
+        {!selected && eligibleIdeas.length > 0 && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <ListChecks size={16} className="text-accent-600" />
+                <p className="text-sm font-semibold text-slate-900">
+                  {eligibleIdeas.length} idea{eligibleIdeas.length === 1 ? "" : "s"} ready to prioritize
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-xs font-medium">
+                <button
+                  onClick={() => setSelectedIds(new Set(eligibleIdeas.map((i) => i.id)))}
+                  className="text-accent-600 hover:text-accent-700"
+                >
+                  Select all
+                </button>
+                <span className="text-slate-300">|</span>
+                <button onClick={() => setSelectedIds(new Set())} className="text-slate-500 hover:text-slate-700">
+                  Clear all
+                </button>
+              </div>
+            </div>
+            <p className="px-5 pt-3 text-xs text-slate-500">
+              Check one idea to build a roadmap for it alone, or combine several — uncheck the rest.
             </p>
-            <p className="text-xs text-slate-500">Hit &quot;Generate Roadmap&quot; above to get a quick-wins-vs-long-term view.</p>
+            <ul className="divide-y divide-slate-50">
+              {eligibleIdeas.map((idea) => (
+                <li key={idea.id}>
+                  <label className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(idea.id)}
+                      onChange={() => toggleIdea(idea.id)}
+                      className="size-4 rounded border-slate-300 text-accent-600 focus:ring-accent-500"
+                    />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium text-slate-900 truncate">{idea.name}</span>
+                      {idea.organizationName && <span className="block text-xs text-slate-400">{idea.organizationName}</span>}
+                    </span>
+                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold ${scoreCls(idea.feasibilityScore)}`}>
+                      {idea.feasibilityScore}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-100">
+              <p className="text-xs text-slate-500">Hit &quot;Generate Roadmap&quot; above to get a quick-wins-vs-long-term view for the checked ideas.</p>
+            </div>
           </div>
         )}
       </div>

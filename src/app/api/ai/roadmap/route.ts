@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { askClaudeJSON } from "@/lib/ai";
 import { db } from "@/lib/db";
 import { roadmaps, roadmapItems, roadmapPhases } from "@/lib/db/schema";
@@ -17,14 +17,35 @@ type RoadmapPlan = {
 // "known inputs -> AI drafts a prioritized roadmap" pattern as the standalone
 // ai-strategy-blueprint lead-gen tool, fed by data already collected on each idea instead of
 // a fresh intake form.
-export async function POST() {
+//
+// Accepts an optional { projectIds: string[] } body so the caller can build a roadmap for one
+// specific idea, or any hand-picked combination, instead of always every eligible idea at once
+// -- the picklist on the Roadmap page defaults to "all selected" but lets the user narrow it
+// down. Every id is still re-validated against getEligibleIdeasForRoadmap() server-side, so a
+// stale or forged id (an idea that lost its score, moved stage, or belongs to another org
+// entirely) can't sneak into the prompt.
+export async function POST(req: NextRequest) {
   const user = await requireRole("PM");
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const ideas = await getEligibleIdeasForRoadmap(user);
-  if (!ideas.length) {
+  const body = await req.json().catch(() => ({}));
+  const requestedIds: string[] | null =
+    Array.isArray(body?.projectIds) && body.projectIds.every((v: unknown) => typeof v === "string") && body.projectIds.length
+      ? body.projectIds
+      : null;
+
+  const eligible = await getEligibleIdeasForRoadmap(user);
+  if (!eligible.length) {
     return NextResponse.json(
       { error: "No ideas are ready for a roadmap yet — an idea needs a Feasibility score (Ideation > Technical Feasibility) before it can be prioritized." },
+      { status: 400 }
+    );
+  }
+
+  const ideas = requestedIds ? eligible.filter((p) => requestedIds.includes(p.id)) : eligible;
+  if (!ideas.length) {
+    return NextResponse.json(
+      { error: "None of the selected ideas are eligible anymore — refresh the page and try again." },
       { status: 400 }
     );
   }

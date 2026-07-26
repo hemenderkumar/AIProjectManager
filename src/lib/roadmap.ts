@@ -1,23 +1,55 @@
 import { eq, desc, inArray } from "drizzle-orm";
 import { db } from "./db";
-import { projects, roadmaps, roadmapItems, roadmapPhases } from "./db/schema";
+import { projects, organizations, roadmaps, roadmapItems, roadmapPhases } from "./db/schema";
 import { listVisibleProjects } from "./tenancy";
 import type { SessionUser } from "./auth";
 
 // Ideas eligible for a roadmap run: at least Feasibility has been assessed (there's a score to
 // reason about), and the idea hasn't already moved into Charter/Execution/Closing — past that
 // point it's individually committed, not something still being sequenced against the rest of
-// the portfolio. Scoped strictly to the caller's own organization (or null/internal), even for
-// ADMIN, since each org's portfolio is prioritized on its own -- an ADMIN overseeing several
-// client organizations isn't sequencing them against each other in one shared roadmap.
+// the portfolio.
+//
+// Previously this also required p.organizationId === user.organizationId, meant to keep an
+// ADMIN from combining several client orgs' ideas into one shared roadmap. In practice that
+// broke detection for exactly the users who need this most: an ADMIN or internal PM's own
+// organizationId is null, so the check silently excluded every idea that belonged to an actual
+// client org (i.e. nearly everything) even though listVisibleProjects() -- which already
+// applies the correct per-role visibility (ADMIN: everything, SUPER_USER: own org,
+// PM/CONTRIBUTOR/VIEWER: project membership) -- had already deemed it visible. Removed: caller
+// now explicitly picks which eligible ideas to combine (see api/ai/roadmap's projectIds), so
+// the old blanket restriction is both redundant and no longer the right way to prevent an
+// unintended cross-org mashup.
 export async function getEligibleIdeasForRoadmap(user: SessionUser) {
   const visible = await listVisibleProjects(user);
   return visible.filter(
-    (p) =>
-      p.organizationId === user.organizationId &&
-      p.feasibilityScore != null &&
-      !["CHARTER", "EXECUTION", "CLOSING", "CLOSED"].includes(p.stage)
+    (p) => p.feasibilityScore != null && !["CHARTER", "EXECUTION", "CLOSING", "CLOSED"].includes(p.stage)
   );
+}
+
+export type EligibleIdeaSummary = {
+  id: string;
+  name: string;
+  feasibilityScore: number;
+  organizationId: string | null;
+  organizationName: string | null;
+};
+
+// Lightweight shape for the picklist UI -- just enough to label a checkbox (name, score, which
+// org it belongs to when the caller can see more than one). Kept separate from the full project
+// rows getEligibleIdeasForRoadmap returns, since the AI generation route needs much more
+// (problem statement, architecture notes, cost) that this list has no reason to ship to the client.
+export async function summarizeEligibleIdeas(ideas: Awaited<ReturnType<typeof getEligibleIdeasForRoadmap>>): Promise<EligibleIdeaSummary[]> {
+  if (!ideas.length) return [];
+  const orgIds = Array.from(new Set(ideas.map((p) => p.organizationId).filter((id): id is string => id != null)));
+  const orgRows = orgIds.length ? await db.select({ id: organizations.id, name: organizations.name }).from(organizations).where(inArray(organizations.id, orgIds)) : [];
+  const orgNameById = new Map(orgRows.map((o) => [o.id, o.name]));
+  return ideas.map((p) => ({
+    id: p.id,
+    name: p.name,
+    feasibilityScore: p.feasibilityScore as number,
+    organizationId: p.organizationId,
+    organizationName: p.organizationId ? orgNameById.get(p.organizationId) ?? null : null,
+  }));
 }
 
 export type RoadmapSummary = {
