@@ -26,6 +26,7 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
     architectureReviewNotes: p.architectureReviewNotes ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -34,12 +35,18 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/projects/${p.id}`, {
+    setSaveError(null);
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     router.refresh();
   }
 
@@ -158,6 +165,7 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
 
       <div>
         <PrimaryButton onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</PrimaryButton>
+        {saveError && <p className="mt-2 text-xs text-rose-600">{saveError}</p>}
       </div>
 
       <Card title="Architecture Approval">
@@ -192,6 +200,7 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
         >
           {saving ? "Saving..." : "Save approval"}
         </button>
+        {saveError && <p className="mt-2 text-xs text-rose-600">{saveError}</p>}
       </Card>
     </div>
   );

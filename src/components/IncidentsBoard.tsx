@@ -56,8 +56,19 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
   const [draftNote, setDraftNote] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const projectName = (id: string | null) => projects.find((p) => p.id === id)?.name ?? null;
+
+  async function checkOk(res: Response, fallback: string) {
+    if (res.ok) {
+      setActionError(null);
+      return true;
+    }
+    const data = await res.json().catch(() => ({}));
+    setActionError(data?.error ?? fallback);
+    return false;
+  }
 
   async function draftWithAI() {
     if (!draftNote.trim()) return;
@@ -83,43 +94,47 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
   async function submit() {
     if (!form.title.trim()) return;
     setSaving(true);
-    await fetch("/api/incidents", {
+    const res = await fetch("/api/incidents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, projectId: form.projectId || null }),
     });
     setSaving(false);
+    if (!(await checkOk(res, "Could not create this incident."))) return;
     setShowForm(false);
     setForm({ title: "", description: "", projectId: "", severity: "MEDIUM", reportedBy: "", assignee: "" });
     router.refresh();
   }
 
   async function updateStatus(id: string, status: string) {
-    await fetch(`/api/incidents/${id}`, {
+    const res = await fetch(`/api/incidents/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    if (!(await checkOk(res, "Could not update this incident's status."))) return;
     router.refresh();
   }
 
   async function saveResolution(id: string) {
-    await fetch(`/api/incidents/${id}`, {
+    const res = await fetch(`/api/incidents/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resolutionNotes: resolutionDraft }),
     });
+    if (!(await checkOk(res, "Could not save the resolution notes."))) return;
     router.refresh();
   }
 
   async function getRecommendation(id: string) {
     setRecommending(id);
     try {
-      await fetch("/api/ai/incident-recommendation", {
+      const res = await fetch("/api/ai/incident-recommendation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incidentId: id }),
       });
+      if (!(await checkOk(res, "Couldn't generate a recommendation."))) return;
       router.refresh();
     } finally {
       setRecommending(null);
@@ -127,7 +142,8 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
   }
 
   async function remove(id: string) {
-    await fetch(`/api/incidents/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/incidents/${id}`, { method: "DELETE" });
+    if (!(await checkOk(res, "Could not delete this incident."))) return;
     router.refresh();
   }
 
@@ -141,6 +157,8 @@ export default function IncidentsBoard({ incidents, projects }: { incidents: Inc
         <StatCard label="Open / In Progress" value={String(open)} tone={open > 0 ? "warn" : "good"} />
         <StatCard label="Critical (unresolved)" value={String(critical)} tone={critical > 0 ? "bad" : "good"} />
       </div>
+
+      {actionError && <p className="text-xs text-rose-600">{actionError}</p>}
 
       <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">

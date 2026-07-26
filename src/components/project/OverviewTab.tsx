@@ -36,6 +36,7 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
   const router = useRouter();
   const p = detail.project;
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: p.name,
     description: p.description ?? "",
@@ -91,12 +92,17 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
   async function saveSlackWebhook() {
     setSavingSlack(true);
     setSlackTestResult(null);
-    await fetch(`/api/projects/${p.id}`, {
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackWebhookUrl: slackUrl.trim() || null }),
     });
     setSavingSlack(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSlackTestResult({ ok: false, message: data?.error ?? "Could not save — please try again." });
+      return;
+    }
     router.refresh();
   }
 
@@ -180,12 +186,18 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/projects/${p.id}`, {
+    setSaveError(null);
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(isAdmin ? { ...form, organizationId: companyOrgId || null } : form),
     });
     setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     router.refresh();
   }
 
@@ -309,10 +321,11 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
         )}
       </Card>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <PrimaryButton onClick={save} disabled={saving}>
           {saving ? "Saving..." : "Save Changes"}
         </PrimaryButton>
+        {saveError && <p className="text-xs text-rose-600">{saveError}</p>}
         <AutoHealthNote detail={detail} />
         {canDelete && p.ideationSubStage === "READY_FOR_EXECUTION" && !closedOut && (
           <button

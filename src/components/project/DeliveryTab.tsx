@@ -27,6 +27,17 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
   const [fixedBidPrice, setFixedBidPrice] = useState(p.fixedBidPrice ?? 0);
   const [showForm, setShowForm] = useState(false);
   const [newRole, setNewRole] = useState({ role: "", hours: 0, onsitePercent: 100, offshorePercent: 0, contractorPercent: 0 });
+  const [mixError, setMixError] = useState<string | null>(null);
+
+  async function checkOk(res: Response, fallback: string) {
+    if (res.ok) {
+      setMixError(null);
+      return true;
+    }
+    const data = await res.json().catch(() => ({}));
+    setMixError(data?.error ?? fallback);
+    return false;
+  }
 
   const totals = useMemo(() => computeMixTotals(rateCards, rows as RoleMixRow[]), [rateCards, rows]);
 
@@ -49,44 +60,49 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
 
   async function savePricingModel(value: string) {
     setPricingModel(value);
-    await fetch(`/api/projects/${p.id}`, {
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pricingModel: value || null }),
     });
+    if (!(await checkOk(res, "Could not save the pricing model."))) return;
     router.refresh();
   }
 
   async function saveFixedBidPrice(value: number) {
     setFixedBidPrice(value);
-    await fetch(`/api/projects/${p.id}`, {
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fixedBidPrice: value }),
     });
+    await checkOk(res, "Could not save the fixed bid price.");
   }
 
   async function updateRow(id: string, patch: Record<string, unknown>) {
-    await fetch(`/api/projects/${p.id}/delivery-mix/${id}`, {
+    const res = await fetch(`/api/projects/${p.id}/delivery-mix/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
+    if (!(await checkOk(res, "Could not save that change."))) return;
     router.refresh();
   }
 
   async function removeRow(id: string) {
-    await fetch(`/api/projects/${p.id}/delivery-mix/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/projects/${p.id}/delivery-mix/${id}`, { method: "DELETE" });
+    if (!(await checkOk(res, "Could not remove that row."))) return;
     router.refresh();
   }
 
   async function addRow() {
     if (!newRole.role.trim()) return;
-    await fetch(`/api/projects/${p.id}/delivery-mix`, {
+    const res = await fetch(`/api/projects/${p.id}/delivery-mix`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newRole),
     });
+    if (!(await checkOk(res, "Could not add that role."))) return;
     setNewRole({ role: "", hours: 0, onsitePercent: 100, offshorePercent: 0, contractorPercent: 0 });
     setShowForm(false);
     router.refresh();
@@ -148,6 +164,8 @@ export default function DeliveryTab({ detail, rateCards }: { detail: ProjectDeta
           )}
         </div>
       </Card>
+
+      {mixError && <p className="text-xs text-rose-600">{mixError}</p>}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <SummaryStat label="Total hours" value={totals.totalHours.toLocaleString()} />

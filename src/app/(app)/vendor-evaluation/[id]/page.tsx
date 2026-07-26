@@ -49,6 +49,7 @@ export default function RfpDetailPage() {
 
   const [docForm, setDocForm] = useState({ title: "", background: "", scope: "", requirements: "", timeline: "", budgetRange: "", content: "" });
   const [savingDoc, setSavingDoc] = useState(false);
+  const [saveDocError, setSaveDocError] = useState<string | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
@@ -85,12 +86,18 @@ export default function RfpDetailPage() {
 
   async function saveDoc() {
     setSavingDoc(true);
-    await fetch(`/api/rfps/${id}`, {
+    setSaveDocError(null);
+    const res = await fetch(`/api/rfps/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(docForm),
     });
     setSavingDoc(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveDocError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     load();
   }
 
@@ -299,6 +306,7 @@ export default function RfpDetailPage() {
             <button onClick={saveDoc} disabled={savingDoc} className="px-3.5 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50">
               {savingDoc ? "Saving..." : "Save Changes"}
             </button>
+            {saveDocError && <p className="text-xs text-rose-600 mt-1.5">{saveDocError}</p>}
           </div>
         </div>
 

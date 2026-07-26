@@ -47,6 +47,7 @@ export default function ProjectRequestaOrgDetailPage({ params }: { params: Promi
   const [complianceSaving, setComplianceSaving] = useState(false);
   const [ssoMetadataUrl, setSsoMetadataUrl] = useState("");
   const [ssoSaving, setSsoSaving] = useState(false);
+  const [ssoError, setSsoError] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState({
     headline: "",
     categories: "",
@@ -58,6 +59,7 @@ export default function ProjectRequestaOrgDetailPage({ params }: { params: Promi
   });
   const [slugInput, setSlugInput] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [stripeStatus, setStripeStatus] = useState<{
     connected: boolean;
     chargesEnabled: boolean;
@@ -163,18 +165,25 @@ export default function ProjectRequestaOrgDetailPage({ params }: { params: Promi
 
   async function saveSso(patch: { ssoEnabled?: boolean; samlIdpMetadataUrl?: string | null }) {
     setSsoSaving(true);
-    await fetch(`/api/projectrequesta/organizations/${orgId}`, {
+    setSsoError(null);
+    const res = await fetch(`/api/projectrequesta/organizations/${orgId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
     setSsoSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSsoError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     load();
   }
 
   async function saveProfile() {
     setProfileSaving(true);
-    await fetch(`/api/projectrequesta/organizations/${orgId}`, {
+    setProfileError(null);
+    const res = await fetch(`/api/projectrequesta/organizations/${orgId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -188,18 +197,29 @@ export default function ProjectRequestaOrgDetailPage({ params }: { params: Promi
       }),
     });
     setProfileSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setProfileError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     load();
   }
 
   async function claimSlug() {
     if (!slugInput.trim()) return;
     setProfileSaving(true);
-    await fetch(`/api/projectrequesta/organizations/${orgId}`, {
+    setProfileError(null);
+    const res = await fetch(`/api/projectrequesta/organizations/${orgId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ publicSlug: slugInput.trim() }),
     });
     setProfileSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setProfileError(data?.error ?? "Could not claim that slug — it may already be taken.");
+      return;
+    }
     load();
   }
 
@@ -361,6 +381,7 @@ export default function ProjectRequestaOrgDetailPage({ params }: { params: Promi
                 >
                   {profileSaving ? "Saving..." : "Save profile"}
                 </button>
+                {profileError && <p className="text-xs text-rose-600 mt-1.5">{profileError}</p>}
 
                 <div className="pt-3 border-t border-slate-100">
                   <p className="text-xs font-medium text-slate-700 mb-1">Public profile link</p>
@@ -513,6 +534,7 @@ export default function ProjectRequestaOrgDetailPage({ params }: { params: Promi
                 {org.ssoEnabled ? "On" : "Off"}
               </button>
             </div>
+            {ssoError && <p className="text-xs text-rose-600">{ssoError}</p>}
           </div>
         )}
 

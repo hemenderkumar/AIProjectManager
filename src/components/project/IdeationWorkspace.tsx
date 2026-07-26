@@ -34,6 +34,7 @@ export default function IdeationWorkspace({ detail, user }: { detail: ProjectDet
     ideationAlignment: p.ideationAlignment ?? "",
   });
   const [savingIdea, setSavingIdea] = useState(false);
+  const [saveIdeaError, setSaveIdeaError] = useState<string | null>(null);
 
   function updateIdea<K extends keyof typeof ideaForm>(key: K, value: (typeof ideaForm)[K]) {
     setIdeaForm((f) => ({ ...f, [key]: value }));
@@ -41,12 +42,18 @@ export default function IdeationWorkspace({ detail, user }: { detail: ProjectDet
 
   async function saveIdea() {
     setSavingIdea(true);
-    await fetch(`/api/projects/${p.id}`, {
+    setSaveIdeaError(null);
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(ideaForm),
     });
     setSavingIdea(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveIdeaError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     router.refresh();
   }
 
@@ -218,6 +225,7 @@ export default function IdeationWorkspace({ detail, user }: { detail: ProjectDet
         >
           {savingIdea ? "Saving..." : "Save"}
         </button>
+        {saveIdeaError && <p className="text-xs text-rose-600 mt-1.5">{saveIdeaError}</p>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-200 pt-4">

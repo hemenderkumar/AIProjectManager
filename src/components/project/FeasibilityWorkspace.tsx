@@ -32,6 +32,7 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
     currentTechLandscape: p.currentTechLandscape ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [assessing, setAssessing] = useState(false);
   const [recommending, setRecommending] = useState(false);
   const [recommendError, setRecommendError] = useState<string | null>(null);
@@ -42,6 +43,7 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
     technicalReviewNotes: p.technicalReviewNotes ?? "",
   });
   const [savingReview, setSavingReview] = useState(false);
+  const [reviewSaveError, setReviewSaveError] = useState<string | null>(null);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -49,12 +51,18 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/projects/${p.id}`, {
+    setSaveError(null);
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     router.refresh();
   }
 
@@ -109,9 +117,10 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
 
   async function saveReview() {
     setSavingReview(true);
+    setReviewSaveError(null);
     // Save any unsaved feasibility notes/landscape edits together with the review decision,
     // so clicking "Save review" always reflects what's currently on screen.
-    await fetch(`/api/projects/${p.id}`, {
+    const res = await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -123,6 +132,11 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
       }),
     });
     setSavingReview(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setReviewSaveError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     router.refresh();
   }
 
@@ -196,6 +210,7 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
 
       <div>
         <PrimaryButton onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</PrimaryButton>
+        {saveError && <p className="mt-2 text-xs text-rose-600">{saveError}</p>}
       </div>
 
       <Card
@@ -277,6 +292,7 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
           >
             {savingReview ? "Saving..." : "Save review"}
           </button>
+          {reviewSaveError && <p className="text-xs text-rose-600 mt-1.5">{reviewSaveError}</p>}
           {p.technicalReviewedAt && (
             <p className="text-xs text-slate-400 mt-1.5">Last reviewed {formatDateTime(p.technicalReviewedAt)}</p>
           )}

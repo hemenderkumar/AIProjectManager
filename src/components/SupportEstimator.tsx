@@ -46,6 +46,7 @@ export default function SupportEstimator({
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const result = useMemo(
     () => computeEstimate(apps, coverage, shared, assumptions),
@@ -84,7 +85,8 @@ export default function SupportEstimator({
     if (!selectedProjectId) return;
     setSaving(true);
     setSaved(false);
-    await fetch(`/api/projects/${selectedProjectId}`, {
+    setSaveError(null);
+    const res = await fetch(`/api/projects/${selectedProjectId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -93,6 +95,11 @@ export default function SupportEstimator({
       }),
     });
     setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError(data?.error ?? "Could not save — please try again.");
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -287,7 +294,7 @@ export default function SupportEstimator({
           planning estimate from the assumptions above, not a vendor quote.
         </p>
 
-        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap">
           <select
             value={selectedProjectId}
             onChange={(e) => setSelectedProjectId(e.target.value)}
@@ -304,6 +311,7 @@ export default function SupportEstimator({
             {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : <Save size={13} />}
             {saved ? "Saved" : "Save to project"}
           </button>
+          {saveError && <p className="text-xs text-rose-600">{saveError}</p>}
         </div>
       </div>
     </div>
