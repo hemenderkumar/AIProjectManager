@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Topbar from "@/components/Topbar";
-import { Loader2, Sparkles, Zap, Clock, AlertCircle } from "lucide-react";
+import { Loader2, Sparkles, Zap, Clock, AlertCircle, Send, MessageCircleQuestion } from "lucide-react";
 
 type RoadmapSummary = { id: string; createdAt: string; createdBy: string | null; executiveSummary: string | null; itemCount: number };
 type RoadmapItem = {
@@ -30,6 +30,11 @@ export default function RoadmapPage() {
   const [eligibleCount, setEligibleCount] = useState(0);
   const [canGenerate, setCanGenerate] = useState(false);
   const [selected, setSelected] = useState<RoadmapDetail | null>(null);
+  // Simulated progress -- there's no server-sent progress event for a single AI call, so this
+  // eases toward 90% over the AI generation's typical duration and only snaps to 100% once the
+  // response actually lands, rather than pretending to know real completion percentage.
+  const [progress, setProgress] = useState(0);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadList = useCallback(async () => {
     const res = await fetch("/api/roadmap");
@@ -59,6 +64,12 @@ export default function RoadmapPage() {
   async function generate() {
     setGenerating(true);
     setError(null);
+    setProgress(6);
+    progressTimer.current = setInterval(() => {
+      // Slows down as it climbs so it never visibly "finishes" before the real response --
+      // fast at first (early feedback that something is happening), crawling near 90%.
+      setProgress((p) => (p < 90 ? p + Math.max(1, (90 - p) * 0.08) : p));
+    }, 400);
     try {
       const res = await fetch("/api/ai/roadmap", { method: "POST" });
       const data = await res.json();
@@ -66,9 +77,12 @@ export default function RoadmapPage() {
         setError(data.error || "Couldn't generate a roadmap");
         return;
       }
+      setProgress(100);
       setSelected(data.roadmap);
       await loadList();
     } finally {
+      if (progressTimer.current) clearInterval(progressTimer.current);
+      setTimeout(() => setProgress(0), 500);
       setGenerating(false);
     }
   }
@@ -105,6 +119,14 @@ export default function RoadmapPage() {
           ) : null
         }
       />
+      {progress > 0 && (
+        <div className="h-1 bg-slate-100 overflow-hidden">
+          <div
+            className="h-full bg-accent-600 transition-[width] duration-300 ease-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
       <div className="p-8 max-w-5xl space-y-6">
         {error && (
           <div className="flex items-start gap-2.5 bg-rose-50 border border-rose-200 rounded-lg p-3 text-xs text-rose-900">
@@ -203,6 +225,8 @@ export default function RoadmapPage() {
                 </div>
               </div>
             )}
+
+            <RoadmapChat roadmapId={selected.id} />
           </>
         )}
 
@@ -215,6 +239,103 @@ export default function RoadmapPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+type ChatMsg = { role: "user" | "assistant"; text: string };
+
+// Read-only Q&A grounded in the currently selected roadmap -- helps someone reason through the
+// plan ("why is this a quick win", "what should I start first") without pretending to edit or
+// regenerate it (see api/ai/roadmap-chat's system prompt for that same constraint server-side).
+function RoadmapChat({ roadmapId }: { roadmapId: string }) {
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [question, setQuestion] = useState("");
+  const [asking, setAsking] = useState(false);
+
+  async function ask(q: string) {
+    if (!q.trim() || asking) return;
+    setMessages((m) => [...m, { role: "user", text: q }]);
+    setQuestion("");
+    setAsking(true);
+    try {
+      const res = await fetch("/api/ai/roadmap-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roadmapId, question: q }),
+      });
+      const data = await res.json();
+      setMessages((m) => [...m, { role: "assistant", text: data.answer ?? data.error ?? "I couldn't find an answer for that." }]);
+    } finally {
+      setAsking(false);
+    }
+  }
+
+  const starters = ["What should I start immediately?", "Why are these quick wins?", "What's the biggest risk in this plan?"];
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <MessageCircleQuestion size={16} className="text-accent-600" />
+        <p className="text-sm font-semibold text-slate-900">Ask about this roadmap</p>
+      </div>
+
+      {messages.length === 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {starters.map((s) => (
+            <button
+              key={s}
+              onClick={() => ask(s)}
+              className="text-xs px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {messages.length > 0 && (
+        <div className="space-y-3 mb-3 max-h-72 overflow-y-auto scrollbar-thin">
+          {messages.map((m, i) => (
+            <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
+              <span
+                className={`inline-block text-xs leading-relaxed rounded-lg px-3 py-2 max-w-[85%] text-left ${
+                  m.role === "user" ? "bg-accent-50 text-accent-900" : "bg-slate-50 text-slate-700"
+                }`}
+              >
+                {m.text}
+              </span>
+            </div>
+          ))}
+          {asking && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Loader2 size={12} className="animate-spin" /> Thinking...
+            </div>
+          )}
+        </div>
+      )}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(question);
+        }}
+        className="flex gap-2"
+      >
+        <input
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Ask a question about this roadmap..."
+          className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500"
+        />
+        <button
+          type="submit"
+          disabled={asking || !question.trim()}
+          className="px-3 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors disabled:opacity-50"
+        >
+          <Send size={15} />
+        </button>
+      </form>
     </div>
   );
 }
