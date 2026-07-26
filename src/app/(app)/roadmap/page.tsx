@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Loader2, Sparkles, Zap, Clock, AlertCircle, Send, MessageCircleQuestion } from "lucide-react";
+import { Loader2, Sparkles, Zap, Clock, AlertCircle, Send, MessageCircleQuestion, ArrowRight } from "lucide-react";
 
 type RoadmapSummary = { id: string; createdAt: string; createdBy: string | null; executiveSummary: string | null; itemCount: number };
 type RoadmapItem = {
@@ -136,12 +137,37 @@ export default function RoadmapPage() {
         )}
 
         {eligibleCount === 0 && !selected && (
-          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6 text-center">
-            <p className="text-sm font-semibold text-slate-900 mb-1">Nothing to prioritize yet</p>
-            <p className="text-xs text-slate-500 max-w-md mx-auto">
-              An idea needs a Feasibility score (Ideation &gt; Technical Feasibility) before it can be placed on
-              the roadmap. Assess a few ideas, then come back here.
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
+            <p className="text-sm font-semibold text-slate-900 mb-1 text-center">Nothing to prioritize yet</p>
+            <p className="text-xs text-slate-500 max-w-md mx-auto text-center mb-4">
+              An idea only shows up here once it has a Feasibility score. Here&apos;s how to get one:
             </p>
+            <ol className="max-w-md mx-auto space-y-2.5 mb-4">
+              <li className="flex gap-2.5 text-xs text-slate-600">
+                <span className="shrink-0 h-5 w-5 rounded-full bg-accent-50 text-accent-700 font-semibold flex items-center justify-center">1</span>
+                <span>Open an idea from <Link href="/ideation" className="text-accent-600 hover:text-accent-700 font-medium">Ideation</Link> (or create one) and fill in its <strong>Idea &amp; Alignment</strong> sub-tab.</span>
+              </li>
+              <li className="flex gap-2.5 text-xs text-slate-600">
+                <span className="shrink-0 h-5 w-5 rounded-full bg-accent-50 text-accent-700 font-semibold flex items-center justify-center">2</span>
+                <span>Get it past that gate: invite reviewers to approve it, or, if you&apos;re a SUPER_USER/ADMIN, use the <strong>Override &amp; advance</strong> control to skip ahead.</span>
+              </li>
+              <li className="flex gap-2.5 text-xs text-slate-600">
+                <span className="shrink-0 h-5 w-5 rounded-full bg-accent-50 text-accent-700 font-semibold flex items-center justify-center">3</span>
+                <span>On the <strong>Technical Feasibility</strong> sub-tab, click <strong>Assess with AI</strong> (or type a score in yourself) and Save.</span>
+              </li>
+              <li className="flex gap-2.5 text-xs text-slate-600">
+                <span className="shrink-0 h-5 w-5 rounded-full bg-accent-50 text-accent-700 font-semibold flex items-center justify-center">4</span>
+                <span>Come back here — that idea is now eligible for the roadmap.</span>
+              </li>
+            </ol>
+            <div className="text-center">
+              <Link
+                href="/ideation"
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-accent-50 text-accent-700 hover:bg-accent-100"
+              >
+                Go to Ideation <ArrowRight size={13} />
+              </Link>
+            </div>
           </div>
         )}
 
