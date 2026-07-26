@@ -57,7 +57,17 @@ function isLocalConnection(url: string): boolean {
 const client =
   global.__dbClient ??
   postgres(connectionString ?? "postgres://placeholder", {
-    max: 1,
+    // A single stuck connection under max:1 wedges every request on that warm serverless
+    // instance behind it forever (observed live: a query left mid-protocol, waiting on the
+    // client to send more data that never comes, blocks all later queries indefinitely). A
+    // small pool means one bad connection doesn't take the whole instance down with it.
+    max: 3,
+    // Belt-and-suspenders against exactly that wedge: idle_timeout recycles connections that
+    // sit unused, max_lifetime forces periodic replacement even of "healthy-looking" ones, and
+    // connect_timeout keeps a bad network path from hanging the initial handshake.
+    idle_timeout: 20,
+    max_lifetime: 60 * 30,
+    connect_timeout: 10,
     ssl: connectionString && isLocalConnection(connectionString) ? false : "require",
     prepare: false,
   });
