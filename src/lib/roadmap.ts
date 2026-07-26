@@ -5,9 +5,15 @@ import { listVisibleProjects } from "./tenancy";
 import type { SessionUser } from "./auth";
 
 // Ideas eligible for a roadmap run: at least Feasibility has been assessed (there's a score to
-// reason about), and the idea hasn't already moved into Charter/Execution/Closing — past that
-// point it's individually committed, not something still being sequenced against the rest of
-// the portfolio.
+// reason about), and the idea hasn't actually started execution or been closed out yet.
+//
+// Previously this also excluded stage === "CHARTER", meant to reflect "already committed,
+// not still being sequenced." That excluded far more than intended: CHARTER is the stage for
+// BOTH the "Scope & Charter" and "Resourcing Decision" sub-stages (see STAGE_FOR_SUB_STAGE in
+// ideationGates.ts) -- i.e. most of the post-feasibility gate sequence. An idea sits in stage
+// CHARTER for the entire time between passing Architecture review and actually starting
+// execution, which is exactly the window a roadmap is most useful for. Only EXECUTION (work
+// has actually started) and CLOSING/CLOSED should take an idea out of contention.
 //
 // Previously this also required p.organizationId === user.organizationId, meant to keep an
 // ADMIN from combining several client orgs' ideas into one shared roadmap. In practice that
@@ -22,7 +28,7 @@ import type { SessionUser } from "./auth";
 export async function getEligibleIdeasForRoadmap(user: SessionUser) {
   const visible = await listVisibleProjects(user);
   return visible.filter(
-    (p) => p.feasibilityScore != null && !["CHARTER", "EXECUTION", "CLOSING", "CLOSED"].includes(p.stage)
+    (p) => p.feasibilityScore != null && !["EXECUTION", "CLOSING", "CLOSED"].includes(p.stage)
   );
 }
 

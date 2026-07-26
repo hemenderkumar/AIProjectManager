@@ -17,6 +17,7 @@ type RoadmapItem = {
 };
 type RoadmapPhase = { id: string; label: string; focus: string | null; actions: string | null };
 type RoadmapDetail = { id: string; createdAt: string; createdBy: string | null; executiveSummary: string | null; items: RoadmapItem[]; phases: RoadmapPhase[] };
+type GroupSuggestion = { label: string; rationale: string; projectIds: string[]; projectNames: string[] };
 
 function tagCls(level: string) {
   if (level === "HIGH") return "bg-rose-50 text-rose-700";
@@ -51,6 +52,13 @@ export default function RoadmapPage() {
   const [progress, setProgress] = useState(0);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // AI-suggested groupings of the eligible ideas -- which ones belong in one roadmap together
+  // vs. which are unrelated and should get their own. Purely a starting point for the checklist
+  // below: applying a suggestion just sets selectedIds, it doesn't generate anything by itself.
+  const [groupSuggestions, setGroupSuggestions] = useState<GroupSuggestion[] | null>(null);
+  const [suggestingGroups, setSuggestingGroups] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
+
   const loadList = useCallback(async () => {
     const res = await fetch("/api/roadmap");
     if (res.ok) {
@@ -81,6 +89,26 @@ export default function RoadmapPage() {
       else next.add(id);
       return next;
     });
+  }
+
+  async function suggestGroups() {
+    setSuggestingGroups(true);
+    setGroupError(null);
+    try {
+      const res = await fetch("/api/ai/roadmap-groups");
+      const data = await res.json();
+      if (!res.ok) {
+        setGroupError(data.error || "Couldn't suggest groupings.");
+        return;
+      }
+      setGroupSuggestions(data.groups || []);
+    } finally {
+      setSuggestingGroups(false);
+    }
+  }
+
+  function applyGroup(ids: string[]) {
+    setSelectedIds(new Set(ids));
   }
 
   useEffect(() => {
@@ -172,9 +200,11 @@ export default function RoadmapPage() {
           </div>
         )}
 
-        {eligibleIdeas.length === 0 && !selected && (
+        {eligibleIdeas.length === 0 && (
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
-            <p className="text-sm font-semibold text-slate-900 mb-1 text-center">Nothing to prioritize yet</p>
+            <p className="text-sm font-semibold text-slate-900 mb-1 text-center">
+              {selected ? "Nothing new to prioritize yet" : "Nothing to prioritize yet"}
+            </p>
             <p className="text-xs text-slate-500 max-w-md mx-auto text-center mb-4">
               An idea only shows up here once it has a Feasibility score. Here&apos;s how to get one:
             </p>
@@ -292,13 +322,13 @@ export default function RoadmapPage() {
           </>
         )}
 
-        {!selected && eligibleIdeas.length > 0 && (
+        {eligibleIdeas.length > 0 && (
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <ListChecks size={16} className="text-accent-600" />
                 <p className="text-sm font-semibold text-slate-900">
-                  {eligibleIdeas.length} idea{eligibleIdeas.length === 1 ? "" : "s"} ready to prioritize
+                  {selected ? "Build another roadmap" : `${eligibleIdeas.length} idea${eligibleIdeas.length === 1 ? "" : "s"} ready to prioritize`}
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs font-medium">
@@ -315,9 +345,60 @@ export default function RoadmapPage() {
               </div>
             </div>
             <p className="px-5 pt-3 text-xs text-slate-500">
-              Check one idea to build a roadmap for it alone, or combine several — uncheck the rest.
+              Check one idea to build a roadmap for it alone, or combine several — uncheck the rest. Every
+              combination you generate is saved, so you can build as many roadmaps as you have relevant
+              groupings of ideas.
             </p>
-            <ul className="divide-y divide-slate-50">
+
+            <div className="px-5 pt-3">
+              <button
+                onClick={suggestGroups}
+                disabled={suggestingGroups || eligibleIdeas.length < 2}
+                title={eligibleIdeas.length < 2 ? "Need at least two eligible ideas to suggest groupings" : undefined}
+                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-700 hover:bg-accent-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {suggestingGroups ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                {suggestingGroups ? "Thinking..." : "Suggest groupings with AI"}
+              </button>
+              {groupError && (
+                <p className="text-xs text-rose-600 mt-2 flex items-center gap-1.5">
+                  <AlertCircle size={13} className="shrink-0" /> {groupError}
+                </p>
+              )}
+            </div>
+
+            {groupSuggestions && (
+              <div className="px-5 pt-3 space-y-2">
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                  Suggested roadmaps ({groupSuggestions.length})
+                </p>
+                {groupSuggestions.map((g, i) => {
+                  const isApplied =
+                    g.projectIds.length === selectedIds.size && g.projectIds.every((id) => selectedIds.has(id));
+                  return (
+                    <div key={i} className="rounded-lg border border-slate-100 p-3 bg-slate-50/60">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-900">{g.label}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{g.projectNames.join(", ")}</p>
+                          {g.rationale && <p className="text-xs text-slate-400 mt-1">{g.rationale}</p>}
+                        </div>
+                        <button
+                          onClick={() => applyGroup(g.projectIds)}
+                          className={`shrink-0 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors ${
+                            isApplied ? "bg-emerald-50 text-emerald-700" : "bg-accent-600 text-white hover:bg-accent-700"
+                          }`}
+                        >
+                          {isApplied ? "Selected" : "Use this group"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <ul className="divide-y divide-slate-50 mt-3">
               {eligibleIdeas.map((idea) => (
                 <li key={idea.id}>
                   <label className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-slate-50 transition-colors">
