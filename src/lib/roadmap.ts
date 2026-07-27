@@ -70,6 +70,9 @@ export type RoadmapSummary = {
   // generated a roadmap for this exact selection" before calling Generate, so it can offer New
   // vs Revise instead of silently piling up duplicates.
   projectIds: string[];
+  // Idea names in the same order as projectIds -- lets the sidebar list identify a roadmap by
+  // what it's actually FOR ("CRM Migration, Vendor Portal"), not just when it was generated.
+  projectNames: string[];
   // Set when this roadmap was produced by "Revise with AI" on an earlier one. Together with
   // revisionInstruction, lets the sidebar list show a roadmap's revision lineage.
   revisedFromRoadmapId: string | null;
@@ -87,13 +90,22 @@ export async function listRoadmaps(user: SessionUser): Promise<RoadmapSummary[]>
   if (!filtered.length) return [];
   const ids = filtered.map((r) => r.id);
   const items = await db
-    .select({ roadmapId: roadmapItems.roadmapId, projectId: roadmapItems.projectId, quickWin: roadmapItems.quickWin })
+    .select({
+      roadmapId: roadmapItems.roadmapId,
+      projectId: roadmapItems.projectId,
+      projectName: projects.name,
+      quickWin: roadmapItems.quickWin,
+      sortOrder: roadmapItems.sortOrder,
+    })
     .from(roadmapItems)
-    .where(inArray(roadmapItems.roadmapId, ids));
-  const byRoadmap = new Map<string, { projectIds: string[]; quickWinCount: number }>();
+    .innerJoin(projects, eq(roadmapItems.projectId, projects.id))
+    .where(inArray(roadmapItems.roadmapId, ids))
+    .orderBy(roadmapItems.sortOrder);
+  const byRoadmap = new Map<string, { projectIds: string[]; projectNames: string[]; quickWinCount: number }>();
   for (const it of items) {
-    const entry = byRoadmap.get(it.roadmapId) ?? { projectIds: [], quickWinCount: 0 };
+    const entry = byRoadmap.get(it.roadmapId) ?? { projectIds: [], projectNames: [], quickWinCount: 0 };
     entry.projectIds.push(it.projectId);
+    entry.projectNames.push(it.projectName);
     if (it.quickWin) entry.quickWinCount += 1;
     byRoadmap.set(it.roadmapId, entry);
   }
@@ -108,6 +120,7 @@ export async function listRoadmaps(user: SessionUser): Promise<RoadmapSummary[]>
       itemCount: entry?.projectIds.length ?? 0,
       quickWinCount: entry?.quickWinCount ?? 0,
       projectIds: entry?.projectIds ?? [],
+      projectNames: entry?.projectNames ?? [],
       revisedFromRoadmapId: r.revisedFromRoadmapId,
       revisionInstruction: r.revisionInstruction,
     };

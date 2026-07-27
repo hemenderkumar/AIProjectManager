@@ -31,6 +31,7 @@ type RoadmapSummary = {
   itemCount: number;
   quickWinCount: number;
   projectIds: string[];
+  projectNames: string[];
   revisedFromRoadmapId: string | null;
   revisionInstruction: string | null;
 };
@@ -70,10 +71,55 @@ function scoreCls(score: number) {
   return "bg-rose-50 text-rose-700";
 }
 
+// A roadmap otherwise has no name of its own -- just a generated timestamp -- which made every
+// entry in the list and the detail view indistinguishable at a glance. Derives a real title
+// from the ideas it actually covers, so "CRM Migration Roadmap" or "CRM Migration & Vendor
+// Portal Roadmap" replaces a bare date as the thing you actually read to tell roadmaps apart.
+function roadmapTitle(names: string[]): string {
+  if (names.length === 0) return "Roadmap";
+  if (names.length === 1) return `${names[0]} Roadmap`;
+  if (names.length === 2) return `${names[0]} & ${names[1]} Roadmap`;
+  return `${names[0]} & ${names.length - 1} More Ideas — Roadmap`;
+}
+
 function sameIdSet(a: string[], b: string[]) {
   if (a.length !== b.length) return false;
   const bSet = new Set(b);
   return a.every((id) => bSet.has(id));
+}
+
+// Groups roadmaps that cover the EXACT same set of ideas into one entry with multiple
+// versions -- not just roadmaps explicitly created via "Revise with AI" (which link via
+// revisedFromRoadmapId), but also two independently-generated roadmaps that happen to cover
+// the same idea set (e.g. from before this versioning existed, or from choosing "Create New"
+// at the conflict dialog instead of revising). Grouping by the idea set itself, rather than by
+// the revision link, means every such case is recognized as "versions of the same roadmap"
+// without needing the lineage column set.
+type RoadmapGroup = { key: string; projectNames: string[]; versions: RoadmapSummary[] };
+
+function groupRoadmapVersions(summaries: RoadmapSummary[]): RoadmapGroup[] {
+  const keyOf = (ids: string[]) => [...ids].sort().join("|");
+  const byKey = new Map<string, RoadmapSummary[]>();
+  for (const s of summaries) {
+    const key = keyOf(s.projectIds);
+    const arr = byKey.get(key) ?? [];
+    arr.push(s);
+    byKey.set(key, arr);
+  }
+
+  const groups: RoadmapGroup[] = Array.from(byKey.entries()).map(([key, versions]) => {
+    const sorted = [...versions].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return { key, projectNames: sorted[sorted.length - 1].projectNames, versions: sorted };
+  });
+
+  // Most recently active group first.
+  groups.sort((a, b) => {
+    const aLatest = a.versions[a.versions.length - 1].createdAt;
+    const bLatest = b.versions[b.versions.length - 1].createdAt;
+    return new Date(bLatest).getTime() - new Date(aLatest).getTime();
+  });
+
+  return groups;
 }
 
 export default function RoadmapPage() {
@@ -362,29 +408,50 @@ export default function RoadmapPage() {
               <p className="text-sm font-semibold text-slate-900">Roadmaps ({summaries.length})</p>
             </div>
             {summaries.length === 0 && <p className="text-xs text-slate-400 px-4 py-4">None generated yet.</p>}
-            <ul className="divide-y divide-slate-50 max-h-[70vh] overflow-y-auto scrollbar-thin">
-              {summaries.map((s) => (
-                <li key={s.id}>
-                  <button
-                    onClick={() => selectRoadmap(s.id)}
-                    className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${
-                      selected?.id === s.id && !showComposer ? "bg-accent-50/60" : ""
-                    }`}
-                  >
-                    <p className="text-xs font-medium text-slate-800">{new Date(s.createdAt).toLocaleDateString()}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {s.itemCount} idea{s.itemCount === 1 ? "" : "s"} · {s.quickWinCount} quick win{s.quickWinCount === 1 ? "" : "s"}
-                    </p>
-                    {s.revisedFromRoadmapId && (
-                      <p className="text-[10px] text-accent-600 mt-1 flex items-start gap-1">
-                        <History size={11} className="shrink-0 mt-0.5" />
-                        <span className="truncate">Revision{s.revisionInstruction ? `: "${s.revisionInstruction}"` : ""}</span>
-                      </p>
-                    )}
-                  </button>
-                </li>
+            <div className="divide-y divide-slate-50 max-h-[70vh] overflow-y-auto scrollbar-thin">
+              {groupRoadmapVersions(summaries).map((group) => (
+                <div key={group.key} className="py-1">
+                  <p className="px-4 pt-2 pb-1 text-xs font-semibold text-slate-800 truncate" title={group.projectNames.join(", ")}>
+                    {group.projectNames.join(", ")}
+                  </p>
+                  <ul>
+                    {group.versions.map((s, i) => {
+                      const isLatest = i === group.versions.length - 1;
+                      const showVersionLabel = group.versions.length > 1;
+                      return (
+                        <li key={s.id}>
+                          <button
+                            onClick={() => selectRoadmap(s.id)}
+                            className={`w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors ${
+                              selected?.id === s.id && !showComposer ? "bg-accent-50/60" : ""
+                            }`}
+                          >
+                            <p className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                              {showVersionLabel && (
+                                <span className={`shrink-0 ${isLatest ? "text-accent-700" : "text-slate-400"}`}>
+                                  v{i + 1}
+                                  {isLatest ? " (latest)" : ""}
+                                </span>
+                              )}
+                              <span className="text-slate-400">{new Date(s.createdAt).toLocaleDateString()}</span>
+                            </p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              {s.itemCount} idea{s.itemCount === 1 ? "" : "s"} · {s.quickWinCount} quick win{s.quickWinCount === 1 ? "" : "s"}
+                            </p>
+                            {s.revisedFromRoadmapId && (
+                              <p className="text-[10px] text-accent-600 mt-1 flex items-start gap-1">
+                                <History size={11} className="shrink-0 mt-0.5" />
+                                <span className="truncate">Revision{s.revisionInstruction ? `: "${s.revisionInstruction}"` : ""}</span>
+                              </p>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         </div>
 
@@ -410,10 +477,13 @@ export default function RoadmapPage() {
           ) : selected ? (
             <>
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-xs text-slate-400">
-                  Generated {new Date(selected.createdAt).toLocaleString()}
-                  {selected.createdBy ? ` by ${selected.createdBy}` : ""}
-                </p>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">{roadmapTitle(selected.items.map((i) => i.projectName))}</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Generated {new Date(selected.createdAt).toLocaleString()}
+                    {selected.createdBy ? ` by ${selected.createdBy}` : ""}
+                  </p>
+                </div>
                 {canGenerate && (
                   <button
                     onClick={openReviser}
