@@ -3,6 +3,7 @@ import { projects, tasks, riskItems, statusUpdates, milestones, resources, proje
 import { eq, inArray, sql } from "drizzle-orm";
 import { computeAutoRag, scheduleVarianceDays, budgetVariancePercent, isOverdueTask, riskScore, ProjectForHealth } from "./kpi";
 import { listVisibleProjects } from "./tenancy";
+import { getLatestRoadmapStatusForProjects } from "./roadmap";
 import type { SessionUser } from "./auth";
 
 // `user` scopes which projects come back — see listVisibleProjects in lib/tenancy.ts, which
@@ -52,6 +53,10 @@ export async function getAllProjectsWithMetrics(user?: SessionUser | null) {
 
   const taskByProject = new Map(taskAgg.map((r) => [r.projectId, r]));
   const riskByProject = new Map(riskAgg.map((r) => [r.projectId, r]));
+  // Batched across every visible project in one query, same pattern as the task/risk
+  // aggregates above -- lets the Ideation list show "last roadmap call" per row without an
+  // N+1 lookup.
+  const roadmapStatusByProject = await getLatestRoadmapStatusForProjects(projectIds);
 
   return allProjects.map((p) => {
     const t = taskByProject.get(p.id);
@@ -74,6 +79,7 @@ export async function getAllProjectsWithMetrics(user?: SessionUser | null) {
       openHighRiskCount,
       taskCount: Number(t?.taskCount ?? 0),
       doneTaskCount: Number(t?.doneTaskCount ?? 0),
+      roadmapStatus: roadmapStatusByProject.get(p.id) ?? null,
     };
   });
 }
@@ -174,6 +180,8 @@ export async function getProjectDetail(id: string) {
     openHighRiskCount,
   });
 
+  const roadmapStatusMap = await getLatestRoadmapStatusForProjects([id]);
+
   return {
     project,
     autoRag: health.rag,
@@ -194,6 +202,10 @@ export async function getProjectDetail(id: string) {
     deliveryRoleMix: projectDeliveryRoleMix,
     sprints: projectSprints.sort((a, b) => (a.startDate?.getTime() ?? 0) - (b.startDate?.getTime() ?? 0)),
     ideaReviewers: projectIdeaReviewers.sort((a, b) => a.invitedAt.getTime() - b.invitedAt.getTime()),
+    // Last roadmap classification for this project, if it's ever been included in one -- lets
+    // the Overview tab show "last roadmap call: MEDIUM impact / quick win" without a separate
+    // fetch to the Roadmap page.
+    roadmapStatus: roadmapStatusMap.get(id) ?? null,
   };
 }
 

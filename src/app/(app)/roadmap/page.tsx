@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Loader2, Sparkles, Zap, Clock, AlertCircle, Send, MessageCircleQuestion, ArrowRight, ListChecks } from "lucide-react";
+import { Loader2, Sparkles, Zap, Clock, AlertCircle, Send, MessageCircleQuestion, ArrowRight, ListChecks, FileText } from "lucide-react";
 
 type EligibleIdea = { id: string; name: string; feasibilityScore: number; organizationId: string | null; organizationName: string | null };
 type RoadmapSummary = { id: string; createdAt: string; createdBy: string | null; executiveSummary: string | null; itemCount: number };
@@ -10,6 +11,7 @@ type RoadmapItem = {
   id: string;
   projectId: string;
   projectName: string;
+  organizationId: string | null;
   impact: string;
   effort: string;
   quickWin: boolean;
@@ -32,12 +34,16 @@ function scoreCls(score: number) {
 }
 
 export default function RoadmapPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<RoadmapSummary[]>([]);
   const [eligibleIdeas, setEligibleIdeas] = useState<EligibleIdea[]>([]);
   const [canGenerate, setCanGenerate] = useState(false);
+  // Gates the "Draft RFP" shortcut on each roadmap item -- same SUPER_USER+ floor
+  // /api/rfps requires, so the button is never shown to a role that would just get a 403.
+  const [canDraftRfp, setCanDraftRfp] = useState(false);
   const [selected, setSelected] = useState<RoadmapDetail | null>(null);
   // Which eligible ideas to actually include the next time "Generate Roadmap" runs -- lets
   // someone build a roadmap for a single idea, or any hand-picked combination, instead of
@@ -74,6 +80,7 @@ export default function RoadmapPage() {
         setSelectedIds((prev) => new Set([...prev].filter((id) => ids.has(id))));
       }
       setCanGenerate(!!data.canGenerate);
+      setCanDraftRfp(!!data.canDraftRfp);
       if (data.roadmaps?.[0]) {
         const detailRes = await fetch(`/api/roadmap/${data.roadmaps[0].id}`);
         if (detailRes.ok) setSelected((await detailRes.json()).roadmap);
@@ -275,7 +282,7 @@ export default function RoadmapPage() {
                 <div className="space-y-2.5">
                   {quickWins.length === 0 && <p className="text-xs text-slate-400">None this round.</p>}
                   {quickWins.map((it) => (
-                    <RoadmapItemCard key={it.id} item={it} />
+                    <RoadmapItemCard key={it.id} item={it} canDraftRfp={canDraftRfp} onDrafted={(rfpId) => router.push(`/vendor-evaluation/${rfpId}`)} />
                   ))}
                 </div>
               </div>
@@ -288,7 +295,7 @@ export default function RoadmapPage() {
                 <div className="space-y-2.5">
                   {longerTerm.length === 0 && <p className="text-xs text-slate-400">None this round.</p>}
                   {longerTerm.map((it) => (
-                    <RoadmapItemCard key={it.id} item={it} />
+                    <RoadmapItemCard key={it.id} item={it} canDraftRfp={canDraftRfp} onDrafted={(rfpId) => router.push(`/vendor-evaluation/${rfpId}`)} />
                   ))}
                 </div>
               </div>
@@ -526,7 +533,39 @@ function RoadmapChat({ roadmapId }: { roadmapId: string }) {
   );
 }
 
-function RoadmapItemCard({ item }: { item: RoadmapItem }) {
+function RoadmapItemCard({
+  item,
+  canDraftRfp,
+  onDrafted,
+}: {
+  item: RoadmapItem;
+  canDraftRfp: boolean;
+  onDrafted: (rfpId: string) => void;
+}) {
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+
+  async function draftRfp() {
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const res = await fetch(`/api/roadmap/items/${item.id}/draft-rfp`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDraftError(data?.error ?? "Couldn't draft an RFP for this idea.");
+        return;
+      }
+      onDrafted(data.rfpId);
+    } finally {
+      setDrafting(false);
+    }
+  }
+
+  // Only offered once the idea belongs to an actual company -- an RFP is always filed under
+  // an organizationId (see rfps.organizationId), so an internal-only idea has nowhere for one
+  // to go.
+  const showButton = canDraftRfp && item.organizationId != null;
+
   return (
     <div className="rounded-lg border border-slate-100 p-3">
       <p className="text-sm font-medium text-slate-800 mb-1">{item.projectName}</p>
@@ -534,7 +573,18 @@ function RoadmapItemCard({ item }: { item: RoadmapItem }) {
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${tagCls(item.impact)}`}>Impact {item.impact}</span>
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${tagCls(item.effort)}`}>Effort {item.effort}</span>
       </div>
-      {item.rationale && <p className="text-xs text-slate-500">{item.rationale}</p>}
+      {item.rationale && <p className="text-xs text-slate-500 mb-1.5">{item.rationale}</p>}
+      {showButton && (
+        <button
+          onClick={draftRfp}
+          disabled={drafting}
+          className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg bg-accent-50 text-accent-700 hover:bg-accent-100 disabled:opacity-50"
+        >
+          {drafting ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />}
+          {drafting ? "Drafting..." : "Draft RFP"}
+        </button>
+      )}
+      {draftError && <p className="text-[11px] text-rose-600 mt-1">{draftError}</p>}
     </div>
   );
 }

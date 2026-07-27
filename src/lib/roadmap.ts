@@ -98,6 +98,7 @@ export type RoadmapDetail = {
     id: string;
     projectId: string;
     projectName: string;
+    organizationId: string | null;
     impact: string;
     effort: string;
     quickWin: boolean;
@@ -120,6 +121,7 @@ export async function getRoadmapDetail(roadmapId: string, user: SessionUser): Pr
         id: roadmapItems.id,
         projectId: roadmapItems.projectId,
         projectName: projects.name,
+        organizationId: projects.organizationId,
         impact: roadmapItems.impact,
         effort: roadmapItems.effort,
         quickWin: roadmapItems.quickWin,
@@ -143,6 +145,7 @@ export async function getRoadmapDetail(roadmapId: string, user: SessionUser): Pr
         id: it.id,
         projectId: it.projectId,
         projectName: it.projectName,
+        organizationId: it.organizationId,
         impact: it.impact,
         effort: it.effort,
         quickWin: it.quickWin,
@@ -150,4 +153,64 @@ export async function getRoadmapDetail(roadmapId: string, user: SessionUser): Pr
       })),
     phases: phaseRows.sort((a, b) => a.sortOrder - b.sortOrder).map((p) => ({ id: p.id, label: p.label, focus: p.focus, actions: p.actions })),
   };
+}
+
+// Priority the roadmap's own classification implies for a project -- used so generating a
+// roadmap doesn't just sit as a read-only report: it actually nudges the project's Priority
+// field, the one signal already surfaced everywhere else in the app (Ideation list, dashboard,
+// AI portfolio summaries). Quick wins always land at HIGH regardless of impact, since "high
+// value, low effort" is exactly what should jump the queue; otherwise priority tracks impact.
+// Never proposes CRITICAL -- that stays a manual escalation only a person makes.
+export function derivePriorityFromRoadmap(impact: string, quickWin: boolean): "LOW" | "MEDIUM" | "HIGH" {
+  if (quickWin || impact === "HIGH") return "HIGH";
+  if (impact === "MEDIUM") return "MEDIUM";
+  return "LOW";
+}
+
+export type ProjectRoadmapStatus = {
+  roadmapId: string;
+  generatedAt: Date;
+  impact: string;
+  effort: string;
+  quickWin: boolean;
+  rationale: string | null;
+};
+
+// The most recent roadmap call for each of the given projects, if any -- lets a project's
+// other views (Ideation list, Overview tab) show "last roadmap call: MEDIUM impact / quick win"
+// without anyone having to visit the Roadmap page itself. A project can appear in more than one
+// roadmap over time (see the picklist letting someone rebuild a roadmap for a new combination),
+// so this always resolves to whichever roadmap ran most recently, not just the first one found.
+export async function getLatestRoadmapStatusForProjects(projectIds: string[]): Promise<Map<string, ProjectRoadmapStatus>> {
+  const map = new Map<string, ProjectRoadmapStatus>();
+  if (!projectIds.length) return map;
+
+  const rows = await db
+    .select({
+      projectId: roadmapItems.projectId,
+      impact: roadmapItems.impact,
+      effort: roadmapItems.effort,
+      quickWin: roadmapItems.quickWin,
+      rationale: roadmapItems.rationale,
+      roadmapId: roadmapItems.roadmapId,
+      generatedAt: roadmaps.createdAt,
+    })
+    .from(roadmapItems)
+    .innerJoin(roadmaps, eq(roadmapItems.roadmapId, roadmaps.id))
+    .where(inArray(roadmapItems.projectId, projectIds));
+
+  for (const r of rows) {
+    const existing = map.get(r.projectId);
+    if (!existing || r.generatedAt > existing.generatedAt) {
+      map.set(r.projectId, {
+        roadmapId: r.roadmapId,
+        generatedAt: r.generatedAt,
+        impact: r.impact,
+        effort: r.effort,
+        quickWin: r.quickWin,
+        rationale: r.rationale,
+      });
+    }
+  }
+  return map;
 }

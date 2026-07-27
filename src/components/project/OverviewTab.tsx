@@ -300,6 +300,7 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
             <textarea value={form.description} onChange={(e) => update("description", e.target.value)} className={inputCls} rows={2} />
           </Field>
         </div>
+        <RoadmapStatusNote detail={detail} />
         {canDelete && closedOut && (
           <Field label="Close-out stage">
             <select
@@ -533,5 +534,24 @@ function AutoHealthNote({ detail }: { detail: ProjectDetail }) {
     <p className="text-xs text-slate-400">
       Auto health: <span className="font-medium">{detail.autoRag}</span> — {detail.autoRagReasons.join("; ")}
     </p>
+  );
+}
+
+// Surfaces the most recent Roadmap classification for this idea, if it's ever been included
+// in one, without anyone having to visit the Roadmap page. Links back there so the full
+// rationale/phasing is one click away.
+function RoadmapStatusNote({ detail }: { detail: ProjectDetail }) {
+  const status = detail.roadmapStatus;
+  if (!status) return null;
+  return (
+    <div className="mt-3 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+      Last roadmap call:{" "}
+      <span className="font-medium text-slate-700">
+        {status.impact} impact / {status.effort} effort{status.quickWin ? " — Quick win" : " — Longer-term bet"}
+      </span>{" "}
+      (generated {new Date(status.generatedAt).toLocaleDateString("en-US")}).{" "}
+      <a href="/roadmap" className="text-accent-600 hover:underline">View roadmap</a>
+      {status.rationale && <span className="block mt-1 text-slate-400">{status.rationale}</span>}
+    </div>
   );
 }

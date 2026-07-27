@@ -62,6 +62,7 @@ export default async function IdeationPage() {
                 <th className="px-4 py-2.5 font-medium">Priority</th>
                 <th className="px-4 py-2.5 font-medium">Sponsor</th>
                 <th className="px-4 py-2.5 font-medium">Estimated Budget</th>
+                <th className="px-4 py-2.5 font-medium">Roadmap</th>
               </tr>
             </thead>
             <tbody>
@@ -76,11 +77,27 @@ export default async function IdeationPage() {
                   <td className="px-4 py-3"><PriorityBadge priority={p.priority} /></td>
                   <td className="px-4 py-3 text-slate-600">{p.sponsor ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-600">${(p.budgetPlanned ?? 0).toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    {p.roadmapStatus ? (
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                          p.roadmapStatus.quickWin
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
+                        }`}
+                        title={p.roadmapStatus.rationale ?? undefined}
+                      >
+                        {p.roadmapStatus.quickWin ? "Quick win" : "Longer-term"}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300 text-xs">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {ideas.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                     No ideas in progress. Start one with &quot;New Idea&quot; above.
                   </td>
                 </tr>
