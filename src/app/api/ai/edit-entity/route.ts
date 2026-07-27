@@ -2,21 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { askClaudeJSON } from "@/lib/ai";
 import { ENTITY_CONFIG, describeSnapshot, type EntityType } from "@/lib/aiEditEntities";
 import { requireProjectAccess } from "@/lib/tenancy";
-import { requirePrOrgRole, requirePrPlatform, canAccessPrAgreement } from "@/lib/projectrequesta/access";
-import { getCurrentUser, requireRole } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 
 type EditProposal = { changes: Record<string, string | number | boolean | null>; explanation: string };
-
-// A ProjectRequesta Agreement can have two or three party orgs (Client + Vendor, or + Platform
-// for Mediator), so no single prOrganizationId/role-set captures "any party admin" the way
-// requirePrOrgRole expects. This just gates who may PROPOSE an edit (read-level access to the
-// agreement); the real authorization -- and the ACTIVE-status change-request detour -- is
-// enforced independently by the agreement's own PATCH route regardless of what happens here.
-async function resolveProjectRequestaAgreementUser(entityId: string) {
-  const user = await getCurrentUser();
-  if (!user) return null;
-  return (await canAccessPrAgreement(user, entityId)) ? user : null;
-}
 
 // The generic "edit anything via AI chat" endpoint: wherever a record was created (by AI or by
 // hand), this lets the user describe a change in plain language instead of only editing fields
@@ -38,20 +26,11 @@ export async function POST(req: NextRequest) {
   const loaded = await config.load(entityId);
   if (!loaded) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Several access-control systems share this one endpoint -- see the comment on
-  // ENTITY_CONFIG in aiEditEntities.ts. ProjectRequesta org/vendor/client entities are scoped to
-  // an org + a set of ProjectRequesta roles; "projectrequesta-platform" is the admin-console-only
-  // counterpart gated to Platform Admin/Compliance instead of that org's own roles; "admin"
-  // is Executa's own platform-wide admin console (no project or org scoping at all);
-  // everything else (the default) is a project-scoped Deliver entity.
+  // Two access-control systems share this one endpoint -- see the comment on ENTITY_CONFIG
+  // in aiEditEntities.ts. "admin" is Executa's own platform-wide admin console (no project
+  // scoping at all); everything else (the default) is a project-scoped Deliver entity.
   const user =
-    config.system === "projectrequesta"
-      ? (await requirePrOrgRole(loaded.prOrganizationId!, config.prRoles!))?.user ?? null
-      : config.system === "projectrequesta-platform"
-      ? (await requirePrPlatform(["PLATFORM_ADMIN", "PLATFORM_COMPLIANCE_OFFICER"]))?.user ?? null
-      : config.system === "projectrequesta-agreement"
-      ? await resolveProjectRequestaAgreementUser(entityId)
-      : config.system === "admin"
+    config.system === "admin"
       ? await requireRole("ADMIN")
       : await requireProjectAccess(config.minRole!, loaded.projectId!);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

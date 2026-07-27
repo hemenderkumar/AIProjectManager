@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import { getSessionUserEdge, SESSION_COOKIE_NAME } from "@/lib/session-edge";
 import { labelForApiMutation } from "@/lib/activityLabels";
-import { getProductLock, isExecutaOnlyPath } from "@/lib/productHost";
 
 // Builds the "what did this user do" activity trail two ways, for every logged-in
 // request that reaches here:
@@ -24,34 +23,6 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
 
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const user = await getSessionUserEdge(token);
-
-  // Domain-based product isolation. executa.<domain> and projectrequesta.<domain> are two
-  // dedicated custom domains that must each behave like a genuinely separate site -- no
-  // visible or reachable link into the other product, even by typing the URL directly.
-  // getProductLock() only recognizes those two hostnames; every other host (the legacy
-  // keel.<domain> domain, Vercel preview/production URLs, localhost) falls through
-  // untouched, keeping today's combined /home experience for bookmarks, webhooks, and local
-  // dev.
-  if (method === "GET" && !pathname.startsWith("/api/")) {
-    const lock = getProductLock(request.headers.get("host"));
-
-    if (lock === "projectrequesta") {
-      if (pathname === "/") {
-        const url = request.nextUrl.clone();
-        url.pathname = "/marketplace";
-        return NextResponse.rewrite(url);
-      }
-      if (isExecutaOnlyPath(pathname)) {
-        const url = request.nextUrl.clone();
-        url.pathname = user ? "/projectrequesta" : "/marketplace";
-        return NextResponse.redirect(url);
-      }
-    } else if (lock === "executa" && pathname.startsWith("/projectrequesta")) {
-      const url = request.nextUrl.clone();
-      url.pathname = user ? "/home" : "/";
-      return NextResponse.redirect(url);
-    }
-  }
 
   if (request.headers.get("next-router-prefetch")) return NextResponse.next();
 

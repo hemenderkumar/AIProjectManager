@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import Topbar from "@/components/Topbar";
 import {
   Lightbulb,
@@ -7,14 +6,11 @@ import {
   Rocket,
   LayoutDashboard,
   ArrowRight,
-  Globe2,
   FolderKanban,
   FileBarChart,
   Map,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { getPrMemberships } from "@/lib/projectrequesta/access";
-import { getProductLock } from "@/lib/productHost";
 import MyRateCard from "@/components/MyRateCard";
 
 export const dynamic = "force-dynamic";
@@ -22,13 +18,6 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const user = await getCurrentUser();
   const isInternal = !!user && user.organizationId == null;
-  const isProjectRequestaMember = user ? (await getPrMemberships(user.id)).length > 0 : false;
-  // On the dedicated executa.<domain> custom domain this page must show Executa only --
-  // ProjectRequesta is unreachable there (middleware redirects /projectrequesta away), so its
-  // lane and every link into it are hidden rather than left as a dead end. Every other host
-  // (legacy keel.<domain>, Vercel preview/production, localhost) still shows both lanes.
-  const host = (await headers()).get("host");
-  const showProjectRequesta = getProductLock(host) !== "executa";
 
   return (
     <div>
@@ -36,8 +25,7 @@ export default async function HomePage() {
       <div className="p-8">
         <MyRateCard />
 
-        <div className={`max-w-5xl grid grid-cols-1 gap-5 ${showProjectRequesta ? "lg:grid-cols-2" : "lg:max-w-2xl"}`}>
-          {/* Executa lane */}
+        <div className="max-w-2xl grid grid-cols-1 gap-5">
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 flex flex-col">
             <div className="flex items-center gap-2.5 mb-1.5">
               <div className="h-9 w-9 rounded-lg bg-accent-50 flex items-center justify-center shrink-0">
@@ -78,46 +66,6 @@ export default async function HomePage() {
               {isInternal && <QuickLink href="/reports" label="Reports" icon={<FileBarChart size={14} />} />}
             </div>
           </div>
-
-          {/* ProjectRequesta lane -- hidden entirely on the executa.<domain> custom domain,
-              where /projectrequesta is unreachable (see middleware.ts + getProductLock()). */}
-          {showProjectRequesta && (
-            <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 flex flex-col">
-              <div className="flex items-center gap-2.5 mb-1.5">
-                <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                  <Globe2 size={18} className="text-slate-700" />
-                </div>
-                <p className="text-sm font-semibold text-slate-900">ProjectRequesta</p>
-              </div>
-              <p className="text-xs text-slate-500 mb-4">
-                {isProjectRequestaMember
-                  ? "The marketplace layer — your registered organizations, projects, and bids."
-                  : "The marketplace layer — post a project or bid on one as a Client or Vendor."}
-              </p>
-
-              <Link
-                href="/projectrequesta"
-                className="group flex items-center justify-between gap-3 bg-slate-900 text-white shadow-sm shadow-slate-900/20 transition-colors hover:bg-slate-800 rounded-lg px-4 py-3 mb-4"
-              >
-                <div className="flex items-center gap-3">
-                  <Globe2 size={18} />
-                  <span className="text-sm font-semibold">{isProjectRequestaMember ? "Go to ProjectRequesta" : "Register an organization"}</span>
-                </div>
-                <ArrowRight size={16} className="shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-
-              {!isProjectRequestaMember && (
-                <p className="text-xs text-slate-400 mb-4">
-                  Takes under a minute — no separate account, just a Client or Vendor profile tied to your Executa login.
-                </p>
-              )}
-
-              <div className="mt-auto pt-3 border-t border-slate-100 flex gap-2">
-                <QuickLink href="/projectrequesta/organizations" label="Organizations" icon={<Globe2 size={14} />} />
-                <QuickLink href="/projectrequesta/projects" label="Marketplace" icon={<FolderKanban size={14} />} />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

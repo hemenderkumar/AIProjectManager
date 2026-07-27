@@ -89,9 +89,9 @@ export default function AiEditChat({
       onApplied?.(proposal.changes);
       setProposal(null);
       setInstruction("");
-      // A 202 with `pending: true` (currently only ProjectRequesta Agreements while ACTIVE) means
-      // this didn't apply directly -- it was filed as a Change Request awaiting the other
-      // party's approval. Surface that distinction instead of closing silently, since to the
+      // A 202 with `pending: true` means this didn't apply directly -- it was filed as a
+      // Change Request awaiting approval instead. Surface that distinction instead of
+      // closing silently, since to the
       // user "Apply" otherwise implies the field changed right now.
       if (data?.pending) {
         setPendingNote(data.message ?? "Submitted as a change request awaiting approval.");
