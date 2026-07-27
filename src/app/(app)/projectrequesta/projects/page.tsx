@@ -4,6 +4,7 @@ import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import { Plus, Globe2, Users, Sparkles, Loader2, Search, X } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+import { DemoBadge } from "@/components/projectrequesta/DemoBadge";
 
 type Organization = { id: string; name: string; orgType: "CLIENT" | "VENDOR" };
 type Project = {
@@ -18,6 +19,7 @@ type Project = {
   requestType?: "PROJECT" | "RESOURCE_REQUEST";
   durationWeeks?: number | null;
   rateType?: string | null;
+  isDemoData?: boolean;
 };
 
 const emptyFilters = { q: "", category: "", skill: "", minBudget: "", maxBudget: "", requestType: "", engagementModel: "" };
@@ -408,9 +410,12 @@ export default function ProjectRequestaProjectsPage() {
                       </p>
                     </div>
                   </div>
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[p.status] ?? "bg-slate-100 text-slate-600"}`}>
-                    {p.status}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {p.isDemoData && <DemoBadge />}
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[p.status] ?? "bg-slate-100 text-slate-600"}`}>
+                      {p.status}
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>

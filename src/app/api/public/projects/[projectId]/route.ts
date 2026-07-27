@@ -27,6 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pro
       status: prProjects.status,
       clientOrgName: prOrganizations.name,
       clientOrgCountry: prOrganizations.primaryCountry,
+      isDemoData: prProjects.isDemoData,
     })
     .from(prProjects)
     .innerJoin(prOrganizations, eq(prProjects.clientOrgId, prOrganizations.id))

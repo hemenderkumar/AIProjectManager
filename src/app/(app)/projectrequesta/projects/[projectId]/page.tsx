@@ -4,6 +4,7 @@ import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import { ChevronDown, ChevronRight, Send } from "lucide-react";
 import AiEditChat from "@/components/project/AiEditChat";
+import { DemoBadge } from "@/components/projectrequesta/DemoBadge";
 
 type Project = {
   id: string;
@@ -19,6 +20,7 @@ type Project = {
   skillsRequired?: string[] | null;
   durationWeeks?: number | null;
   rateType?: string | null;
+  isDemoData?: boolean;
 };
 type Organization = { id: string; name: string; orgType: "CLIENT" | "VENDOR" };
 type Bid = {
@@ -426,6 +428,12 @@ export default function ProjectRequestaProjectDetailPage({ params }: { params: P
         subtitle={`${isResourceRequest ? "Resource request" : `${project.engagementModel === "MEDIATOR" ? "Mediator" : "Marketplace"} engagement`} · ${project.status}`}
       />
       <div className="p-8 max-w-3xl space-y-6">
+        {project.isDemoData && (
+          <div className="flex items-center gap-2">
+            <DemoBadge />
+            <span className="text-xs text-slate-400">This is seed/demo data — bidding is disabled.</span>
+          </div>
+        )}
         {error && <p className="text-xs text-rose-600">{error}</p>}
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
@@ -493,7 +501,7 @@ export default function ProjectRequestaProjectDetailPage({ params }: { params: P
           </div>
         )}
 
-        {myVendorOrgs.length > 0 && project.status === "OPEN" && (
+        {myVendorOrgs.length > 0 && project.status === "OPEN" && !project.isDemoData && (
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-2.5">
             <p className="text-sm font-semibold text-slate-900">{isResourceRequest ? "Offer a rate" : "Submit a bid"}</p>
             <select value={bidVendorOrgId} onChange={(e) => setBidVendorOrgId(e.target.value)} className={inputCls}>

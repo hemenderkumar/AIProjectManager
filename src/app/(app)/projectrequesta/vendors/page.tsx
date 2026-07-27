@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import { ShieldCheck, Star, Search, X } from "lucide-react";
+import { DemoBadge } from "@/components/projectrequesta/DemoBadge";
 
 type Vendor = {
   id: string;
@@ -15,6 +16,7 @@ type Vendor = {
   primaryCountry: string | null;
   verificationStatus: string;
   rating: { avgRating: number; reviewCount: number } | null;
+  isDemoData?: boolean;
 };
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
@@ -112,6 +114,7 @@ export default function VendorDirectoryPage() {
                           <ShieldCheck size={11} /> Verified
                         </span>
                       )}
+                      {v.isDemoData && <DemoBadge />}
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">{v.headline ?? "No headline set"}</p>
                     {(v.categories?.length || v.skills?.length) ? (

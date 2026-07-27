@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       logoUrl: v.logoUrl,
       verified: v.verificationStatus === "VERIFIED",
       rating: ratingByOrg.get(v.id) ?? null,
+      isDemoData: v.isDemoData,
     }))
     .sort((a, b) => (b.rating?.avgRating ?? -1) - (a.rating?.avgRating ?? -1) || a.name.localeCompare(b.name));
 

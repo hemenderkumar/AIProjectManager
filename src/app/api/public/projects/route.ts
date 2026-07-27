@@ -23,6 +23,7 @@ export async function GET() {
       rateType: prProjects.rateType,
       createdAt: prProjects.createdAt,
       clientOrgName: prOrganizations.name,
+      isDemoData: prProjects.isDemoData,
     })
     .from(prProjects)
     .innerJoin(prOrganizations, eq(prProjects.clientOrgId, prOrganizations.id))

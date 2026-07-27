@@ -47,6 +47,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ bi
   if (before.status === "ACCEPTED" || before.status === "REJECTED") {
     return NextResponse.json({ error: `Bid is already ${before.status}` }, { status: 400 });
   }
+  // Defense in depth: bid creation already refuses demo projects, so this should be
+  // unreachable in practice -- but accepting one here would award a demo project and
+  // spin up real agreement/milestone/payment records against it, so it's worth blocking
+  // outright rather than relying solely on the earlier gate.
+  if (project.isDemoData) {
+    return NextResponse.json({ error: "This is demo data and cannot be acted on." }, { status: 400 });
+  }
 
   const [updated] = await db
     .update(prBids)

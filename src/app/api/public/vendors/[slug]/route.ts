@@ -36,6 +36,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     portfolioUrl: org.portfolioUrl,
     logoUrl: org.logoUrl,
     verified: org.verificationStatus === "VERIFIED",
+    isDemoData: org.isDemoData,
     completedProjects: completedCount.length,
     rating:
       ratingRow && ratingRow.reviewCount > 0

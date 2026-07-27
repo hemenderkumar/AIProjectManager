@@ -45,6 +45,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
   if (project.status !== "OPEN") {
     return NextResponse.json({ error: `Project is ${project.status}, not accepting new bids` }, { status: 400 });
   }
+  // Seed/demo postings (isDemoData) exist so the marketplace has something to show before
+  // real clients arrive -- blocked server-side, not just hidden in the UI, so a real vendor
+  // can never accidentally place a real bid against one.
+  if (project.isDemoData) {
+    return NextResponse.json({ error: "This is demo data and cannot be bid on." }, { status: 400 });
+  }
 
   const body = await req.json().catch(() => ({}));
   const vendorOrgId = String(body.vendorOrgId || "");

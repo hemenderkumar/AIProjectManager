@@ -7,6 +7,7 @@ import { eq, and, isNotNull, avg, count } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { ShieldCheck, Star, Search } from "lucide-react";
+import { DemoBadge } from "@/components/projectrequesta/DemoBadge";
 
 export const metadata: Metadata = {
   title: "Vendor Directory — Verified Outsourcing Partners | ProjectRequesta",
@@ -106,6 +107,7 @@ export default async function PublicVendorDirectoryPage({
                       <ShieldCheck size={11} /> Verified
                     </span>
                   )}
+                  {v.isDemoData && <DemoBadge />}
                 </div>
                 <p className="text-xs text-slate-500 mb-2">{v.headline ?? "No headline set"}</p>
                 {(v.categories?.length || v.skills?.length) ? (

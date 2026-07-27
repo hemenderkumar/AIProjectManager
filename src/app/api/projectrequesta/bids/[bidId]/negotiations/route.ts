@@ -38,6 +38,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bid
   }
   const [project] = await db.select().from(prProjects).where(eq(prProjects.id, bid.prProjectId));
   if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  // Same seed/demo guard as bid creation -- a demo bid (which could only exist from before
+  // this flag existed) can't be countered into a real negotiation either.
+  if (project.isDemoData) {
+    return NextResponse.json({ error: "This is demo data and cannot be negotiated." }, { status: 400 });
+  }
 
   const memberships = await getPrMemberships(user.id);
   const isPlatform = hasPlatformRole(memberships);

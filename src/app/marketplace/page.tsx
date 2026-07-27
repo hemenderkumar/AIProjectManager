@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { Globe2, Users, ArrowRight, Search, ShieldCheck, KeyRound, ScrollText, FileText } from "lucide-react";
+import { DemoBadge } from "@/components/projectrequesta/DemoBadge";
 
 export const metadata: Metadata = {
   title: "ProjectRequesta — The Right Vendor, On Your Terms",
@@ -42,6 +43,7 @@ export default async function MarketplaceLandingPage({
       requestType: prProjects.requestType,
       rateType: prProjects.rateType,
       clientOrgName: prOrganizations.name,
+      isDemoData: prProjects.isDemoData,
     })
     .from(prProjects)
     .innerJoin(prOrganizations, eq(prProjects.clientOrgId, prOrganizations.id))
@@ -264,6 +266,7 @@ export default async function MarketplaceLandingPage({
                         <Globe2 size={14} className="text-slate-400 shrink-0" />
                       )}
                       <p className="text-sm font-semibold text-slate-900 truncate">{p.title}</p>
+                      {p.isDemoData && <DemoBadge />}
                     </div>
                     <p className="text-xs text-slate-500 line-clamp-2 max-w-2xl">{p.description ?? "No description provided."}</p>
                     <p className="text-xs text-slate-400 mt-1.5">

@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { Globe2, Users, MapPin, Calendar } from "lucide-react";
+import { DemoBadge } from "@/components/projectrequesta/DemoBadge";
 
 async function loadPosting(projectId: string) {
   const [row] = await db
@@ -29,6 +30,7 @@ async function loadPosting(projectId: string) {
       status: prProjects.status,
       clientOrgName: prOrganizations.name,
       clientOrgCountry: prOrganizations.primaryCountry,
+      isDemoData: prProjects.isDemoData,
     })
     .from(prProjects)
     .innerJoin(prOrganizations, eq(prProjects.clientOrgId, prOrganizations.id))
@@ -78,7 +80,9 @@ export default async function PublicPostingDetailPage({ params }: { params: Prom
             {isResourceRequest ? "Resource request" : "Project"} · {posting.category ?? "Uncategorized"}
           </span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight mb-3">{posting.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight mb-3 flex items-center gap-2.5 flex-wrap">
+          {posting.title} {posting.isDemoData && <DemoBadge />}
+        </h1>
         <div className="flex items-center gap-4 text-xs text-slate-400 mb-6">
           <span>Posted by {posting.clientOrgName}</span>
           {posting.clientOrgCountry && <span className="flex items-center gap-1"><MapPin size={12} /> {posting.clientOrgCountry}</span>}

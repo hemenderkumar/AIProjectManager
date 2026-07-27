@@ -8,6 +8,7 @@ import { eq, and, avg, count } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import { ShieldCheck, Star, ExternalLink, MapPin } from "lucide-react";
+import { DemoBadge } from "@/components/projectrequesta/DemoBadge";
 
 async function loadVendor(slug: string) {
   const [org] = await db.select().from(prOrganizations).where(eq(prOrganizations.publicSlug, slug));
@@ -84,6 +85,7 @@ export default async function PublicVendorProfilePage({ params }: { params: Prom
                   <ShieldCheck size={12} /> Verified
                 </span>
               )}
+              {org.isDemoData && <DemoBadge />}
             </div>
             {org.headline && <p className="text-sm text-slate-600 mt-1">{org.headline}</p>}
             <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">

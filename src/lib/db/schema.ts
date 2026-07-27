@@ -1397,6 +1397,12 @@ export const prOrganizations = pgTable("pr_organizations", {
   // hide a Client or Vendor org (pull it out of vendor search/discovery, block new activity)
   // without hard-deleting it. Disabled orgs still appear in the ProjectRequesta admin console.
   isActive: boolean("is_active").notNull().default(true),
+
+  // Every org that exists at the time this column was added is seed/demo data -- ProjectRequesta
+  // has no real customers yet. Flags it clearly (a "Demo" badge on marketplace/vendor pages) so
+  // a real vendor never mistakes a seeded company for an actual one. Defaults false so anything
+  // created afterward through the app itself (real signups) is never mistakenly flagged.
+  isDemoData: boolean("is_demo_data").notNull().default(false),
 });
 
 // One row per (user, org, role) grant. A user can hold different roles in different
@@ -1457,6 +1463,11 @@ export const prProjects = pgTable("pr_projects", {
   rateType: prRateTypeEnum("rate_type"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+
+  // Same seed/demo flag as prOrganizations.isDemoData -- every project posted before this
+  // column existed is a seed scenario, not a real client's posting. Bidding is blocked
+  // server-side (not just hidden) wherever a bid or negotiation would be created against one.
+  isDemoData: boolean("is_demo_data").notNull().default(false),
 });
 
 export const prBids = pgTable("pr_bids", {
