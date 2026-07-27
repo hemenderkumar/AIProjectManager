@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { askClaudeJSON } from "@/lib/ai";
 import { db } from "@/lib/db";
-import { roadmaps, roadmapItems, roadmapPhases, projects } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { roadmaps, roadmapItems, roadmapPhases } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth";
-import { getEligibleIdeasForRoadmap, getRoadmapDetail, derivePriorityFromRoadmap } from "@/lib/roadmap";
-import { logAudit } from "@/lib/audit";
+import { getEligibleIdeasForRoadmap, getRoadmapDetail, applyRoadmapPriorityWriteBack } from "@/lib/roadmap";
 
 type RoadmapPlan = {
   executive_summary: string;
@@ -128,25 +126,9 @@ Ground every judgment only in the data given -- do not invent details about any 
 
   // Feed the roadmap's classification back into each project's own Priority field, so
   // generating a roadmap isn't just a read-only report -- it actually moves the one priority
-  // signal surfaced everywhere else (Ideation list, dashboard, AI portfolio summaries). Never
-  // downgrades a project someone has manually escalated to CRITICAL -- that stays a human call.
-  for (const it of items) {
-    const proposed = derivePriorityFromRoadmap(it.impact, !!it.quick_win);
-    const [project] = await db.select({ id: projects.id, priority: projects.priority }).from(projects).where(eq(projects.id, it.project_id));
-    if (!project || project.priority === "CRITICAL" || project.priority === proposed) continue;
-
-    await db.update(projects).set({ priority: proposed }).where(eq(projects.id, it.project_id));
-    await logAudit({
-      actor: user,
-      action: "roadmap.priority_set",
-      entityType: "project",
-      entityId: it.project_id,
-      organizationId: user.organizationId,
-      beforeValue: project.priority,
-      afterValue: proposed,
-      detail: `Priority updated to ${proposed} by roadmap ${roadmap.id} (impact: ${it.impact}, quick win: ${!!it.quick_win}).`,
-    });
-  }
+  // signal surfaced everywhere else (Ideation list, dashboard, AI portfolio summaries). Shared
+  // with the "Revise with AI" route so a revision applies the same write-back rules.
+  await applyRoadmapPriorityWriteBack(user, roadmap.id, items);
 
   const detail = await getRoadmapDetail(roadmap.id, user);
   return NextResponse.json({ roadmap: detail });

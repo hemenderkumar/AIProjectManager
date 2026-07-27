@@ -1914,6 +1914,15 @@ export const roadmaps = pgTable("roadmaps", {
   executiveSummary: text("executive_summary"),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Set when this roadmap was produced by "Revise with AI" on an earlier one, rather than a
+  // fresh Generate — each revision is its own new row (full history kept, nothing overwritten),
+  // linked back to the roadmap it revised so the sidebar list can show "revision of <date>".
+  // Self-reference, so the same forward-ref thunk pattern used elsewhere in this file
+  // (e.g. sponsorStakeholderId -> stakeholders.id) is needed here too.
+  revisedFromRoadmapId: text("revised_from_roadmap_id").references((): AnyPgColumn => roadmaps.id, { onDelete: "set null" }),
+  // The free-text instruction the user typed for that revision (e.g. "push the vendor portal
+  // to a later phase") — shown alongside the revision in the sidebar so its intent isn't lost.
+  revisionInstruction: text("revision_instruction"),
 });
 
 // One row per idea included in a given roadmap run. impact/effort/quickWin are the AI's

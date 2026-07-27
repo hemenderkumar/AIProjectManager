@@ -2,6 +2,7 @@ import { eq, desc, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { projects, organizations, roadmaps, roadmapItems, roadmapPhases } from "./db/schema";
 import { listVisibleProjects } from "./tenancy";
+import { logAudit } from "./audit";
 import type { SessionUser } from "./auth";
 
 // Ideas eligible for a roadmap run: at least Feasibility has been assessed (there's a score to
@@ -64,6 +65,15 @@ export type RoadmapSummary = {
   createdBy: string | null;
   executiveSummary: string | null;
   itemCount: number;
+  quickWinCount: number;
+  // The exact set of project ids this roadmap covers -- lets the client detect "you've already
+  // generated a roadmap for this exact selection" before calling Generate, so it can offer New
+  // vs Revise instead of silently piling up duplicates.
+  projectIds: string[];
+  // Set when this roadmap was produced by "Revise with AI" on an earlier one. Together with
+  // revisionInstruction, lets the sidebar list show a roadmap's revision lineage.
+  revisedFromRoadmapId: string | null;
+  revisionInstruction: string | null;
 };
 
 // Most recent first -- a portfolio's prioritization history, not just its latest snapshot.
@@ -76,24 +86,42 @@ export async function listRoadmaps(user: SessionUser): Promise<RoadmapSummary[]>
 
   if (!filtered.length) return [];
   const ids = filtered.map((r) => r.id);
-  const items = await db.select({ roadmapId: roadmapItems.roadmapId }).from(roadmapItems).where(inArray(roadmapItems.roadmapId, ids));
-  const counts = new Map<string, number>();
-  for (const it of items) counts.set(it.roadmapId, (counts.get(it.roadmapId) ?? 0) + 1);
+  const items = await db
+    .select({ roadmapId: roadmapItems.roadmapId, projectId: roadmapItems.projectId, quickWin: roadmapItems.quickWin })
+    .from(roadmapItems)
+    .where(inArray(roadmapItems.roadmapId, ids));
+  const byRoadmap = new Map<string, { projectIds: string[]; quickWinCount: number }>();
+  for (const it of items) {
+    const entry = byRoadmap.get(it.roadmapId) ?? { projectIds: [], quickWinCount: 0 };
+    entry.projectIds.push(it.projectId);
+    if (it.quickWin) entry.quickWinCount += 1;
+    byRoadmap.set(it.roadmapId, entry);
+  }
 
-  return filtered.map((r) => ({
-    id: r.id,
-    createdAt: r.createdAt,
-    createdBy: r.createdBy,
-    executiveSummary: r.executiveSummary,
-    itemCount: counts.get(r.id) ?? 0,
-  }));
+  return filtered.map((r) => {
+    const entry = byRoadmap.get(r.id);
+    return {
+      id: r.id,
+      createdAt: r.createdAt,
+      createdBy: r.createdBy,
+      executiveSummary: r.executiveSummary,
+      itemCount: entry?.projectIds.length ?? 0,
+      quickWinCount: entry?.quickWinCount ?? 0,
+      projectIds: entry?.projectIds ?? [],
+      revisedFromRoadmapId: r.revisedFromRoadmapId,
+      revisionInstruction: r.revisionInstruction,
+    };
+  });
 }
 
 export type RoadmapDetail = {
   id: string;
+  organizationId: string | null;
   createdAt: Date;
   createdBy: string | null;
   executiveSummary: string | null;
+  revisedFromRoadmapId: string | null;
+  revisionInstruction: string | null;
   items: Array<{
     id: string;
     projectId: string;
@@ -103,6 +131,11 @@ export type RoadmapDetail = {
     effort: string;
     quickWin: boolean;
     rationale: string | null;
+    // The project's CURRENT priority (live, from projects.priority) -- not recomputed from
+    // impact/quickWin -- so this reflects what actually landed after the write-back in
+    // POST /api/ai/roadmap (which skips projects already at CRITICAL), and stays accurate even
+    // if a person has since changed it by hand.
+    currentPriority: string;
   }>;
   phases: Array<{ id: string; label: string; focus: string | null; actions: string | null }>;
 };
@@ -127,6 +160,7 @@ export async function getRoadmapDetail(roadmapId: string, user: SessionUser): Pr
         quickWin: roadmapItems.quickWin,
         rationale: roadmapItems.rationale,
         sortOrder: roadmapItems.sortOrder,
+        currentPriority: projects.priority,
       })
       .from(roadmapItems)
       .innerJoin(projects, eq(roadmapItems.projectId, projects.id))
@@ -136,9 +170,12 @@ export async function getRoadmapDetail(roadmapId: string, user: SessionUser): Pr
 
   return {
     id: roadmap.id,
+    organizationId: roadmap.organizationId,
     createdAt: roadmap.createdAt,
     createdBy: roadmap.createdBy,
     executiveSummary: roadmap.executiveSummary,
+    revisedFromRoadmapId: roadmap.revisedFromRoadmapId,
+    revisionInstruction: roadmap.revisionInstruction,
     items: itemRows
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((it) => ({
@@ -150,6 +187,7 @@ export async function getRoadmapDetail(roadmapId: string, user: SessionUser): Pr
         effort: it.effort,
         quickWin: it.quickWin,
         rationale: it.rationale,
+        currentPriority: it.currentPriority,
       })),
     phases: phaseRows.sort((a, b) => a.sortOrder - b.sortOrder).map((p) => ({ id: p.id, label: p.label, focus: p.focus, actions: p.actions })),
   };
@@ -165,6 +203,36 @@ export function derivePriorityFromRoadmap(impact: string, quickWin: boolean): "L
   if (quickWin || impact === "HIGH") return "HIGH";
   if (impact === "MEDIUM") return "MEDIUM";
   return "LOW";
+}
+
+// Shared by both POST /api/ai/roadmap (fresh generate) and POST /api/ai/roadmap-revise (AI
+// revision) -- a roadmap run, first-time or revised, should always try to nudge each covered
+// project's Priority field the same way. Never downgrades a project someone has manually
+// escalated to CRITICAL, and skips the write (and the audit entry) entirely when the proposed
+// value matches what's already there, so revising a roadmap without changing an item's
+// classification doesn't spam the audit log with no-op "changes."
+export async function applyRoadmapPriorityWriteBack(
+  user: SessionUser,
+  roadmapId: string,
+  items: Array<{ project_id: string; impact: string; quick_win: boolean }>
+): Promise<void> {
+  for (const it of items) {
+    const proposed = derivePriorityFromRoadmap(it.impact, !!it.quick_win);
+    const [project] = await db.select({ id: projects.id, priority: projects.priority }).from(projects).where(eq(projects.id, it.project_id));
+    if (!project || project.priority === "CRITICAL" || project.priority === proposed) continue;
+
+    await db.update(projects).set({ priority: proposed }).where(eq(projects.id, it.project_id));
+    await logAudit({
+      actor: user,
+      action: "roadmap.priority_set",
+      entityType: "project",
+      entityId: it.project_id,
+      organizationId: user.organizationId,
+      beforeValue: project.priority,
+      afterValue: proposed,
+      detail: `Priority updated to ${proposed} by roadmap ${roadmapId} (impact: ${it.impact}, quick win: ${!!it.quick_win}).`,
+    });
+  }
 }
 
 export type ProjectRoadmapStatus = {
