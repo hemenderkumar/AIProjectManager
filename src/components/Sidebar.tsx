@@ -17,8 +17,6 @@ import {
   FileSearch,
   TrendingUp,
   Compass,
-  Globe2,
-  Gavel,
   Map,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
@@ -53,24 +51,12 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
 export default function Sidebar({
   user,
   open,
-  isProjectRequestaMember,
-  isPrPlatform,
 }: {
   user: SessionUser | null;
   open?: boolean;
-  isProjectRequestaMember?: boolean;
-  isPrPlatform?: boolean;
 }) {
   const isInternal = !!user && user.organizationId == null;
   const pathname = usePathname();
-  // Two separate product tracks sharing one login: "Executa" (the original PM/delivery
-  // tool -- everything under the routes below) and "ProjectRequesta" (the B2B marketplace,
-  // everything under /projectrequesta/*). Deliberately no direct switcher between the two, and no
-  // generic "Home" nav item either -- /home (the combined two-lane hub) is only ever reached
-  // via the logo up top, so each track's nav only ever shows that track's own features plus,
-  // for ProjectRequesta, its own "ProjectRequesta Home" landing link. This doesn't gate access itself
-  // -- that's enforced server-side by each track's own API routes.
-  const onProjectRequesta = pathname.startsWith("/projectrequesta");
 
   return (
     <aside
@@ -80,111 +66,66 @@ export default function Sidebar({
         ${open ? "translate-x-0" : "-translate-x-full"}`}
     >
       <div className="px-5 py-5 border-b border-slate-100">
-        <Link href="/home" className="flex items-center gap-2.5 group">
-          <Image
-            src={onProjectRequesta ? "/projectrequesta-mark.svg" : "/executa-mark.svg"}
-            alt={onProjectRequesta ? "ProjectRequesta" : "Executa"}
-            width={40}
-            height={40}
-          />
+        <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <Image src="/executa-mark.svg" alt="Executa" width={40} height={40} />
           <div>
             <p className="text-sm font-semibold text-slate-900 leading-tight group-hover:text-accent-700">
-              {onProjectRequesta ? "ProjectRequesta" : "Executa"}
+              Executa
             </p>
-            <p className="text-xs text-slate-400 leading-tight">
-              {onProjectRequesta ? "B2B outsourcing marketplace" : "Guiding project success"}
-            </p>
+            <p className="text-xs text-slate-400 leading-tight">Guiding project success</p>
           </div>
         </Link>
       </div>
 
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {onProjectRequesta ? (
-          <>
-            <NavLink href="/projectrequesta" icon={<Compass size={17} />} pathname={pathname}>ProjectRequesta Home</NavLink>
-            <NavSection label="Marketplace">
-              <NavLink href="/projectrequesta/organizations" icon={<Building2 size={17} />} pathname={pathname}>Organizations</NavLink>
-              <NavLink href="/projectrequesta/projects" icon={<Globe2 size={17} />} pathname={pathname}>Projects</NavLink>
-              <NavLink href="/projectrequesta/vendors" icon={<Users size={17} />} pathname={pathname}>Vendor Directory</NavLink>
-            </NavSection>
-            <NavSection label="My Work">
-              <NavLink href="/projectrequesta/disputes" icon={<Gavel size={17} />} pathname={pathname}>Disputes</NavLink>
-              <NavLink href="/projectrequesta/mfa" icon={<ShieldCheck size={17} />} pathname={pathname}>Two-Factor Auth</NavLink>
-            </NavSection>
-            {isPrPlatform && (
-              <NavSection label="Platform">
-                <NavLink href="/projectrequesta/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Admin Console</NavLink>
-              </NavSection>
-            )}
-            {!isProjectRequestaMember && !isPrPlatform && (
-              <p className="px-3 pt-4 text-xs text-slate-400 leading-relaxed">
-                You&apos;re not part of a ProjectRequesta organization yet. Create a Client or Vendor
-                organization to start posting or bidding on projects.
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
-            <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Executa Works</NavLink>
+        <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
+        <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Executa Works</NavLink>
 
-            <NavSection label="Project Lifecycle">
-              <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
-              <NavLink href="/roadmap" icon={<Map size={17} />} pathname={pathname}>Roadmap</NavLink>
-              <NavLink href="/execution" icon={<Rocket size={17} />} pathname={pathname}>Project Execution</NavLink>
-              <NavLink href="/support" icon={<LifeBuoy size={17} />} pathname={pathname}>Ongoing Support</NavLink>
-            </NavSection>
+        <NavSection label="Project Lifecycle">
+          <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
+          <NavLink href="/roadmap" icon={<Map size={17} />} pathname={pathname}>Roadmap</NavLink>
+          <NavLink href="/execution" icon={<Rocket size={17} />} pathname={pathname}>Project Execution</NavLink>
+          <NavLink href="/support" icon={<LifeBuoy size={17} />} pathname={pathname}>Ongoing Support</NavLink>
+        </NavSection>
 
-            <NavSection label="More">
-              <NavLink href="/projects" icon={<FolderKanban size={17} />} pathname={pathname}>All Projects</NavLink>
-              <NavLink href="/ai" icon={<Sparkles size={17} />} pathname={pathname}>AI Assistant</NavLink>
-              {isInternal && (
-                <NavLink href="/reports" icon={<FileBarChart size={17} />} pathname={pathname}>Reports</NavLink>
-              )}
-              {isInternal && (
-                <NavLink href="/resources" icon={<Users size={17} />} pathname={pathname}>Resources</NavLink>
-              )}
-              {user?.role === "SUPER_USER" && (
-                <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>
-              )}
-              {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
-                <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
-              )}
-              {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
-                <NavLink href="/vendors" icon={<TrendingUp size={17} />} pathname={pathname}>Vendor Scorecard</NavLink>
-              )}
-            </NavSection>
+        <NavSection label="More">
+          <NavLink href="/projects" icon={<FolderKanban size={17} />} pathname={pathname}>All Projects</NavLink>
+          <NavLink href="/ai" icon={<Sparkles size={17} />} pathname={pathname}>AI Assistant</NavLink>
+          {isInternal && (
+            <NavLink href="/reports" icon={<FileBarChart size={17} />} pathname={pathname}>Reports</NavLink>
+          )}
+          {isInternal && (
+            <NavLink href="/resources" icon={<Users size={17} />} pathname={pathname}>Resources</NavLink>
+          )}
+          {user?.role === "SUPER_USER" && (
+            <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>
+          )}
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+            <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
+          )}
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+            <NavLink href="/vendors" icon={<TrendingUp size={17} />} pathname={pathname}>Vendor Scorecard</NavLink>
+          )}
+        </NavSection>
 
-            {user?.role === "ADMIN" && (
-              // Its own clearly-labeled section, not buried inside "More" — this is where
-              // inviting/managing users and companies (and approving registration requests)
-              // actually lives, so it needs to be easy to find, not the last item in a list.
-              <NavSection label="Account Management">
-                <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Users & Companies</NavLink>
-              </NavSection>
-            )}
-          </>
+        {user?.role === "ADMIN" && (
+          // Its own clearly-labeled section, not buried inside "More" — this is where
+          // inviting/managing users and companies (and approving registration requests)
+          // actually lives, so it needs to be easy to find, not the last item in a list.
+          <NavSection label="Account Management">
+            <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Users & Companies</NavLink>
+          </NavSection>
         )}
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">
         <ThemeSwitcher />
-        {onProjectRequesta ? (
-          <Link
-            href="/projectrequesta/organizations"
-            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
-          >
-            <PlusCircle size={16} />
-            Register Organization
-          </Link>
-        ) : (
-          <Link
-            href="/projects/new"
-            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
-          >
-            <PlusCircle size={16} />
-            New Project
-          </Link>
-        )}
+        <Link
+          href="/projects/new"
+          className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
+        >
+          <PlusCircle size={16} />
+          New Project
+        </Link>
         <div className="flex items-center gap-2 px-1 text-xs text-slate-300">
           <Link href="/privacy" className="hover:text-slate-500">Privacy</Link>
           <span>·</span>

@@ -17,13 +17,9 @@ import type { SessionUser } from "@/lib/auth";
 export default function AppShell({
   user,
   children,
-  isProjectRequestaMember,
-  isPrPlatform,
 }: {
   user: SessionUser | null;
   children: React.ReactNode;
-  isProjectRequestaMember?: boolean;
-  isPrPlatform?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -45,16 +41,9 @@ export default function AppShell({
         >
           <Menu size={22} />
         </button>
-        <Link href="/home" className="flex items-center gap-2.5">
-          <Image
-            src={pathname.startsWith("/projectrequesta") ? "/projectrequesta-mark.svg" : "/executa-mark.svg"}
-            alt={pathname.startsWith("/projectrequesta") ? "ProjectRequesta" : "Executa"}
-            width={28}
-            height={28}
-          />
-          <p className="text-sm font-semibold text-slate-900">
-            {pathname.startsWith("/projectrequesta") ? "ProjectRequesta" : "Executa"}
-          </p>
+        <Link href="/dashboard" className="flex items-center gap-2.5">
+          <Image src="/executa-mark.svg" alt="Executa" width={28} height={28} />
+          <p className="text-sm font-semibold text-slate-900">Executa</p>
         </Link>
       </div>
 
@@ -66,7 +55,7 @@ export default function AppShell({
         />
       )}
 
-      <Sidebar user={user} open={open} isProjectRequestaMember={isProjectRequestaMember} isPrPlatform={isPrPlatform} />
+      <Sidebar user={user} open={open} />
 
       <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
       <AvatarAssistant />

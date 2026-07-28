@@ -1,10 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useState } from "react";
 import { X, Sparkles, Loader2, Globe2 } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
-
-type ClientOrg = { id: string; name: string; orgType: "CLIENT" | "VENDOR" };
 
 type Task = {
   id: string;
@@ -16,9 +13,13 @@ type Task = {
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
 // Bridges a Executa task the AI PM (or a person) tagged executionSource "VENDOR" into
-// a real ProjectRequesta marketplace posting -- see /api/projects/[id]/tasks/[taskId]/post-to-projectrequesta.
-// Reuses ProjectRequesta's own "Draft with AI" endpoint (not Deliver's) so the posting reads as a
-// proper external-facing brief rather than a copy-pasted internal task description.
+// a real ProjectRequesta marketplace posting -- see /api/projects/[id]/tasks/[taskId]/post-to-projectrequesta,
+// which now makes an authenticated HTTP call to ProjectRequesta's own /api/bridge/post-project
+// endpoint rather than a same-database insert (the two apps have separate databases as of the
+// split). Because of that, we can no longer look up "your ProjectRequesta Client organizations"
+// here -- Executa has no visibility into ProjectRequesta's org table -- so the Client Org ID is a
+// plain text field the poster fills in by hand (found on the Organization page in ProjectRequesta
+// itself). The receiving endpoint validates that the id is a real CLIENT org; this form can't.
 export default function PostToProjectRequestaModal({
   projectId,
   task,
@@ -30,8 +31,6 @@ export default function PostToProjectRequestaModal({
   onClose: () => void;
   onPosted: (prProjectId: string) => void;
 }) {
-  const [clientOrgs, setClientOrgs] = useState<ClientOrg[]>([]);
-  const [loadingOrgs, setLoadingOrgs] = useState(true);
   const [form, setForm] = useState({
     clientOrgId: "",
     title: task.title,
@@ -45,21 +44,6 @@ export default function PostToProjectRequestaModal({
   const [drafting, setDrafting] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      setLoadingOrgs(true);
-      const res = await fetch("/api/projectrequesta/organizations");
-      if (res.ok) {
-        const orgs: ClientOrg[] = await res.json();
-        const clients = orgs.filter((o) => o.orgType === "CLIENT");
-        setClientOrgs(clients);
-        if (clients.length === 1) setForm((f) => ({ ...f, clientOrgId: clients[0].id }));
-      }
-      setLoadingOrgs(false);
-    }
-    load();
-  }, []);
 
   async function draftWithAI() {
     setDrafting(true);
@@ -94,7 +78,7 @@ export default function PostToProjectRequestaModal({
   }
 
   async function post() {
-    if (!form.clientOrgId || !form.title.trim()) return;
+    if (!form.clientOrgId.trim() || !form.title.trim()) return;
     setPosting(true);
     setError(null);
     try {
@@ -133,69 +117,62 @@ export default function PostToProjectRequestaModal({
           It&apos;s saved as a draft in ProjectRequesta — nothing is visible to Vendors until you post it there.
         </p>
 
-        {loadingOrgs ? (
-          <p className="text-xs text-slate-400 py-4">Loading your ProjectRequesta organizations...</p>
-        ) : clientOrgs.length === 0 ? (
-          <div className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3">
-            You don&apos;t have a Client organization on ProjectRequesta yet.{" "}
-            <Link href="/projectrequesta/organizations" className="text-accent-600 font-medium hover:text-accent-700">
-              Register one
-            </Link>{" "}
-            first, then come back and post this task.
+        <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
+          <button
+            onClick={draftWithAI}
+            disabled={drafting}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
+          >
+            {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {drafting ? "Drafting..." : "Draft an external-facing posting with AI"}
+          </button>
+          <AiWaitIndicator active={drafting} messages={["Reading the task...", "Writing it up for vendors..."]} />
+        </div>
+
+        <div>
+          <input
+            placeholder="ProjectRequesta Client Org ID"
+            value={form.clientOrgId}
+            onChange={(e) => setForm((f) => ({ ...f, clientOrgId: e.target.value }))}
+            className={inputCls}
+          />
+          <p className="text-[11px] text-slate-400 mt-1">
+            Find this on your Organization page in ProjectRequesta — Executa can&apos;t look it up directly since the two apps now have separate databases.
+          </p>
+        </div>
+        <input placeholder="Title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} />
+        <textarea
+          placeholder="Description"
+          value={form.description}
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          className={`${inputCls} min-h-20`}
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <input placeholder="Category" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputCls} />
+          <div className="flex gap-2">
+            <input placeholder="Budget" type="number" value={form.targetBudget} onChange={(e) => setForm((f) => ({ ...f, targetBudget: e.target.value }))} className={inputCls} />
+            <input value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))} className={`${inputCls} w-20 shrink-0`} />
           </div>
-        ) : (
-          <>
-            <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
-              <button
-                onClick={draftWithAI}
-                disabled={drafting}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
-              >
-                {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                {drafting ? "Drafting..." : "Draft an external-facing posting with AI"}
-              </button>
-              <AiWaitIndicator active={drafting} messages={["Reading the task...", "Writing it up for vendors..."]} />
-            </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <select value={form.engagementModel} onChange={(e) => setForm((f) => ({ ...f, engagementModel: e.target.value }))} className={inputCls}>
+            <option value="MARKETPLACE">Marketplace</option>
+            <option value="MEDIATOR">Mediator (Executa contracts both sides)</option>
+          </select>
+          <select value={form.locationRequirement} onChange={(e) => setForm((f) => ({ ...f, locationRequirement: e.target.value }))} className={inputCls}>
+            <option value="GLOBAL">Global</option>
+            <option value="RESTRICTED">Restricted</option>
+          </select>
+        </div>
 
-            <select value={form.clientOrgId} onChange={(e) => setForm((f) => ({ ...f, clientOrgId: e.target.value }))} className={inputCls}>
-              <option value="">Posting as...</option>
-              {clientOrgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-            <input placeholder="Title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} />
-            <textarea
-              placeholder="Description"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              className={`${inputCls} min-h-20`}
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="Category" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputCls} />
-              <div className="flex gap-2">
-                <input placeholder="Budget" type="number" value={form.targetBudget} onChange={(e) => setForm((f) => ({ ...f, targetBudget: e.target.value }))} className={inputCls} />
-                <input value={form.currency} onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))} className={`${inputCls} w-20 shrink-0`} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <select value={form.engagementModel} onChange={(e) => setForm((f) => ({ ...f, engagementModel: e.target.value }))} className={inputCls}>
-                <option value="MARKETPLACE">Marketplace</option>
-                <option value="MEDIATOR">Mediator (Executa contracts both sides)</option>
-              </select>
-              <select value={form.locationRequirement} onChange={(e) => setForm((f) => ({ ...f, locationRequirement: e.target.value }))} className={inputCls}>
-                <option value="GLOBAL">Global</option>
-                <option value="RESTRICTED">Restricted</option>
-              </select>
-            </div>
-
-            {error && <p className="text-xs text-rose-600">{error}</p>}
-            <button
-              onClick={post}
-              disabled={posting || !form.clientOrgId || !form.title.trim()}
-              className="w-full px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
-            >
-              {posting ? "Saving..." : "Save as draft in ProjectRequesta"}
-            </button>
-          </>
-        )}
+        {error && <p className="text-xs text-rose-600">{error}</p>}
+        <button
+          onClick={post}
+          disabled={posting || !form.clientOrgId.trim() || !form.title.trim()}
+          className="w-full px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
+        >
+          {posting ? "Saving..." : "Save as draft in ProjectRequesta"}
+        </button>
       </div>
     </div>
   );

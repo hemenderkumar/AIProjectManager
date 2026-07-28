@@ -6,19 +6,16 @@ import type { SessionUser } from "./auth";
  * failure should never block the underlying action from completing. Call this after the
  * action succeeds (so we log what actually happened), not before.
  *
- * `prOrganizationId`/`beforeValue`/`afterValue` back ProjectRequesta's audit requirement: every
- * Agreement/Payment state change and every permission (prOrgMembers) change must be
- * traceable with a before/after snapshot, not just an action string. Executa callers
- * can ignore these three fields entirely. before/after are passed as already-stringified
- * JSON (caller's choice of shape) rather than typed here, since the "before"/"after" shape
- * differs per entity type. */
+ * `beforeValue`/`afterValue` are for entity state changes (e.g. via the generic AI-edit-via-
+ * chat flow) that need a before/after snapshot, not just an action string. They're passed as
+ * already-stringified JSON (caller's choice of shape) rather than typed here, since the
+ * "before"/"after" shape differs per entity type. */
 export async function logAudit(opts: {
   actor: SessionUser | null;
   action: string; // e.g. "organization.deletion_requested"
   entityType?: string; // e.g. "organization"
   entityId?: string;
   organizationId?: string | null;
-  prOrganizationId?: string | null;
   beforeValue?: string | null;
   afterValue?: string | null;
   detail?: string;
@@ -31,7 +28,6 @@ export async function logAudit(opts: {
       entityType: opts.entityType,
       entityId: opts.entityId,
       organizationId: opts.organizationId ?? null,
-      prOrganizationId: opts.prOrganizationId ?? null,
       beforeValue: opts.beforeValue ?? null,
       afterValue: opts.afterValue ?? null,
       detail: opts.detail,

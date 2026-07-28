@@ -1,7 +1,6 @@
 "use client";
 import { Fragment, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { PriorityBadge, ExecutionSourceBadge } from "@/components/badges";
@@ -1116,13 +1115,13 @@ export default function TasksTab({
                         <option value="VENDOR">Vendor</option>
                       </select>
                       {t.executionSource === "VENDOR" && (
-                        t.prProjectId ? (
-                          <Link
-                            href={`/projectrequesta/projects/${t.prProjectId}`}
-                            className="flex items-center gap-1 mt-1 text-xs text-accent-600 hover:text-accent-700"
+                        t.postedToMarketplaceAt ? (
+                          <span
+                            title="Posted to ProjectRequesta — now a separate app, so there's no in-app page to link to here"
+                            className="flex items-center gap-1 mt-1 text-xs text-slate-500"
                           >
-                            <Globe2 size={11} /> Posted
-                          </Link>
+                            <Globe2 size={11} /> Posted to ProjectRequesta
+                          </span>
                         ) : (
                           <button
                             onClick={() => setPostingTask(t)}
