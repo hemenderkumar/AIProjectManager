@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Topbar from "@/components/Topbar";
 import { CreditCard, CheckCircle2, Users, FolderKanban } from "lucide-react";
+import { formatPlanPrice } from "@/lib/planFormat";
 
 type Plan = {
   id: string;
@@ -28,13 +29,6 @@ type Status = {
   currentPlan: Plan | null;
   plans: Plan[];
 };
-
-function formatPrice(p: Plan) {
-  if (p.priceCents == null) return "Contact us";
-  const dollars = (p.priceCents / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  const unit = p.billingModel === "per_seat" ? "user/" : "";
-  return `$${dollars}/${unit}${p.billingInterval}`;
-}
 
 // Module-level, not called during render of the component body -- see the matching comment
 // in admin/page.tsx. Keeps Date.now() out of react-hooks/purity's reach.
@@ -154,7 +148,7 @@ export default function BillingPage() {
             return (
               <div key={p.id} className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 flex flex-col">
                 <p className="text-sm font-semibold text-slate-900 mb-1">{p.name}</p>
-                <p className="text-lg font-semibold text-slate-900 mb-2">{formatPrice(p)}</p>
+                <p className="text-lg font-semibold text-slate-900 mb-2">{formatPlanPrice(p)}</p>
                 {p.description && <p className="text-xs text-slate-500 mb-3">{p.description}</p>}
                 <div className="text-xs text-slate-400 space-y-1 mb-4">
                   <p className="flex items-center gap-1.5">

@@ -2,8 +2,24 @@ import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
+import { listActivePlans } from "@/lib/billing";
+import { formatPlanPrice } from "@/lib/planFormat";
 import LoginCard from "@/components/LoginCard";
-import { Rocket, Sparkles, FileSearch, FileBarChart, ArrowRight, Inbox } from "lucide-react";
+import {
+  Rocket,
+  Sparkles,
+  FileSearch,
+  FileBarChart,
+  ArrowRight,
+  Inbox,
+  ShieldCheck,
+  Lock,
+  KeyRound,
+  ScrollText,
+  Bot,
+  TrendingUp,
+  Check,
+} from "lucide-react";
 
 const PREVIEW_PROJECTS = [
   { name: "Core Platform Migration", stage: "Execution", pct: 62, rag: "GREEN" as const },
@@ -17,13 +33,36 @@ const PREVIEW_RAG_STYLES: Record<string, { bg: string; text: string; dot: string
   RED: { bg: "bg-rose-100", text: "text-rose-700", dot: "bg-rose-500", bar: "bg-rose-500" },
 };
 
+const FAQS = [
+  {
+    q: "How is Executa different from Asana, Monday, or Jira?",
+    a: "Those tools manage tasks once a project already exists. Executa manages the decision to start one, too — every idea passes through AI-assisted feasibility, architecture, and resourcing gates before it becomes a funded project, and the AI drafts the charter, RFP, SOW, and delivery plan instead of you starting from a blank template.",
+  },
+  {
+    q: "Do I need a company account, or can I sign up individually?",
+    a: "Individuals get instant, self-service access — no waiting on approval. Company accounts (with multiple teammates, divisions, and shared rate cards) are reviewed by an admin before access is granted, since they involve inviting other people into your organization's workspace.",
+  },
+  {
+    q: "What happens when my trial ends?",
+    a: "You'll see a clear countdown in the app before it happens. Once the trial ends without an active plan, the account is locked (your data is preserved, nothing is deleted) until you subscribe to a plan or an admin grants an extension.",
+  },
+  {
+    q: "Can I cancel or change plans later?",
+    a: "Yes — billing is self-service through Stripe's customer portal, reachable from Billing inside the app. Upgrades, downgrades, and cancellations take effect through your normal billing cycle.",
+  },
+  {
+    q: "Is my data secure?",
+    a: "Every action is scoped to your organization and enforced at the API layer, sensitive actions require step-up TOTP verification for finance and platform roles, and every approval, deletion, and rate change is written to an immutable audit log. See Security & compliance below for the full picture.",
+  },
+];
+
 // Executa's own dedicated public homepage -- deliberately no ProjectRequesta mentions, cards,
 // or cross-links here. Executa and ProjectRequesta are two independent products that happen to
 // share a backend; each gets its own standalone pitch (see /marketplace for ProjectRequesta's).
 // Logged-out visitors get the pitch + an embedded login form; signed-in visitors get the same
 // page with a personalized hero and a direct entry point into the product instead.
 export default async function HomePage() {
-  const user = await getCurrentUser();
+  const [user, plans] = await Promise.all([getCurrentUser(), listActivePlans()]);
 
   if (!user) {
     await logActivity({ type: "PUBLIC_VISIT", path: "/" });
@@ -39,6 +78,9 @@ export default async function HomePage() {
           </div>
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-500">
             <a href="#features" className="hover:text-slate-900 transition-colors">Product</a>
+            <a href="#ai-pm" className="hover:text-slate-900 transition-colors">AI PM</a>
+            <a href="#pricing" className="hover:text-slate-900 transition-colors">Pricing</a>
+            <a href="#security" className="hover:text-slate-900 transition-colors">Security</a>
             <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How it works</a>
           </nav>
           {user ? (
@@ -71,7 +113,8 @@ export default async function HomePage() {
               Guiding project success
             </p>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-slate-900 leading-tight tracking-tight mb-5">
-              From a first idea to a board-ready report, without leaving one tracker.
+              From a first idea to a{" "}
+              <span className="text-gradient-accent">board-ready report</span>, without leaving one tracker.
             </h1>
             <p className="text-base text-slate-600 mb-8 max-w-lg">
               Executa is an AI-driven project and portfolio tracker for running your own team&apos;s
@@ -124,7 +167,7 @@ export default async function HomePage() {
       </section>
 
       <section className="max-w-5xl mx-auto px-6 py-16">
-        <div className="rounded-xl border border-slate-200 shadow-sm shadow-slate-200/60 overflow-hidden">
+        <div className="card-lift rounded-xl border border-slate-200 shadow-sm shadow-slate-200/60 overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-900">Executa: Portfolio Dashboard</p>
             <p className="text-xs text-slate-400">Sample data shown</p>
@@ -255,6 +298,124 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section id="ai-pm" className="bg-slate-900 scroll-mt-16">
+        <div className="max-w-5xl mx-auto px-6 py-16">
+          <p className="text-xs font-medium tracking-widest uppercase text-accent-400 mb-2">The AI project manager</p>
+          <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight mb-4 max-w-2xl">
+            It doesn&apos;t just answer questions — it drafts the work.
+          </h2>
+          <p className="text-sm text-slate-400 max-w-2xl mb-10">
+            A floating AI PM is available on every screen, with voice, and it&apos;s grounded in your
+            actual portfolio data — not a generic chatbot bolted on top.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <AiCapabilityCard
+              icon={<Bot size={16} />}
+              title="Drafts, not blank pages"
+              description="Charters, RFPs, SOWs, delivery plans, risk logs, and status narratives generated from a one-line prompt, editable before anything is saved."
+            />
+            <AiCapabilityCard
+              icon={<TrendingUp size={16} />}
+              title="Estimates & recommends"
+              description="Effort estimation, resource assignment suggestions, technical architecture recommendations, and delivery/pricing guidance sourced from your own rate cards."
+            />
+            <AiCapabilityCard
+              icon={<FileSearch size={16} />}
+              title="Learns from your portfolio"
+              description="Vendor scoring, SOW-vs-actuals drift detection, and cross-project pattern learning — grounded in what actually happened on past projects, not generic advice."
+            />
+            <AiCapabilityCard
+              icon={<Sparkles size={16} />}
+              title="Ask it anything, out loud"
+              description={"Natural-language Q&A across the whole portfolio or a single project, with a spoken briefing and captions — ask \"what needs my attention?\" and get a real answer."}
+            />
+            <AiCapabilityCard
+              icon={<ShieldCheck size={16} />}
+              title="Gated, not unchecked"
+              description="AI-proposed edits go through a review-then-apply flow — you see the diff before anything changes, and every change lands in the audit log."
+            />
+            <AiCapabilityCard
+              icon={<Rocket size={16} />}
+              title="Roadmap-aware"
+              description="Groups ideas into quick-wins vs. long-term investments, suggests prioritization, and reconciles conflicts when a roadmap is revised."
+            />
+          </div>
+        </div>
+      </section>
+
+      {plans.length > 0 && (
+        <section id="pricing" className="max-w-5xl mx-auto px-6 py-16 scroll-mt-16">
+          <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2 text-center">Pricing</p>
+          <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10 text-center">
+            Straightforward plans. Start on a free trial, upgrade when you&apos;re ready.
+          </h2>
+          <div className={`grid grid-cols-1 gap-5 ${plans.length === 2 ? "sm:grid-cols-2 max-w-2xl mx-auto" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
+            {plans.map((p, i) => (
+              <div
+                key={p.id}
+                className={`card-lift rounded-xl border p-6 flex flex-col ${
+                  i === 1 ? "border-accent-300 shadow-md shadow-accent-600/10 relative" : "border-slate-200/70 shadow-sm shadow-slate-200/60"
+                }`}
+              >
+                {i === 1 && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-accent-600 text-white">
+                    Most popular
+                  </span>
+                )}
+                <p className="text-sm font-semibold text-slate-900 mb-1">{p.name}</p>
+                <p className="text-2xl font-semibold text-slate-900 mb-2">{formatPlanPrice(p)}</p>
+                {p.description && <p className="text-xs text-slate-500 mb-4">{p.description}</p>}
+                <div className="text-xs text-slate-500 space-y-1.5 mb-6">
+                  <p className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 shrink-0" /> {p.projectLimit ? `${p.projectLimit} active projects` : "Unlimited projects"}</p>
+                  <p className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 shrink-0" /> {p.seatLimit ? `${p.seatLimit} seats` : "Unlimited seats"}</p>
+                  <p className="flex items-center gap-1.5"><Check size={13} className="text-emerald-600 shrink-0" /> AI project manager included</p>
+                </div>
+                <Link
+                  href="/register"
+                  className="mt-auto text-center text-sm font-medium px-4 py-2.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 transition-colors"
+                >
+                  Start free trial
+                </Link>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 text-center mt-8">
+            Every new account starts on a free trial — no credit card required to sign up.
+          </p>
+        </section>
+      )}
+
+      <section id="security" className="bg-slate-50 border-y border-slate-200 scroll-mt-16">
+        <div className="max-w-5xl mx-auto px-6 py-16">
+          <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">Security &amp; compliance</p>
+          <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10 max-w-2xl">
+            Built for teams that handle client data and vendor spend, not just to-do lists.
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <SecurityRow icon={<ShieldCheck size={16} />} title="Role-based access" description="Every request is scoped to your organization and role at the API layer — Admin, Super User, PM, Contributor, Viewer." />
+            <SecurityRow icon={<KeyRound size={16} />} title="Step-up MFA" description="TOTP verification required for Finance Approver and Platform-level roles on sensitive actions." />
+            <SecurityRow icon={<ScrollText size={16} />} title="Immutable audit log" description="Every approval, deletion, and rate change is recorded with before/after values and who made it." />
+            <SecurityRow icon={<Lock size={16} />} title="Self-service data control" description="Export or request deletion of your organization's data at any time, without waiting on support." />
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-3xl mx-auto px-6 py-16">
+        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2 text-center">FAQ</p>
+        <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10 text-center">Common questions</h2>
+        <div className="divide-y divide-slate-200 border-t border-b border-slate-200">
+          {FAQS.map((item) => (
+            <details key={item.q} className="group py-4">
+              <summary className="flex items-center justify-between cursor-pointer text-sm font-medium text-slate-900 list-none">
+                {item.q}
+                <ArrowRight size={14} className="text-slate-400 transition-transform group-open:rotate-90 shrink-0 ml-4" />
+              </summary>
+              <p className="text-sm text-slate-500 leading-relaxed mt-3 pr-6">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <section className="bg-accent-600">
         <div className="max-w-5xl mx-auto px-6 py-14 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
           <div>
@@ -312,6 +473,30 @@ function Step({ number, title, description }: { number: string; title: string; d
     <div className="border-t border-slate-200 pt-5 pr-6">
       <p className="text-xs font-semibold text-accent-300 mb-2">{number}</p>
       <p className="text-sm font-semibold text-slate-900 mb-1.5">{title}</p>
+      <p className="text-xs text-slate-500 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function AiCapabilityCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="card-lift rounded-xl border border-slate-700/70 bg-slate-800/60 p-5">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-accent-400">{icon}</span>
+        <p className="text-sm font-semibold text-white">{title}</p>
+      </div>
+      <p className="text-xs text-slate-400 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function SecurityRow({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-accent-600">{icon}</span>
+        <p className="text-sm font-semibold text-slate-900">{title}</p>
+      </div>
       <p className="text-xs text-slate-500 leading-relaxed">{description}</p>
     </div>
   );
