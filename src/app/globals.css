@@ -204,3 +204,87 @@ body {
   animation: flow-line-grow 0.6s ease-out forwards;
   transform-origin: left;
 }
+
+/* --------------------------------------------------------------------------------------
+   Elevation + motion system (visual redesign pass) -- a small, reusable vocabulary layered
+   on top of the existing accent-token system above, rather than one-off styling per
+   component. Everything here is theme-aware (reads var(--accent-*)) so it re-tints with
+   whichever of the 6 accent themes is active, same as the rest of the app.
+   -------------------------------------------------------------------------------------- */
+
+/* Standard "lift on hover" for cards that represent something clickable/live (KPI tiles,
+   plan cards, project cards) -- a soft upward translate + deepened shadow reads as
+   "responsive" without the jumpiness of a scale transform. Opt-in via class so static/dense
+   table-like cards aren't affected. */
+.card-lift {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -12px color-mix(in srgb, var(--accent-600) 18%, transparent), 0 4px 8px -4px rgba(15, 23, 42, 0.06);
+  border-color: color-mix(in srgb, var(--accent-500) 30%, transparent);
+}
+
+/* Thin gradient top-edge accent for a card -- a much lighter-weight "this matters" signal
+   than a full colored border or a left sidebar stripe (which reads as template-y). Pair
+   with position: relative on the card and an explicit tone via data-tone. */
+.card-accent-edge {
+  position: relative;
+  overflow: hidden;
+}
+.card-accent-edge::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-400), var(--accent-600));
+}
+.card-accent-edge[data-tone="good"]::before { background: linear-gradient(90deg, #34d399, #059669); }
+.card-accent-edge[data-tone="warn"]::before { background: linear-gradient(90deg, #fbbf24, #d97706); }
+.card-accent-edge[data-tone="bad"]::before { background: linear-gradient(90deg, #fb7185, #e11d48); }
+
+/* Soft glassy gradient panel background -- used for hero-ish surfaces (executive summary
+   banner, AI insight panels) so they read as a distinct "the system is telling you
+   something" surface rather than another plain white card. */
+.panel-glow {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-500) 10%, white), color-mix(in srgb, var(--accent-500) 3%, white));
+  border: 1px solid color-mix(in srgb, var(--accent-500) 18%, transparent);
+}
+
+/* Radial gradient "AI orb" backdrop -- the visual core of the redesigned Avatar. Two ring
+   layers with independent pulse timings so the orb reads as alive/listening even when idle,
+   more pronounced while actively speaking (see .ai-orb--speaking). */
+@keyframes orb-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.18); opacity: 0.15; }
+}
+@keyframes orb-pulse-fast {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 0.1; }
+}
+@keyframes orb-core-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.ai-orb-ring {
+  animation: orb-pulse 2.8s ease-in-out infinite;
+}
+.ai-orb-core {
+  animation: orb-core-breathe 3.4s ease-in-out infinite;
+}
+.ai-orb--speaking .ai-orb-ring {
+  animation: orb-pulse-fast 1.1s ease-in-out infinite;
+}
+.ai-orb--speaking .ai-orb-core {
+  animation: orb-core-breathe 0.9s ease-in-out infinite;
+}
+
+/* Gradient text -- used sparingly (marketing hero headline, section eyebrows) for a bit of
+   premium polish without introducing a second brand color. */
+.text-gradient-accent {
+  background: linear-gradient(120deg, var(--accent-600), var(--accent-400));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

@@ -41,7 +41,7 @@ export default async function DashboardPage() {
       />
 
       <div className="p-8 space-y-6">
-        <div className="rounded-xl border border-accent-100 bg-accent-50/60 px-5 py-4">
+        <div className="panel-glow rounded-xl px-5 py-4">
           <p className="text-xs font-semibold text-accent-900 uppercase tracking-wide mb-1">Executive Summary</p>
           <p className="text-sm text-accent-900">{healthNarrative}</p>
         </div>
@@ -89,11 +89,11 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 lg:col-span-1">
+          <div className="card-lift bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 lg:col-span-1">
             <p className="text-sm font-semibold text-slate-900 mb-1">Portfolio Health</p>
             <RagPie byRag={summary.byRag} />
           </div>
-          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 lg:col-span-2">
+          <div className="card-lift bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 lg:col-span-2">
             <p className="text-sm font-semibold text-slate-900 mb-1">Projects by Stage</p>
             <StageBar byStage={summary.byStage} />
           </div>

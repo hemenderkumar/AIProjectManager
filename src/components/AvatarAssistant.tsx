@@ -145,6 +145,7 @@ export default function AvatarAssistant() {
       <button
         onClick={() => setOpen(true)}
         className="fixed bottom-5 right-5 h-14 w-14 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center hover:scale-105 transition-transform z-50"
+        style={{ boxShadow: "0 8px 24px -8px color-mix(in srgb, var(--accent-600) 35%, transparent), 0 2px 6px rgba(15,23,42,0.08)" }}
         aria-label="Open AI PM assistant"
       >
         <Avatar speaking={false} gender={gender} />
@@ -153,8 +154,11 @@ export default function AvatarAssistant() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 w-80 bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 shadow-xl z-50 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
+    <div
+      className="fixed bottom-5 right-5 w-80 bg-white rounded-xl border border-slate-200/70 z-50 flex flex-col overflow-hidden"
+      style={{ boxShadow: "0 20px 40px -16px color-mix(in srgb, var(--accent-600) 25%, transparent), 0 4px 12px rgba(15,23,42,0.08)" }}
+    >
+      <div className="panel-glow flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <Avatar speaking={speaking} gender={gender} />
           <div>

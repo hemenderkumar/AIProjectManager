@@ -1,37 +1,41 @@
 "use client";
 
-export default function Avatar({ speaking, gender }: { speaking: boolean; gender: "female" | "male" }) {
-  const hair = gender === "female" ? "#7c3aed" : "#334155";
-  const skin = "#fbbf9d";
-
+// Redesigned as an abstract "AI orb" rather than a cartoon face -- a glowing gradient sphere
+// with pulsing rings (accelerating while speaking) is the visual language people already
+// associate with an AI voice assistant (Siri, Gemini, ChatGPT voice mode), reads as premium
+// at any size, and re-tints automatically with whichever of the app's 6 accent themes is
+// active since every color here resolves through the --accent-* custom properties instead of
+// literal hex values. `gender` is kept as a prop (unused visually) purely so callers that only
+// know about voice selection don't need to change; the orb itself has no gender presentation.
+export default function Avatar({ speaking }: { speaking: boolean; gender?: "female" | "male" }) {
   return (
-    <svg viewBox="0 0 100 100" width="56" height="56" className="shrink-0">
-      <circle cx="50" cy="52" r="34" fill={skin} />
-      {gender === "female" ? (
-        <path d="M16 46 C16 20 84 20 84 46 L84 58 C74 46 68 40 50 40 C32 40 26 46 16 58 Z" fill={hair} />
-      ) : (
-        <path d="M18 44 C18 22 82 22 82 44 L82 34 C82 30 18 30 18 34 Z" fill={hair} />
-      )}
-      <circle cx="38" cy="52" r={speaking ? 3.2 : 3} fill="#1e293b" />
-      <circle cx="62" cy="52" r={speaking ? 3.2 : 3} fill="#1e293b" />
-      <path
-        d={speaking ? "M40 66 Q50 76 60 66" : "M42 66 Q50 70 58 66"}
-        stroke="#1e293b"
-        strokeWidth="2.5"
-        fill="none"
-        strokeLinecap="round"
-        style={{ transition: "d 120ms ease-in-out" }}
+    <div
+      className={`relative shrink-0 h-14 w-14 flex items-center justify-center ${speaking ? "ai-orb--speaking" : ""}`}
+      aria-hidden="true"
+    >
+      <span
+        className="ai-orb-ring absolute inset-0 rounded-full"
+        style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--accent-400) 55%, transparent), transparent 70%)" }}
       />
-      {speaking && (
-        <>
-          <circle cx="14" cy="30" r="2" fill="var(--accent-300)" opacity="0.8">
-            <animate attributeName="cy" values="30;22;30" dur="1.2s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="86" cy="30" r="2" fill="var(--accent-300)" opacity="0.8">
-            <animate attributeName="cy" values="30;22;30" dur="1.4s" repeatCount="indefinite" />
-          </circle>
-        </>
-      )}
-    </svg>
+      <span
+        className="ai-orb-ring absolute inset-[6px] rounded-full"
+        style={{
+          background: "radial-gradient(circle, color-mix(in srgb, var(--accent-500) 45%, transparent), transparent 70%)",
+          animationDelay: "0.4s",
+        }}
+      />
+      <span
+        className="ai-orb-core relative h-8 w-8 rounded-full shadow-lg"
+        style={{
+          background: "radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--accent-300) 90%, white), var(--accent-600) 65%, var(--accent-800) 100%)",
+          boxShadow: "0 2px 10px color-mix(in srgb, var(--accent-600) 45%, transparent)",
+        }}
+      >
+        <span
+          className="absolute inset-0 rounded-full"
+          style={{ background: "radial-gradient(circle at 38% 30%, rgba(255,255,255,0.85), transparent 45%)" }}
+        />
+      </span>
+    </div>
   );
 }
