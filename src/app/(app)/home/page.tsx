@@ -12,19 +12,32 @@ import {
   Inbox,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { getPortfolioSummary } from "@/lib/portfolio";
+import { computeInsights } from "@/lib/insights";
 import MyRateCard from "@/components/MyRateCard";
+import AiInsightsPanel from "@/components/AiInsightsPanel";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
   const isInternal = !!user && user.organizationId == null;
+  // Top 2 only -- this is the landing page, not the dashboard. Enough to prove the AI PM is
+  // already watching the portfolio without turning the welcome screen into a report.
+  const summary = await getPortfolioSummary(user);
+  const insights = computeInsights(summary).slice(0, 2);
 
   return (
     <div>
       <Topbar title={`Welcome${user ? `, ${user.name.split(" ")[0]}` : ""}`} subtitle="What are you working on today?" />
       <div className="p-8">
         <MyRateCard />
+
+        {summary.activeCount > 0 && (
+          <div className="max-w-2xl mb-5">
+            <AiInsightsPanel insights={insights} />
+          </div>
+        )}
 
         <div className="max-w-2xl grid grid-cols-1 gap-5">
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 flex flex-col">

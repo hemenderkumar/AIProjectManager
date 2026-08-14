@@ -4,9 +4,11 @@ import KpiCard from "@/components/KpiCard";
 import RagPie from "@/components/RagPie";
 import StageBar from "@/components/StageBar";
 import AiAskPanel from "@/components/AiAskPanel";
+import AiInsightsPanel from "@/components/AiInsightsPanel";
 import ExportButtons from "@/components/ExportButtons";
 import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getPortfolioSummary } from "@/lib/portfolio";
+import { computeInsights } from "@/lib/insights";
 import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +26,7 @@ export default async function DashboardPage() {
       ? Math.round(((summary.totalBudgetActual - summary.totalBudgetPlanned) / summary.totalBudgetPlanned) * 100)
       : 0;
   const healthNarrative = `${summary.activeCount} active project${summary.activeCount === 1 ? "" : "s"} — ${summary.byRag.GREEN ?? 0} on track, ${summary.byRag.YELLOW ?? 0} at risk, ${summary.byRag.RED ?? 0} off track. Portfolio spend is $${summary.totalBudgetActual.toLocaleString()} of $${summary.totalBudgetPlanned.toLocaleString()} planned (${budgetVariancePercent > 0 ? "+" : ""}${budgetVariancePercent}% variance).`;
+  const insights = computeInsights(summary);
 
   return (
     <div>
@@ -41,10 +44,12 @@ export default async function DashboardPage() {
       />
 
       <div className="p-8 space-y-6">
-        <div className="panel-glow rounded-xl px-5 py-4">
-          <p className="text-xs font-semibold text-accent-900 uppercase tracking-wide mb-1">Executive Summary</p>
-          <p className="text-sm text-accent-900">{healthNarrative}</p>
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 px-5 py-4">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Executive Summary</p>
+          <p className="text-sm text-slate-700">{healthNarrative}</p>
         </div>
+
+        <AiInsightsPanel insights={insights} />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <KpiCard label="Active Projects" value={summary.activeCount} />
