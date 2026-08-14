@@ -4,6 +4,7 @@ import { projects, projectMembers, stakeholders } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getAllProjectsWithMetrics } from "@/lib/portfolio";
 import { requireRole } from "@/lib/auth";
+import { checkPlanLimit } from "@/lib/billing";
 
 export async function GET() {
   const _authUser = await requireRole("VIEWER");
@@ -19,6 +20,19 @@ export async function POST(req: NextRequest) {
   if (!body.name) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
+
+  // Client-company projects only -- internal-only projects (organizationId null) aren't tied
+  // to any billing plan, so there's nothing to cap.
+  if (_authUser.organizationId) {
+    const projectCheck = await checkPlanLimit(_authUser.organizationId, "project");
+    if (!projectCheck.allowed) {
+      return NextResponse.json(
+        { error: `Your ${projectCheck.planName} plan is limited to ${projectCheck.limit} active projects. Upgrade in Billing, or close an existing project, to add another.` },
+        { status: 402 }
+      );
+    }
+  }
+
   // If a structured sponsor (stakeholder) was picked, denormalize their name into the plain
   // `sponsor` text column too — same reasoning as the PATCH route: every existing consumer
   // reads `sponsor` as text.

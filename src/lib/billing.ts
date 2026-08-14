@@ -1,7 +1,7 @@
 import Stripe from "stripe";
 import { db } from "./db";
-import { organizations, plans, settings, users } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { organizations, plans, settings, users, projects } from "./db/schema";
+import { eq, and, ne } from "drizzle-orm";
 
 // Lazily constructed -- STRIPE_SECRET_KEY only needs to exist once someone actually tries to
 // check out or open the billing portal, not for every request that merely checks trial status
@@ -112,6 +112,37 @@ export async function createCheckoutSession(params: {
 async function countActiveSeats(organizationId: string): Promise<number> {
   const rows = await db.select({ id: users.id }).from(users).where(eq(users.organizationId, organizationId));
   return rows.length;
+}
+
+export type PlanLimitCheck = { allowed: boolean; limit: number | null; current: number; planName: string | null };
+
+// Enforces plans.seatLimit / plans.projectLimit -- both fields have existed on the plans table
+// since the billing schema landed, but nothing actually checked them until now. Orgs with no
+// plan selected (still on trial, or comped without ever picking a tier) have no limit: this
+// only kicks in once an org is on a real metered plan, so it never blocks anyone mid-trial.
+// `kind` "seat" reuses the exact same count per-seat billing already bills on (countActiveSeats);
+// "project" counts non-CLOSED projects only, so completed/archived work never counts against a
+// live cap.
+async function countActiveProjects(organizationId: string): Promise<number> {
+  const rows = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.organizationId, organizationId), ne(projects.stage, "CLOSED")));
+  return rows.length;
+}
+
+export async function checkPlanLimit(organizationId: string, kind: "seat" | "project"): Promise<PlanLimitCheck> {
+  const current = kind === "seat" ? await countActiveSeats(organizationId) : await countActiveProjects(organizationId);
+
+  const [org] = await db.select({ planId: organizations.planId }).from(organizations).where(eq(organizations.id, organizationId));
+  if (!org?.planId) return { allowed: true, limit: null, current, planName: null };
+  const [plan] = await db.select().from(plans).where(eq(plans.id, org.planId));
+  if (!plan) return { allowed: true, limit: null, current, planName: null };
+
+  const limit = kind === "seat" ? plan.seatLimit : plan.projectLimit;
+  if (limit == null) return { allowed: true, limit: null, current, planName: plan.name };
+
+  return { allowed: current < limit, limit, current, planName: plan.name };
 }
 
 // Keeps an existing per-seat subscription's quantity in step with the org's actual user

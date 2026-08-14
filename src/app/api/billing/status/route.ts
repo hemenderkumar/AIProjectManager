@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { organizations, plans } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
-import { isOrgBillingBlocked, listActivePlans } from "@/lib/billing";
+import { isOrgBillingBlocked, listActivePlans, checkPlanLimit } from "@/lib/billing";
 
 // Powers the /billing page: current org's trial/subscription state plus the catalog of
 // plans someone could subscribe to. Internal staff (organizationId null) get a minimal
@@ -29,11 +29,20 @@ export async function GET() {
 
   const [plan] = org?.planId ? await db.select().from(plans).where(eq(plans.id, org.planId)) : [null];
 
+  const [seats, projectsUsage] = await Promise.all([
+    checkPlanLimit(user.organizationId, "seat"),
+    checkPlanLimit(user.organizationId, "project"),
+  ]);
+
   return NextResponse.json({
     internal: false,
     blocked: await isOrgBillingBlocked(user.organizationId),
     org,
     currentPlan: plan ?? null,
     plans: await listActivePlans(),
+    usage: {
+      seats: { current: seats.current, limit: seats.limit },
+      projects: { current: projectsUsage.current, limit: projectsUsage.limit },
+    },
   });
 }

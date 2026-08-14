@@ -28,6 +28,10 @@ type Status = {
   } | null;
   currentPlan: Plan | null;
   plans: Plan[];
+  usage?: {
+    seats: { current: number; limit: number | null };
+    projects: { current: number; limit: number | null };
+  };
 };
 
 // Module-level, not called during render of the component body -- see the matching comment
@@ -141,6 +145,13 @@ export default function BillingPage() {
 
         {error && <p className="mb-4 text-sm text-rose-600">{error}</p>}
 
+        {status.usage && (
+          <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <UsageMeter icon={<Users size={14} />} label="Seats" current={status.usage.seats.current} limit={status.usage.seats.limit} />
+            <UsageMeter icon={<FolderKanban size={14} />} label="Active projects" current={status.usage.projects.current} limit={status.usage.projects.limit} />
+          </div>
+        )}
+
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Plans</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {status.plans.map((p) => {
@@ -173,6 +184,28 @@ export default function BillingPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function UsageMeter({ icon, label, current, limit }: { icon: React.ReactNode; label: string; current: number; limit: number | null }) {
+  const pct = limit ? Math.min(100, Math.round((current / limit) * 100)) : 0;
+  const nearLimit = limit != null && current >= limit;
+  return (
+    <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+          {icon} {label}
+        </p>
+        <p className={`text-xs font-medium ${nearLimit ? "text-rose-600" : "text-slate-500"}`}>
+          {current} {limit != null ? `/ ${limit}` : "(unlimited)"}
+        </p>
+      </div>
+      {limit != null && (
+        <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+          <div className={`h-full rounded-full ${nearLimit ? "bg-rose-500" : "bg-accent-600"}`} style={{ width: `${pct}%` }} />
+        </div>
+      )}
     </div>
   );
 }

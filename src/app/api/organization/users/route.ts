@@ -5,7 +5,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { requireRole, hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { generatePlaceholderPasswordHash, sendAccountSetupEmail } from "@/lib/passwordReset";
-import { syncSeatQuantity } from "@/lib/billing";
+import { syncSeatQuantity, checkPlanLimit } from "@/lib/billing";
 
 // Roles a SUPER_USER is allowed to hand out to their own teammates. Deliberately excludes
 // ADMIN (platform-wide) and SUPER_USER (account-owner tier) — only a Executa administrator
@@ -39,6 +39,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "name and email are required" }, { status: 400 });
   }
   const role = ASSIGNABLE_ROLES.includes(body.role) ? body.role : "VIEWER";
+
+  const seatCheck = await checkPlanLimit(user.organizationId, "seat");
+  if (!seatCheck.allowed) {
+    return NextResponse.json(
+      { error: `Your ${seatCheck.planName} plan is limited to ${seatCheck.limit} seats. Upgrade in Billing to add more teammates.` },
+      { status: 402 }
+    );
+  }
 
   // Default: email them a one-time setup link instead of the owner typing/communicating a
   // temporary password themselves — same choice as the Executa-admin "Add User" flow.
