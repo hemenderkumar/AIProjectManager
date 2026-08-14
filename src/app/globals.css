@@ -310,3 +310,82 @@ body {
   background-clip: text;
   color: transparent;
 }
+
+/* --------------------------------------------------------------------------------------
+   Marketing-page-only decoration (public homepage). Deliberately uses fixed multi-hue
+   colors instead of the single --accent-* token: the rest of the app is intentionally
+   monochrome-per-theme (so org branding/theme-switching stays coherent everywhere a user
+   actually works), but the logged-out marketing page isn't governed by that constraint —
+   it's the one surface where a richer, varied palette reads as "cutting-edge SaaS" rather
+   than inconsistent. Scoped under .marketing so nothing here leaks into the app shell.
+   -------------------------------------------------------------------------------------- */
+
+/* Soft drifting gradient blobs behind hero/section content -- the current go-to "modern SaaS
+   landing page" motif. Slow, subtle, GPU-cheap (transform + opacity only). Each section that
+   wants them needs position:relative + overflow:hidden and one .mesh-blob per color. */
+@keyframes blob-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -6%) scale(1.08); }
+  66% { transform: translate(-3%, 4%) scale(0.96); }
+}
+@keyframes blob-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-5%, 5%) scale(1.06); }
+  66% { transform: translate(4%, -3%) scale(0.95); }
+}
+.marketing .mesh-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+.marketing .mesh-blob--a { animation: blob-drift-a 16s ease-in-out infinite; }
+.marketing .mesh-blob--b { animation: blob-drift-b 19s ease-in-out infinite; }
+
+/* Faint dot-grid backdrop -- a very common "technical/product" texture cue behind hero copy.
+   Kept extremely low-contrast so it never competes with text. */
+.marketing .bg-dot-grid {
+  background-image: radial-gradient(color-mix(in srgb, var(--accent-900) 14%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Colored icon chips for feature/capability cards -- rotates through a fixed hue set via
+   data-hue so a grid of cards reads as varied and lively instead of one repeated accent tint.
+   Each hue gets a soft tinted background + matching icon/text color, at a contrast level
+   that holds up on white. */
+.hue-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+}
+.hue-chip[data-hue="violet"] { background: #f1ecfe; color: #7c3aed; }
+.hue-chip[data-hue="blue"] { background: #eaf1ff; color: #2563eb; }
+.hue-chip[data-hue="cyan"] { background: #e6fbff; color: #0891b2; }
+.hue-chip[data-hue="emerald"] { background: #e9faf1; color: #059669; }
+.hue-chip[data-hue="amber"] { background: #fef6e6; color: #d97706; }
+.hue-chip[data-hue="rose"] { background: #fef0f3; color: #e11d48; }
+
+/* Matching gradient top-edge for hue-tinted cards (bento feature grid) -- same lightweight
+   "this matters" cue as .card-accent-edge, but keyed to the same fixed hue set above instead
+   of the app's single accent token, so each card in the grid gets its own color story. */
+.hue-edge { position: relative; overflow: hidden; }
+.hue-edge::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; }
+.hue-edge[data-hue="violet"]::before { background: linear-gradient(90deg, #c4b5fd, #7c3aed); }
+.hue-edge[data-hue="blue"]::before { background: linear-gradient(90deg, #93c5fd, #2563eb); }
+.hue-edge[data-hue="cyan"]::before { background: linear-gradient(90deg, #67e8f9, #0891b2); }
+.hue-edge[data-hue="emerald"]::before { background: linear-gradient(90deg, #6ee7b7, #059669); }
+.hue-edge[data-hue="amber"]::before { background: linear-gradient(90deg, #fcd34d, #d97706); }
+.hue-edge[data-hue="rose"]::before { background: linear-gradient(90deg, #fda4af, #e11d48); }
+
+/* Multi-color gradient text for the hero headline's emphasized phrase -- distinct from
+   .text-gradient-accent (which stays single-hue for in-app use) so the homepage headline gets
+   a bit more visual energy. */
+.text-gradient-vivid {
+  background: linear-gradient(100deg, #7c3aed, var(--accent-600) 45%, #0891b2 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

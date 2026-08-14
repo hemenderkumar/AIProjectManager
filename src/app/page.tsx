@@ -69,7 +69,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="marketing min-h-screen bg-white">
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -106,15 +106,19 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <section className="bg-gradient-to-b from-accent-50/70 via-slate-50/60 to-white pt-16 pb-16">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
+      <section className="relative overflow-hidden bg-gradient-to-b from-accent-50/70 via-slate-50/60 to-white pt-16 pb-16">
+        <div className="mesh-blob mesh-blob--a -top-24 -left-24 h-96 w-96 bg-violet-300" />
+        <div className="mesh-blob mesh-blob--b top-10 right-0 h-[28rem] w-[28rem] bg-cyan-300" />
+        <div className="mesh-blob mesh-blob--a bottom-0 left-1/3 h-72 w-72 bg-amber-200" />
+        <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(ellipse_80%_60%_at_50%_0%,black_40%,transparent_100%)]" />
+        <div className="relative z-10 max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
           <div>
-            <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-5">
-              Guiding project success
-            </p>
+            <div className="inline-flex items-center gap-1.5 text-xs font-medium tracking-wide text-accent-700 bg-accent-50 border border-accent-200 rounded-full px-3 py-1 mb-5">
+              <Sparkles size={12} /> AI-native project &amp; portfolio delivery
+            </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-slate-900 leading-tight tracking-tight mb-5">
               From a first idea to a{" "}
-              <span className="text-gradient-accent">board-ready report</span>, without leaving one tracker.
+              <span className="text-gradient-vivid">board-ready report</span>, without leaving one tracker.
             </h1>
             <p className="text-base text-slate-600 mb-8 max-w-lg">
               Executa is an AI-driven project and portfolio tracker for running your own team&apos;s
@@ -124,14 +128,14 @@ export default async function HomePage() {
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <a
                 href="#how-it-works"
-                className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-colors bg-white/70"
               >
                 See how it works
               </a>
               {!user && (
                 <Link
                   href="/demand-request"
-                  className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-colors bg-white/70"
                 >
                   <Inbox size={15} /> Submit a project idea
                 </Link>
@@ -163,6 +167,15 @@ export default async function HomePage() {
               <LoginCard id="login" />
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200 bg-white">
+        <div className="max-w-5xl mx-auto px-6 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+          <StatCallout value="4" label="AI-assisted lifecycle gates" hue="violet" />
+          <StatCallout value="7+" label="AI drafting surfaces" hue="blue" />
+          <StatCallout value="2" label="Export formats, board-ready" hue="cyan" />
+          <StatCallout value="1" label="Tracker, idea to report" hue="emerald" />
         </div>
       </section>
 
@@ -230,35 +243,48 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="features" className="bg-slate-50 border-y border-slate-200 scroll-mt-16">
-        <div className="max-w-5xl mx-auto px-6 py-16">
+      <section id="features" className="relative overflow-hidden bg-slate-50 border-y border-slate-200 scroll-mt-16">
+        <div className="mesh-blob mesh-blob--b top-0 right-1/4 h-80 w-80 bg-emerald-200 opacity-40" />
+        <div className="relative z-10 max-w-5xl mx-auto px-6 py-16">
           <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">What you get</p>
           <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything a boutique consultancy needs to run its own delivery.</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10">
-            <div>
-              <FeatureRow
-                icon={<Rocket size={16} />}
-                title="Full project lifecycle"
-                description="Ideation, charters, sprints or waterfall phases, tasks, risks, budgets, and ongoing support — one tracker from first idea to steady-state."
-              />
-              <FeatureRow
-                icon={<Sparkles size={16} />}
-                title="An AI project manager"
-                description="Drafts charters and plans, estimates effort, suggests assignments, briefs you out loud, and answers questions about your whole portfolio."
-              />
-            </div>
-            <div>
-              <FeatureRow
-                icon={<FileSearch size={16} />}
-                title="Vendor evaluation, built in"
-                description="Draft an RFP from a project charter, invite vendors with a no-login link, and let AI score responses against your own weighted rubric."
-              />
-              <FeatureRow
-                icon={<FileBarChart size={16} />}
-                title="Reports that look the part"
-                description="Branded, board-ready PDF and PowerPoint exports for status reports, steering committee decks, and executive one-pagers — generated on demand."
-              />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <BentoCard
+              hue="violet"
+              icon={<Rocket size={18} />}
+              title="Full project lifecycle"
+              description="Ideation, charters, sprints or waterfall phases, tasks, risks, budgets, and ongoing support — one tracker from first idea to steady-state."
+            />
+            <BentoCard
+              hue="blue"
+              icon={<Sparkles size={18} />}
+              title="An AI project manager"
+              description="Drafts charters and plans, estimates effort, suggests assignments, briefs you out loud, and answers questions about your whole portfolio."
+            />
+            <BentoCard
+              hue="cyan"
+              icon={<FileSearch size={18} />}
+              title="Vendor evaluation, built in"
+              description="Draft an RFP from a project charter, invite vendors with a no-login link, and let AI score responses against your own weighted rubric."
+            />
+            <BentoCard
+              hue="emerald"
+              icon={<FileBarChart size={18} />}
+              title="Reports that look the part"
+              description="Branded, board-ready PDF and PowerPoint exports for status reports, steering committee decks, and executive one-pagers — generated on demand."
+            />
+            <BentoCard
+              hue="amber"
+              icon={<Inbox size={18} />}
+              title="Demand intake, triaged"
+              description="A public front door for raw project requests — AI scores business value and urgency before anything competes for a delivery slot."
+            />
+            <BentoCard
+              hue="rose"
+              icon={<ShieldCheck size={18} />}
+              title="Governed, not just tracked"
+              description="Role-based access, step-up MFA on sensitive actions, and an immutable audit log — built for teams handling client data and vendor spend."
+            />
           </div>
         </div>
       </section>
@@ -298,8 +324,10 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="ai-pm" className="bg-slate-900 scroll-mt-16">
-        <div className="max-w-5xl mx-auto px-6 py-16">
+      <section id="ai-pm" className="relative overflow-hidden bg-slate-900 scroll-mt-16">
+        <div className="mesh-blob mesh-blob--a top-0 left-10 h-80 w-80 bg-violet-600 opacity-20" />
+        <div className="mesh-blob mesh-blob--b bottom-0 right-10 h-96 w-96 bg-cyan-600 opacity-20" />
+        <div className="relative z-10 max-w-5xl mx-auto px-6 py-16">
           <p className="text-xs font-medium tracking-widest uppercase text-accent-400 mb-2">The AI project manager</p>
           <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight mb-4 max-w-2xl">
             It doesn&apos;t just answer questions — it drafts the work.
@@ -310,31 +338,37 @@ export default async function HomePage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <AiCapabilityCard
+              hue="violet"
               icon={<Bot size={16} />}
               title="Drafts, not blank pages"
               description="Charters, RFPs, SOWs, delivery plans, risk logs, and status narratives generated from a one-line prompt, editable before anything is saved."
             />
             <AiCapabilityCard
+              hue="blue"
               icon={<TrendingUp size={16} />}
               title="Estimates & recommends"
               description="Effort estimation, resource assignment suggestions, technical architecture recommendations, and delivery/pricing guidance sourced from your own rate cards."
             />
             <AiCapabilityCard
+              hue="cyan"
               icon={<FileSearch size={16} />}
               title="Learns from your portfolio"
               description="Vendor scoring, SOW-vs-actuals drift detection, and cross-project pattern learning — grounded in what actually happened on past projects, not generic advice."
             />
             <AiCapabilityCard
+              hue="emerald"
               icon={<Sparkles size={16} />}
               title="Ask it anything, out loud"
               description={"Natural-language Q&A across the whole portfolio or a single project, with a spoken briefing and captions — ask \"what needs my attention?\" and get a real answer."}
             />
             <AiCapabilityCard
+              hue="amber"
               icon={<ShieldCheck size={16} />}
               title="Gated, not unchecked"
               description="AI-proposed edits go through a review-then-apply flow — you see the diff before anything changes, and every change lands in the audit log."
             />
             <AiCapabilityCard
+              hue="rose"
               icon={<Rocket size={16} />}
               title="Roadmap-aware"
               description="Groups ideas into quick-wins vs. long-term investments, suggests prioritization, and reconciles conflicts when a roadmap is revised."
@@ -358,7 +392,7 @@ export default async function HomePage() {
                 }`}
               >
                 {i === 1 && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-accent-600 text-white">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gradient-to-r from-violet-600 via-accent-600 to-cyan-600 text-white shadow-sm">
                     Most popular
                   </span>
                 )}
@@ -392,10 +426,10 @@ export default async function HomePage() {
             Built for teams that handle client data and vendor spend, not just to-do lists.
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <SecurityRow icon={<ShieldCheck size={16} />} title="Role-based access" description="Every request is scoped to your organization and role at the API layer — Admin, Super User, PM, Contributor, Viewer." />
-            <SecurityRow icon={<KeyRound size={16} />} title="Step-up MFA" description="TOTP verification required for Finance Approver and Platform-level roles on sensitive actions." />
-            <SecurityRow icon={<ScrollText size={16} />} title="Immutable audit log" description="Every approval, deletion, and rate change is recorded with before/after values and who made it." />
-            <SecurityRow icon={<Lock size={16} />} title="Self-service data control" description="Export or request deletion of your organization's data at any time, without waiting on support." />
+            <SecurityRow hue="blue" icon={<ShieldCheck size={16} />} title="Role-based access" description="Every request is scoped to your organization and role at the API layer — Admin, Super User, PM, Contributor, Viewer." />
+            <SecurityRow hue="violet" icon={<KeyRound size={16} />} title="Step-up MFA" description="TOTP verification required for Finance Approver and Platform-level roles on sensitive actions." />
+            <SecurityRow hue="cyan" icon={<ScrollText size={16} />} title="Immutable audit log" description="Every approval, deletion, and rate change is recorded with before/after values and who made it." />
+            <SecurityRow hue="emerald" icon={<Lock size={16} />} title="Self-service data control" description="Export or request deletion of your organization's data at any time, without waiting on support." />
           </div>
         </div>
       </section>
@@ -416,8 +450,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="bg-accent-600">
-        <div className="max-w-5xl mx-auto px-6 py-14 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+      <section className="relative overflow-hidden bg-gradient-to-r from-violet-700 via-accent-600 to-cyan-600">
+        <div className="mesh-blob mesh-blob--a -top-16 left-1/4 h-72 w-72 bg-white opacity-10" />
+        <div className="relative z-10 max-w-5xl mx-auto px-6 py-14 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
           <div>
             <h2 className="text-xl font-semibold text-white tracking-tight mb-2">Have a project idea? You don&apos;t need an account to pitch it.</h2>
             <p className="text-sm text-accent-100 max-w-xl">
@@ -456,14 +491,35 @@ function PreviewStat({ label, value, accent }: { label: string; value: string; a
   );
 }
 
-function FeatureRow({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+type Hue = "violet" | "blue" | "cyan" | "emerald" | "amber" | "rose";
+
+function StatCallout({ value, label, hue }: { value: string; label: string; hue: Hue }) {
+  const gradients: Record<Hue, string> = {
+    violet: "from-violet-600 to-violet-400",
+    blue: "from-blue-600 to-blue-400",
+    cyan: "from-cyan-600 to-cyan-400",
+    emerald: "from-emerald-600 to-emerald-400",
+    amber: "from-amber-600 to-amber-400",
+    rose: "from-rose-600 to-rose-400",
+  };
   return (
-    <div className="border-t border-slate-200 py-6 pr-8">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-accent-600">{icon}</span>
-        <p className="text-sm font-semibold text-slate-900">{title}</p>
+    <div>
+      <p className={`text-2xl sm:text-3xl font-semibold bg-gradient-to-br bg-clip-text text-transparent ${gradients[hue]}`}>
+        {value}
+      </p>
+      <p className="text-xs text-slate-500 mt-1">{label}</p>
+    </div>
+  );
+}
+
+function BentoCard({ hue, icon, title, description }: { hue: Hue; icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div data-hue={hue} className="hue-edge card-lift rounded-xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/60 p-5">
+      <div data-hue={hue} className="hue-chip h-9 w-9 mb-3">
+        {icon}
       </div>
-      <p className="text-sm text-slate-500 leading-relaxed">{description}</p>
+      <p className="text-sm font-semibold text-slate-900 mb-1.5">{title}</p>
+      <p className="text-xs text-slate-500 leading-relaxed">{description}</p>
     </div>
   );
 }
@@ -478,25 +534,42 @@ function Step({ number, title, description }: { number: string; title: string; d
   );
 }
 
-function AiCapabilityCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+const DARK_HUE_TEXT: Record<Hue, string> = {
+  violet: "text-violet-400",
+  blue: "text-blue-400",
+  cyan: "text-cyan-400",
+  emerald: "text-emerald-400",
+  amber: "text-amber-400",
+  rose: "text-rose-400",
+};
+const DARK_HUE_BG: Record<Hue, string> = {
+  violet: "bg-violet-500/10",
+  blue: "bg-blue-500/10",
+  cyan: "bg-cyan-500/10",
+  emerald: "bg-emerald-500/10",
+  amber: "bg-amber-500/10",
+  rose: "bg-rose-500/10",
+};
+
+function AiCapabilityCard({ hue, icon, title, description }: { hue: Hue; icon: React.ReactNode; title: string; description: string }) {
   return (
     <div className="card-lift rounded-xl border border-slate-700/70 bg-slate-800/60 p-5">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-accent-400">{icon}</span>
-        <p className="text-sm font-semibold text-white">{title}</p>
+      <div className={`inline-flex items-center justify-center h-8 w-8 rounded-lg mb-3 ${DARK_HUE_BG[hue]} ${DARK_HUE_TEXT[hue]}`}>
+        {icon}
       </div>
+      <p className="text-sm font-semibold text-white mb-1.5">{title}</p>
       <p className="text-xs text-slate-400 leading-relaxed">{description}</p>
     </div>
   );
 }
 
-function SecurityRow({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+function SecurityRow({ hue, icon, title, description }: { hue: Hue; icon: React.ReactNode; title: string; description: string }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-accent-600">{icon}</span>
-        <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <div data-hue={hue} className="hue-chip h-9 w-9 mb-3">
+        {icon}
       </div>
+      <p className="text-sm font-semibold text-slate-900 mb-1.5">{title}</p>
       <p className="text-xs text-slate-500 leading-relaxed">{description}</p>
     </div>
   );
