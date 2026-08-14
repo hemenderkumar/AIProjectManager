@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { logActivity } from "@/lib/activity";
 import LoginCard from "@/components/LoginCard";
-import { Rocket, Sparkles, FileSearch, FileBarChart, ArrowRight } from "lucide-react";
+import { Rocket, Sparkles, FileSearch, FileBarChart, ArrowRight, Inbox } from "lucide-react";
 
 const PREVIEW_PROJECTS = [
   { name: "Core Platform Migration", stage: "Execution", pct: 62, rag: "GREEN" as const },
@@ -49,12 +49,17 @@ export default async function HomePage() {
               Go to Executa
             </Link>
           ) : (
-            <a
-              href="#login"
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
-            >
-              Log in
-            </a>
+            <div className="flex items-center gap-2">
+              <Link href="/register" className="hidden sm:inline text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
+                Sign up
+              </Link>
+              <a
+                href="#login"
+                className="text-sm font-medium px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"
+              >
+                Log in
+              </a>
+            </div>
           )}
         </div>
       </header>
@@ -73,15 +78,29 @@ export default async function HomePage() {
               engagements end to end — ideation, AI-drafted charters, sprints or waterfall
               phases, risk and budget tracking, and board-ready reports.
             </p>
-            <a
-              href="#how-it-works"
-              className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-colors mb-6"
-            >
-              See how it works
-            </a>
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              <a
+                href="#how-it-works"
+                className="inline-block text-sm font-medium px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+              >
+                See how it works
+              </a>
+              {!user && (
+                <Link
+                  href="/demand-request"
+                  className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                >
+                  <Inbox size={15} /> Submit a project idea
+                </Link>
+              )}
+            </div>
             {!user && (
               <p className="text-xs text-slate-400">
-                Executa is invite-only — your Executa administrator sets up your account and organization.
+                Individuals get instant access with{" "}
+                <Link href="/register" className="text-accent-600 hover:text-accent-700 font-medium">
+                  self-service sign-up
+                </Link>
+                . Company accounts are reviewed by an admin before access is granted.
               </p>
             )}
           </div>
@@ -233,6 +252,24 @@ export default async function HomePage() {
               without exporting anything to a separate procurement tool.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="bg-accent-600">
+        <div className="max-w-5xl mx-auto px-6 py-14 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+          <div>
+            <h2 className="text-xl font-semibold text-white tracking-tight mb-2">Have a project idea? You don&apos;t need an account to pitch it.</h2>
+            <p className="text-sm text-accent-100 max-w-xl">
+              Submit a demand request in a couple of minutes — no login required. An admin triages it, scores it against
+              your portfolio, and converts it into a project if it&apos;s a fit.
+            </p>
+          </div>
+          <Link
+            href="/demand-request"
+            className="shrink-0 inline-flex items-center gap-2 text-sm font-medium px-5 py-3 rounded-lg bg-white text-accent-700 shadow-sm hover:bg-accent-50 transition-colors"
+          >
+            <Inbox size={16} /> Submit a demand request
+          </Link>
         </div>
       </section>
 
