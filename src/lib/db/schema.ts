@@ -625,6 +625,13 @@ export const plans = pgTable("plans", {
   billingModel: text("billing_model").notNull().default("flat"), // "flat" | "per_seat"
   projectLimit: integer("project_limit"),
   seatLimit: integer("seat_limit"),
+  // Which optional lifecycle modules an org on this plan can use, beyond the always-on core
+  // (Dashboard, Projects, project detail tabs, Templates, AI Assistant, My Organization,
+  // Billing). Null = every module enabled -- the backward-compatible default so existing
+  // plans (created before this column existed) don't suddenly hide anything. See
+  // MODULE_REGISTRY in lib/modules.ts for the fixed set of togglable keys and where each is
+  // enforced (Sidebar nav + the page itself, not just the nav).
+  enabledModules: jsonb("enabled_modules").$type<string[] | null>(),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -666,6 +673,18 @@ export const organizations = pgTable("organizations", {
   // flag (rather than just setting subscriptionStatus="ACTIVE") so the admin UI can still show
   // "(comped)" and distinguish a real payer from a manual grant.
   billingCompedByAdmin: boolean("billing_comped_by_admin").notNull().default(false),
+
+  // Self-service white-label branding (SUPER_USER-managed, see PATCH /api/organization).
+  // logoDataUrl is stored inline as a base64 data: URI -- same "no external object storage
+  // needed" tradeoff already made for scDeliverables.signedDocumentData, and a logo is even
+  // smaller than a signed contract. brandColor is a single hex string; [data-theme="custom"]
+  // in globals.css derives a full --accent-50..900 ramp from it via color-mix(), the same
+  // indirection every named theme already goes through. Neither field forces itself onto a
+  // member's session -- see getBrandingContext() in lib/auth.ts -- it only makes a 7th
+  // "Custom" swatch available in that org's ThemeSwitcher; existing personal theme choices
+  // are never silently overridden.
+  logoDataUrl: text("logo_data_url"),
+  brandColor: text("brand_color"),
 });
 
 // A department/business unit within one client organization (e.g. "Finance", "Operations").

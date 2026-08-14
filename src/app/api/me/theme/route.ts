@@ -13,7 +13,11 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const theme = String(body?.theme ?? "");
-  if (!VALID_THEMES.includes(theme as (typeof VALID_THEMES)[number])) {
+  // "custom" isn't in VALID_THEMES (that list is only the named CSS palettes ThemeSwitcher
+  // renders a swatch for) -- it's a 7th, org-branding-derived option that only does anything
+  // if the account's organization has actually set a brandColor (see getBrandingContext in
+  // lib/auth.ts), but it's always a valid value to store either way.
+  if (theme !== "custom" && !VALID_THEMES.includes(theme as (typeof VALID_THEMES)[number])) {
     return NextResponse.json({ error: "Unknown theme" }, { status: 400 });
   }
 

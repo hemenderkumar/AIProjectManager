@@ -25,6 +25,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("seatLimit" in body) patch.seatLimit = typeof body.seatLimit === "number" ? body.seatLimit : null;
   if ("sortOrder" in body) patch.sortOrder = typeof body.sortOrder === "number" ? body.sortOrder : 0;
   if ("isActive" in body) patch.isActive = !!body.isActive;
+  // null = every module enabled (the default, and the only value pre-existing plans have);
+  // an array restricts to exactly those MODULE_REGISTRY keys. See lib/modules.ts.
+  if ("enabledModules" in body) {
+    patch.enabledModules = Array.isArray(body.enabledModules)
+      ? body.enabledModules.filter((k: unknown) => typeof k === "string")
+      : null;
+  }
 
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "No recognized fields in body" }, { status: 400 });
 

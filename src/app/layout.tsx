@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
-import { getCurrentTheme } from "@/lib/auth";
+import { getBrandingContext } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Executa",
@@ -32,13 +32,16 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Saved per-account (users.theme), not the browser, so it's the same on every device someone
-  // logs into — see getCurrentTheme() in lib/auth.ts. Read here, server-side, on every request,
-  // so <html data-theme> is correct in the very first byte of HTML: no anti-flash inline script
-  // or client-side correction needed, unlike the old localStorage-only version of this.
-  const theme = await getCurrentTheme();
+  // logs into — see getBrandingContext() in lib/auth.ts. Read here, server-side, on every
+  // request, so <html data-theme> is correct in the very first byte of HTML: no anti-flash
+  // inline script or client-side correction needed, unlike the old localStorage-only version.
+  const { theme, orgBrandColor } = await getBrandingContext();
+  // Only meaningful when theme === "custom" (the [data-theme="custom"] block in globals.css
+  // derives every --accent-* stop from this one variable), but harmless to always set.
+  const style = orgBrandColor ? ({ "--org-brand": orgBrandColor } as React.CSSProperties) : undefined;
 
   return (
-    <html lang="en" className="antialiased" data-theme={theme}>
+    <html lang="en" className="antialiased" data-theme={theme} style={style}>
       <body className="min-h-screen font-sans">
         <PwaRegister />
         {children}

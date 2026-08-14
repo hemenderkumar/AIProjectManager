@@ -14,7 +14,7 @@ const THEMES = [
   { id: "coral", label: "Coral" },
 ] as const;
 
-export default function ThemeSwitcher() {
+export default function ThemeSwitcher({ orgBrandColor }: { orgBrandColor?: string | null }) {
   // The root layout already rendered the account's saved theme onto <html data-theme="..."> in
   // the initial server response (see getCurrentTheme() in lib/auth.ts) — reading it back off
   // the DOM here just mirrors that into this control's own state, with nothing to flicker
@@ -55,6 +55,23 @@ export default function ThemeSwitcher() {
             )}
           </button>
         ))}
+        {orgBrandColor && (
+          // The org's own brand color, only offered once the org has actually set one (see
+          // PATCH /api/organization) — never forced on anyone, just made available.
+          <button
+            data-theme="custom"
+            onClick={() => applyTheme("custom")}
+            title="Custom (your organization's brand color)"
+            aria-label="Custom organization theme"
+            aria-pressed={theme === "custom"}
+            style={{ "--org-brand": orgBrandColor } as React.CSSProperties}
+            className="relative h-5 w-5 rounded-full bg-accent-600 shrink-0 hover:scale-110 transition-transform ring-1 ring-offset-1 ring-slate-200"
+          >
+            {theme === "custom" && (
+              <Check size={11} strokeWidth={3} className="absolute inset-0 m-auto text-white" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

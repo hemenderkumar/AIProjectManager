@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
-import { Download, AlertTriangle, Loader2, Plus, Trash2 } from "lucide-react";
+import { Download, AlertTriangle, Loader2, Plus, Trash2, Palette, Upload, X } from "lucide-react";
 import RateCardSection from "@/components/RateCardSection";
 
 type Organization = {
@@ -10,6 +10,8 @@ type Organization = {
   createdAt: string;
   deletionRequestedAt: string | null;
   deletionRequestedBy: string | null;
+  logoDataUrl: string | null;
+  brandColor: string | null;
 };
 
 type TeamUser = { id: string; name: string; email: string; role: string; divisionId: string | null; createdAt: string };
@@ -45,6 +47,10 @@ export default function OrganizationPage() {
   const [stakeholderSaving, setStakeholderSaving] = useState(false);
   const [stakeholderError, setStakeholderError] = useState<string | null>(null);
 
+  const [brandColorInput, setBrandColorInput] = useState("#4f46e5");
+  const [brandSaving, setBrandSaving] = useState(false);
+  const [brandError, setBrandError] = useState<string | null>(null);
+
   async function load() {
     setLoading(true);
     const [orgRes, teamRes, divisionsRes, stakeholdersRes] = await Promise.all([
@@ -53,11 +59,79 @@ export default function OrganizationPage() {
       fetch("/api/organization/divisions"),
       fetch("/api/organization/stakeholders"),
     ]);
-    if (orgRes.ok) setOrg(await orgRes.json());
+    if (orgRes.ok) {
+      const orgData = await orgRes.json();
+      setOrg(orgData);
+      if (orgData.brandColor) setBrandColorInput(orgData.brandColor);
+    }
     if (teamRes.ok) setTeam(await teamRes.json());
     if (divisionsRes.ok) setDivisions(await divisionsRes.json());
     if (stakeholdersRes.ok) setStakeholders(await stakeholdersRes.json());
     setLoading(false);
+  }
+
+  async function saveBrandColor() {
+    setBrandSaving(true);
+    setBrandError(null);
+    const res = await fetch("/api/organization", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brandColor: brandColorInput }),
+    });
+    setBrandSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setBrandError(data?.error ?? "Could not save brand color.");
+      return;
+    }
+    load();
+  }
+
+  async function removeBrandColor() {
+    setBrandSaving(true);
+    await fetch("/api/organization", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brandColor: null }),
+    });
+    setBrandSaving(false);
+    load();
+  }
+
+  function handleLogoFile(file: File) {
+    if (file.size > 300_000) {
+      setBrandError("Logo image is too large — please use a file under 300KB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      setBrandSaving(true);
+      setBrandError(null);
+      const res = await fetch("/api/organization", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logoDataUrl: reader.result }),
+      });
+      setBrandSaving(false);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setBrandError(data?.error ?? "Could not save logo.");
+        return;
+      }
+      load();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function removeLogo() {
+    setBrandSaving(true);
+    await fetch("/api/organization", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ logoDataUrl: null }),
+    });
+    setBrandSaving(false);
+    load();
   }
 
   async function addDivision() {
@@ -236,6 +310,86 @@ export default function OrganizationPage() {
     <div>
       <Topbar title="My Organization" subtitle={org.name} />
       <div className="p-8 max-w-2xl space-y-6">
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
+          <p className="text-sm font-semibold text-slate-900 mb-1 flex items-center gap-1.5">
+            <Palette size={15} className="text-accent-600" /> Branding
+          </p>
+          <p className="text-xs text-slate-500 mb-4">
+            Give {org.name} its own look in Executa — an uploaded logo appears in the sidebar and mobile
+            header for everyone in your organization, and a brand color becomes a &quot;Custom&quot; theme
+            option each teammate can choose for themselves.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-medium text-slate-700 mb-2">Logo</p>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+                  {org.logoDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={org.logoDataUrl} alt="" className="h-full w-full object-contain" />
+                  ) : (
+                    <span className="text-xs text-slate-300">None</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 cursor-pointer w-fit">
+                    <Upload size={13} />
+                    {org.logoDataUrl ? "Replace" : "Upload"}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                      className="hidden"
+                      disabled={brandSaving}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleLogoFile(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {org.logoDataUrl && (
+                    <button
+                      onClick={removeLogo}
+                      disabled={brandSaving}
+                      className="flex items-center gap-1 text-xs text-slate-400 hover:text-rose-600 w-fit"
+                    >
+                      <X size={12} /> Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-700 mb-2">Brand color</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={brandColorInput}
+                  onChange={(e) => setBrandColorInput(e.target.value)}
+                  className="h-9 w-9 rounded-lg border border-slate-200 cursor-pointer shrink-0"
+                />
+                <button
+                  onClick={saveBrandColor}
+                  disabled={brandSaving}
+                  className="px-3 py-2 rounded-lg bg-accent-600 text-white text-xs font-medium hover:bg-accent-700 disabled:opacity-50"
+                >
+                  {brandSaving ? "Saving..." : "Save"}
+                </button>
+                {org.brandColor && (
+                  <button
+                    onClick={removeBrandColor}
+                    disabled={brandSaving}
+                    className="text-xs text-slate-400 hover:text-rose-600"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+          {brandError && <p className="text-xs text-rose-600 mt-3">{brandError}</p>}
+        </div>
+
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-slate-900">Your team</p>

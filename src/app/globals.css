@@ -114,6 +114,28 @@ html {
   --accent-900: var(--color-rose-950);
 }
 
+/* The 7th, org-branding-derived theme -- unlike the 6 fixed themes above (which each map onto
+   one of Tailwind's own pre-built, already-accessible color ramps), this one is generated at
+   runtime via color-mix() from a single arbitrary hex value (--org-brand, set inline on <html>
+   in the root layout from organizations.brandColor). --accent-600 is the org's exact brand
+   color -- everything else is that color mixed toward white (lighter stops) or black (darker
+   stops), the same technique the elevation system above already uses for hover/glow effects.
+   Falls back to indigo-600 if --org-brand somehow isn't set so this never renders as invalid
+   CSS. Only takes effect when a user has explicitly selected it (see ThemeSwitcher's Custom
+   swatch) -- an org setting a brand color never silently changes anyone's existing theme. */
+[data-theme="custom"] {
+  --accent-50: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 6%, white);
+  --accent-100: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 14%, white);
+  --accent-200: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 28%, white);
+  --accent-300: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 46%, white);
+  --accent-400: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 70%, white);
+  --accent-500: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 88%, white);
+  --accent-600: var(--org-brand, var(--color-indigo-600));
+  --accent-700: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 87%, black);
+  --accent-800: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 74%, black);
+  --accent-900: color-mix(in srgb, var(--org-brand, var(--color-indigo-600)) 60%, black);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

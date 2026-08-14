@@ -9,6 +9,7 @@ import AvatarAssistant from "./AvatarAssistant";
 import IssueReporter from "./IssueReporter";
 import GlobalSearch from "./GlobalSearch";
 import type { SessionUser } from "@/lib/auth";
+import type { ModuleKey } from "@/lib/modules";
 
 // Wraps the whole authenticated app shell. On md+ screens this renders exactly like the
 // old always-visible sidebar layout. Below md, the sidebar becomes an off-canvas drawer
@@ -18,10 +19,16 @@ import type { SessionUser } from "@/lib/auth";
 export default function AppShell({
   user,
   billingBlocked,
+  orgLogoDataUrl,
+  orgBrandColor,
+  enabledModules,
   children,
 }: {
   user: SessionUser | null;
   billingBlocked?: boolean;
+  orgLogoDataUrl?: string | null;
+  orgBrandColor?: string | null;
+  enabledModules?: ModuleKey[] | null;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -51,7 +58,15 @@ export default function AppShell({
           <Menu size={22} />
         </button>
         <Link href="/dashboard" className="flex items-center gap-2.5">
-          <Image src="/executa-mark.svg" alt="Executa" width={28} height={28} />
+          {orgLogoDataUrl ? (
+            // Org-uploaded logo (see PATCH /api/organization) -- not from next/image since
+            // that requires a configured remote/static source, and this is an arbitrary
+            // base64 data: URI stored per-org, not a build-time asset.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={orgLogoDataUrl} alt="" width={28} height={28} className="rounded object-contain" />
+          ) : (
+            <Image src="/executa-mark.svg" alt="Executa" width={28} height={28} />
+          )}
           <p className="text-sm font-semibold text-slate-900">Executa</p>
         </Link>
       </div>
@@ -64,7 +79,7 @@ export default function AppShell({
         />
       )}
 
-      <Sidebar user={user} open={open} />
+      <Sidebar user={user} open={open} orgLogoDataUrl={orgLogoDataUrl} orgBrandColor={orgBrandColor} enabledModules={enabledModules} />
 
       <div className="flex-1 min-w-0 pt-14 md:pt-0">
         {showPaywall ? (

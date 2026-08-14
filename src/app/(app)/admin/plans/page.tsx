@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { ArrowLeft, Plus, Trash2, Power } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Power, ChevronDown, ChevronUp } from "lucide-react";
+import { MODULE_REGISTRY, MODULE_KEYS, type ModuleKey } from "@/lib/modules";
 
 type Plan = {
   id: string;
@@ -16,6 +17,7 @@ type Plan = {
   seatLimit: number | null;
   sortOrder: number;
   isActive: boolean;
+  enabledModules: ModuleKey[] | null;
 };
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent-500";
@@ -29,6 +31,7 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -87,6 +90,14 @@ export default function PlansPage() {
       const updated = await res.json();
       setPlans((prev) => prev.map((p) => (p.id === id ? updated : p)));
     }
+  }
+
+  function toggleModule(plan: Plan, key: ModuleKey) {
+    // null enabledModules means "all enabled" -- the first time an admin restricts a plan, we
+    // materialize that into the full key list first so unchecking one only removes that one.
+    const current = plan.enabledModules ?? MODULE_KEYS;
+    const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
+    patchPlan(plan.id, { enabledModules: next });
   }
 
   async function deletePlan(id: string) {
@@ -177,12 +188,16 @@ export default function PlansPage() {
                   <th className="px-4 py-3">Model</th>
                   <th className="px-4 py-3">Limits</th>
                   <th className="px-4 py-3">Stripe price</th>
+                  <th className="px-4 py-3">Modules</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {plans.map((p) => (
-                  <tr key={p.id} className={`border-b border-slate-50 last:border-0 ${p.isActive ? "" : "opacity-50"}`}>
+                {plans.map((p) => {
+                  const enabledCount = p.enabledModules === null ? MODULE_KEYS.length : p.enabledModules.length;
+                  return (
+                  <Fragment key={p.id}>
+                  <tr className={`border-b border-slate-50 last:border-0 ${p.isActive ? "" : "opacity-50"}`}>
                     <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
                     <td className="px-4 py-3 text-slate-600">
                       {p.priceCents != null ? `$${(p.priceCents / 100).toFixed(2)}/${p.billingInterval}` : "Contact us"}
@@ -199,6 +214,15 @@ export default function PlansPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
+                      <button
+                        onClick={() => setExpandedId((id) => (id === p.id ? null : p.id))}
+                        className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800"
+                      >
+                        {p.enabledModules === null ? "All" : `${enabledCount}/${MODULE_KEYS.length}`}
+                        {expandedId === p.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">
                         <button
                           onClick={() => patchPlan(p.id, { isActive: !p.isActive })}
@@ -212,9 +236,40 @@ export default function PlansPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  {expandedId === p.id && (
+                    <tr className="border-b border-slate-50 last:border-0 bg-slate-50/60">
+                      <td colSpan={7} className="px-4 py-3">
+                        <p className="text-xs text-slate-500 mb-2">
+                          Toggle which optional modules are included on this plan. Core pages (Dashboard,
+                          Projects, Ideation, Templates, AI Assistant) are always available on every plan.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5">
+                          {MODULE_KEYS.map((key) => {
+                            const checked = p.enabledModules === null || p.enabledModules.includes(key);
+                            return (
+                              <label key={key} className="flex items-start gap-2 text-xs cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleModule(p, key)}
+                                  className="mt-0.5"
+                                />
+                                <span>
+                                  <span className="font-medium text-slate-700">{MODULE_REGISTRY[key].label}</span>
+                                  <span className="text-slate-400"> — {MODULE_REGISTRY[key].description}</span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
+                  );
+                })}
                 {plans.length === 0 && (
-                  <tr><td colSpan={6} className="py-6 text-center text-slate-400">No plans yet — create one above.</td></tr>
+                  <tr><td colSpan={7} className="py-6 text-center text-slate-400">No plans yet — create one above.</td></tr>
                 )}
               </tbody>
             </table>

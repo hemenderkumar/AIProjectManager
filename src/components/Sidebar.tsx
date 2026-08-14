@@ -25,6 +25,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
+import type { ModuleKey } from "@/lib/modules";
 import LogoutButton from "./LogoutButton";
 import ThemeSwitcher from "./ThemeSwitcher";
 
@@ -56,12 +57,21 @@ function NavSection({ label, children }: { label: string; children: React.ReactN
 export default function Sidebar({
   user,
   open,
+  orgLogoDataUrl,
+  orgBrandColor,
+  enabledModules,
 }: {
   user: SessionUser | null;
   open?: boolean;
+  orgLogoDataUrl?: string | null;
+  orgBrandColor?: string | null;
+  enabledModules?: ModuleKey[] | null;
 }) {
   const isInternal = !!user && user.organizationId == null;
   const pathname = usePathname();
+  // null/undefined enabledModules means "no plan-level restriction" (unlimited plan, or
+  // internal/no-org user) -- see getEnabledModules() in lib/modules.ts.
+  const isEnabled = (key: ModuleKey) => !enabledModules || enabledModules.includes(key);
 
   return (
     <aside
@@ -72,7 +82,14 @@ export default function Sidebar({
     >
       <div className="px-5 py-5 border-b border-slate-100">
         <Link href="/dashboard" className="flex items-center gap-2.5 group">
-          <Image src="/executa-mark.svg" alt="Executa" width={40} height={40} />
+          {orgLogoDataUrl ? (
+            // Org-uploaded logo (arbitrary base64 data: URI, not a build-time asset) -- see
+            // the matching comment in AppShell.tsx's mobile header.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={orgLogoDataUrl} alt="" width={40} height={40} className="rounded object-contain" />
+          ) : (
+            <Image src="/executa-mark.svg" alt="Executa" width={40} height={40} />
+          )}
           <div>
             <p className="text-sm font-semibold text-slate-900 leading-tight group-hover:text-accent-700">
               Executa
@@ -90,11 +107,17 @@ export default function Sidebar({
           {/* Demand sits before Ideation deliberately -- it's the front door: raw, unscored
               requests from anyone land here first, and only what's triaged/approved becomes
               a real Idea entering the gates below. See lib/demand.ts. */}
-          <NavLink href="/demand" icon={<Inbox size={17} />} pathname={pathname}>Demand</NavLink>
+          {isEnabled("demand") && (
+            <NavLink href="/demand" icon={<Inbox size={17} />} pathname={pathname}>Demand</NavLink>
+          )}
           <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
-          <NavLink href="/roadmap" icon={<Map size={17} />} pathname={pathname}>Roadmap</NavLink>
+          {isEnabled("roadmap") && (
+            <NavLink href="/roadmap" icon={<Map size={17} />} pathname={pathname}>Roadmap</NavLink>
+          )}
           <NavLink href="/execution" icon={<Rocket size={17} />} pathname={pathname}>Project Execution</NavLink>
-          <NavLink href="/support" icon={<LifeBuoy size={17} />} pathname={pathname}>Ongoing Support</NavLink>
+          {isEnabled("support") && (
+            <NavLink href="/support" icon={<LifeBuoy size={17} />} pathname={pathname}>Ongoing Support</NavLink>
+          )}
         </NavSection>
 
         <NavSection label="More">
@@ -113,16 +136,16 @@ export default function Sidebar({
           {user?.role === "SUPER_USER" && (
             <NavLink href="/billing" icon={<CreditCard size={17} />} pathname={pathname}>Billing</NavLink>
           )}
-          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && isEnabled("vendor_evaluation") && (
             <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
           )}
-          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && isEnabled("vendors") && (
             <NavLink href="/vendors" icon={<TrendingUp size={17} />} pathname={pathname}>Vendor Scorecard</NavLink>
           )}
-          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && isEnabled("automations") && (
             <NavLink href="/automations" icon={<Zap size={17} />} pathname={pathname}>Automations</NavLink>
           )}
-          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && isEnabled("integrations") && (
             <NavLink href="/settings/integrations" icon={<Plug size={17} />} pathname={pathname}>API & Integrations</NavLink>
           )}
         </NavSection>
@@ -138,7 +161,7 @@ export default function Sidebar({
         )}
       </nav>
       <div className="p-3 border-t border-slate-100 space-y-3">
-        <ThemeSwitcher />
+        <ThemeSwitcher orgBrandColor={orgBrandColor} />
         <Link
           href="/projects/new"
           className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-lg text-sm font-medium bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors hover:bg-accent-700"

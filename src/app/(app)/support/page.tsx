@@ -9,12 +9,18 @@ import { DEFAULT_ASSUMPTIONS } from "@/lib/supportEstimate";
 import { mergeRateCardScopes } from "@/lib/deliveryModel";
 import { getCurrentUser } from "@/lib/auth";
 import { canAccessOptionalProject, filterProjectsForUser, isInternalStaff } from "@/lib/tenancy";
+import { isModuleEnabled } from "@/lib/modules-server";
+import { MODULE_REGISTRY } from "@/lib/modules";
+import ModuleLocked from "@/components/ModuleLocked";
 
 export const dynamic = "force-dynamic";
 
 export default async function SupportPage() {
   const user = await getCurrentUser();
   if (!user) notFound();
+  if (!(await isModuleEnabled(user, "support"))) {
+    return <ModuleLocked moduleName={MODULE_REGISTRY.support.label} />;
+  }
 
   // Rate cards are scoped per company now. ADMIN gets a true portfolio-wide average (every
   // company's rows); everyone else gets their own company's rates merged over the global

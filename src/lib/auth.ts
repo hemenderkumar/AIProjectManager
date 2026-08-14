@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { db } from "./db";
-import { users } from "./db/schema";
+import { users, organizations } from "./db/schema";
 import { eq } from "drizzle-orm";
 
 export type SessionUser = {
@@ -127,17 +127,42 @@ export type ThemeId = (typeof VALID_THEMES)[number];
 // browser they log into. Called from the root layout on every request so <html data-theme>
 // is correct in the very first byte of HTML sent, with nothing for client JS to correct after
 // the fact. Logged-out visitors (or a session that's expired) just get the CSS default (indigo).
-export async function getCurrentTheme(): Promise<ThemeId> {
+export async function getCurrentTheme(): Promise<ThemeId | "custom"> {
+  const branding = await getBrandingContext();
+  return branding.theme;
+}
+
+export type BrandingContext = {
+  theme: ThemeId | "custom";
+  orgLogoDataUrl: string | null;
+  orgBrandColor: string | null;
+};
+
+// Single query backing both <html data-theme> and the org logo swap in Sidebar/AppShell.
+// "custom" is a real, storable value of users.theme (selected by clicking the org's Custom
+// swatch in ThemeSwitcher, see components/ThemeSwitcher.tsx) -- it's never applied
+// automatically. An org's brandColor/logoDataUrl only ever change what's *available* to pick,
+// never a member's existing personal choice out from under them.
+export async function getBrandingContext(): Promise<BrandingContext> {
   const user = await getCurrentUser();
-  if (!user) return "indigo";
+  if (!user) return { theme: "indigo", orgLogoDataUrl: null, orgBrandColor: null };
   try {
     // This runs in the root layout on every single authenticated page load, before anything
     // else renders. It's purely cosmetic, so a transient DB hiccup here (e.g. the connection
     // pool being briefly exhausted) must never take down the entire app -- fall back to the
     // default rather than let it bubble into an unhandled render-time crash.
-    const [row] = await db.select({ theme: users.theme }).from(users).where(eq(users.id, user.id));
-    return (row?.theme as ThemeId) ?? "indigo";
+    const [row] = await db
+      .select({
+        theme: users.theme,
+        orgLogoDataUrl: organizations.logoDataUrl,
+        orgBrandColor: organizations.brandColor,
+      })
+      .from(users)
+      .leftJoin(organizations, eq(users.organizationId, organizations.id))
+      .where(eq(users.id, user.id));
+    const theme = row?.theme === "custom" && row.orgBrandColor ? "custom" : ((row?.theme as ThemeId) ?? "indigo");
+    return { theme, orgLogoDataUrl: row?.orgLogoDataUrl ?? null, orgBrandColor: row?.orgBrandColor ?? null };
   } catch {
-    return "indigo";
+    return { theme: "indigo", orgLogoDataUrl: null, orgBrandColor: null };
   }
 }
