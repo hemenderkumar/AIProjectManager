@@ -7,6 +7,7 @@ import {
   boolean,
   pgEnum,
   uniqueIndex,
+  jsonb,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -500,7 +501,7 @@ export const taskComments = pgTable("task_comments", {
 // can add its own type without a new table. `link` is a relative app path the bell's
 // dropdown navigates to on click; `readAt` null means unread. The daily digest cron reads
 // this same table rather than keeping its own separate queue.
-export const notificationTypeEnum = pgEnum("notification_type", ["MENTION", "COMMENT", "DIGEST"]);
+export const notificationTypeEnum = pgEnum("notification_type", ["MENTION", "COMMENT", "DIGEST", "AUTOMATION"]);
 
 export const notifications = pgTable("notifications", {
   id: cuid(),
@@ -1519,4 +1520,264 @@ export const roadmapItemsRelations = relations(roadmapItems, ({ one }) => ({
 
 export const roadmapPhasesRelations = relations(roadmapPhases, ({ one }) => ({
   roadmap: one(roadmaps, { fields: [roadmapPhases.roadmapId], references: [roadmaps.id] }),
+}));
+
+// ---------------------------------------------------------------------------
+// Feature: project templates (global search itself needs no new table — it
+// queries existing projects/tasks/deliverables/risks directly via Postgres
+// full-text search, see lib/search.ts).
+// ---------------------------------------------------------------------------
+
+// A point-in-time copy, not a live-linked structure — snapshot is a single jsonb blob
+// (charter fields + phase/task skeleton + default custom fields/workflow stages) rather
+// than a web of child tables, since there's nothing to keep in sync after it's saved.
+export const projectTemplates = pgTable("project_templates", {
+  id: cuid(),
+  // null = usable by any organization (an Executa-provided starter template); set = private
+  // to that org, same null-means-shared convention as roadmaps.organizationId.
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  snapshot: jsonb("snapshot").notNull(),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Feature: custom fields + per-project workflow configuration
+// ---------------------------------------------------------------------------
+
+export const customFieldEntityEnum = pgEnum("custom_field_entity", [
+  "PROJECT",
+  "TASK",
+  "RISK",
+  "DELIVERABLE",
+]);
+
+export const customFieldTypeEnum = pgEnum("custom_field_type", [
+  "TEXT",
+  "NUMBER",
+  "DATE",
+  "BOOLEAN",
+  "SELECT",
+  "MULTISELECT",
+]);
+
+// Definitions are org-wide by default (projectId null) so a company sets its vocabulary
+// once; projectId set lets one project add a field just for itself without polluting every
+// other project's forms.
+export const customFieldDefinitions = pgTable("custom_field_definitions", {
+  id: cuid(),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  entity: customFieldEntityEnum("entity").notNull(),
+  fieldKey: text("field_key").notNull(),
+  label: text("label").notNull(),
+  type: customFieldTypeEnum("type").notNull().default("TEXT"),
+  options: text("options").array(), // SELECT / MULTISELECT choices
+  required: boolean("required").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// EAV-lite: one row per (fieldDefinition, entity) pair. Adding a new custom field is a row
+// insert into customFieldDefinitions, never a schema migration — the trade-off (values
+// always stored as text, MULTISELECT comma-joined) is deliberate to avoid a migration every
+// time someone wants a new field.
+export const customFieldValues = pgTable(
+  "custom_field_values",
+  {
+    id: cuid(),
+    fieldDefinitionId: text("field_definition_id")
+      .notNull()
+      .references(() => customFieldDefinitions.id, { onDelete: "cascade" }),
+    entityId: text("entity_id").notNull(),
+    value: text("value"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    oneValuePerField: uniqueIndex("custom_field_values_field_entity_idx").on(t.fieldDefinitionId, t.entityId),
+  })
+);
+
+// Per-project override of the fixed taskStatusEnum board columns. A project with no rows
+// here still uses the hardcoded TODO/IN_PROGRESS/BLOCKED/DONE columns (see sprint board) —
+// this is additive configuration, not a replacement of the default.
+export const workflowStages = pgTable("workflow_stages", {
+  id: cuid(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  color: text("color").notNull().default("#64748b"),
+  isTerminal: boolean("is_terminal").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+// ---------------------------------------------------------------------------
+// Feature: automation rules engine
+// ---------------------------------------------------------------------------
+
+export const automationTriggerEnum = pgEnum("automation_trigger", [
+  "TASK_STATUS_CHANGED",
+  "TASK_ASSIGNED",
+  "TASK_OVERDUE",
+  "RISK_CREATED",
+  "DELIVERABLE_APPROVED",
+]);
+
+// conditions/actions are jsonb rather than rigid columns because each trigger's event
+// payload has a different shape (a TASK_OVERDUE rule cares about daysOverdue, a
+// TASK_STATUS_CHANGED rule cares about fromStatus/toStatus) — same "event has its own
+// shape" reasoning as automationRules.conditions below.
+export const automationRules = pgTable("automation_rules", {
+  id: cuid(),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }), // null = applies org-wide
+  name: text("name").notNull(),
+  trigger: automationTriggerEnum("trigger").notNull(),
+  conditions: jsonb("conditions").notNull().default({}),
+  // Ordered action list, e.g. [{"type":"NOTIFY","target":"ASSIGNEE"},{"type":"SET_STATUS","value":"BLOCKED"}]
+  actions: jsonb("actions").notNull().default([]),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastRunAt: timestamp("last_run_at"),
+  runCount: integer("run_count").notNull().default(0),
+});
+
+// ---------------------------------------------------------------------------
+// Feature: public API + outbound webhooks + GitHub task links
+// ---------------------------------------------------------------------------
+
+// Only a SHA-256 hash of the key is stored, same principle as users.passwordHash — the raw
+// key is shown once at creation time in the UI and never again.
+export const apiKeys = pgTable("api_keys", {
+  id: cuid(),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  hashedKey: text("hashed_key").notNull().unique(),
+  keyPrefix: text("key_prefix").notNull(), // first chars shown in UI so a key can be identified without re-revealing it
+  scopes: text("scopes").array().notNull().default([]),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+});
+
+// Signing secret drives an X-Executa-Signature HMAC header on every delivery — same pattern
+// Stripe/GitHub webhooks use, so a receiver can verify a payload wasn't spoofed.
+export const webhooks = pgTable("webhooks", {
+  id: cuid(),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  secret: text("secret").notNull(),
+  events: text("events").array().notNull().default([]),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastDeliveryAt: timestamp("last_delivery_at"),
+  lastDeliveryStatus: integer("last_delivery_status"),
+});
+
+// Lightweight link, not a synced mirror — v1 GitHub integration is "attach an issue/PR to a
+// task and show it," not two-way status sync (that's a bigger, higher-maintenance build; see
+// the product-strategy discussion on why GitHub goes first and stays shallow before Jira).
+export const taskGithubLinks = pgTable("task_github_links", {
+  id: cuid(),
+  taskId: text("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  repo: text("repo").notNull(), // "owner/repo"
+  issueOrPrNumber: integer("issue_or_pr_number").notNull(),
+  linkType: text("link_type").notNull().default("ISSUE"), // ISSUE | PR
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
+// Feature: demand management (front door to Ideation)
+// ---------------------------------------------------------------------------
+
+export const demandStatusEnum = pgEnum("demand_status", [
+  "SUBMITTED",
+  "TRIAGED",
+  "SCORED",
+  "APPROVED",
+  "DEFERRED",
+  "REJECTED",
+  "CONVERTED",
+]);
+
+export const demandTypeEnum = pgEnum("demand_type", [
+  "STRATEGIC",
+  "RUN_THE_BUSINESS",
+  "COMPLIANCE",
+  "ENHANCEMENT",
+]);
+
+// One row per raw request, from submission through triage/scoring/capacity-check/decision
+// to (optionally) conversion into a real project that enters the existing Ideation gates.
+// Deliberately shallow compared to `projects` — this is meant to be cheap to fill out, not
+// a second Ideation form.
+export const demandRequests = pgTable("demand_requests", {
+  id: cuid(),
+  // null = submitted without being tied to a specific client org (an internal ask); set =
+  // that client organization's demand, same null-means-internal convention as projects.
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  requestedByName: text("requested_by_name").notNull(),
+  requestedByEmail: text("requested_by_email").notNull(),
+  divisionId: text("division_id").references(() => divisions.id, { onDelete: "set null" }),
+  type: demandTypeEnum("type"),
+  status: demandStatusEnum("status").notNull().default("SUBMITTED"),
+
+  // Triage
+  triageNotes: text("triage_notes"),
+  isDuplicateOfId: text("is_duplicate_of_id").references((): AnyPgColumn => demandRequests.id, { onDelete: "set null" }),
+
+  // Scoring — t-shirt-light, intentionally coarser than the post-conversion
+  // projects.feasibilityScore; this only needs to be good enough to rank the backlog.
+  businessValueScore: integer("business_value_score"), // 1-5
+  urgencyScore: integer("urgency_score"), // 1-5
+  effortTshirtSize: text("effort_tshirt_size"), // S / M / L / XL
+  priorityScore: real("priority_score"), // computed ranking score, recalculated on any score edit
+
+  // Capacity check, filled in at decision time by whoever reviews the backlog against
+  // current resource/rate-card capacity.
+  capacityNotes: text("capacity_notes"),
+
+  // Decision
+  decisionReason: text("decision_reason"),
+  decidedBy: text("decided_by"),
+  decidedAt: timestamp("decided_at"),
+
+  // Conversion — set once promoted into a real project, which then enters the existing
+  // Ideation gates unchanged. This table's job ends here; nothing downstream reads it.
+  convertedProjectId: text("converted_project_id").references(() => projects.id, { onDelete: "set null" }),
+  convertedAt: timestamp("converted_at"),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const demandRequestsRelations = relations(demandRequests, ({ one }) => ({
+  organization: one(organizations, { fields: [demandRequests.organizationId], references: [organizations.id] }),
+  convertedProject: one(projects, { fields: [demandRequests.convertedProjectId], references: [projects.id] }),
+}));
+
+export const projectTemplatesRelations = relations(projectTemplates, ({ one }) => ({
+  organization: one(organizations, { fields: [projectTemplates.organizationId], references: [organizations.id] }),
+}));
+
+export const workflowStagesRelations = relations(workflowStages, ({ one }) => ({
+  project: one(projects, { fields: [workflowStages.projectId], references: [projects.id] }),
+}));
+
+export const automationRulesRelations = relations(automationRules, ({ one }) => ({
+  project: one(projects, { fields: [automationRules.projectId], references: [projects.id] }),
+}));
+
+export const customFieldValuesRelations = relations(customFieldValues, ({ one }) => ({
+  fieldDefinition: one(customFieldDefinitions, {
+    fields: [customFieldValues.fieldDefinitionId],
+    references: [customFieldDefinitions.id],
+  }),
 }));

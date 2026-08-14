@@ -18,6 +18,10 @@ import {
   TrendingUp,
   Compass,
   Map,
+  Inbox,
+  LayoutTemplate,
+  Zap,
+  Plug,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
@@ -82,6 +86,10 @@ export default function Sidebar({
         <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Executa Works</NavLink>
 
         <NavSection label="Project Lifecycle">
+          {/* Demand sits before Ideation deliberately -- it's the front door: raw, unscored
+              requests from anyone land here first, and only what's triaged/approved becomes
+              a real Idea entering the gates below. See lib/demand.ts. */}
+          <NavLink href="/demand" icon={<Inbox size={17} />} pathname={pathname}>Demand</NavLink>
           <NavLink href="/ideation" icon={<Lightbulb size={17} />} pathname={pathname}>Ideation</NavLink>
           <NavLink href="/roadmap" icon={<Map size={17} />} pathname={pathname}>Roadmap</NavLink>
           <NavLink href="/execution" icon={<Rocket size={17} />} pathname={pathname}>Project Execution</NavLink>
@@ -90,6 +98,7 @@ export default function Sidebar({
 
         <NavSection label="More">
           <NavLink href="/projects" icon={<FolderKanban size={17} />} pathname={pathname}>All Projects</NavLink>
+          <NavLink href="/templates" icon={<LayoutTemplate size={17} />} pathname={pathname}>Templates</NavLink>
           <NavLink href="/ai" icon={<Sparkles size={17} />} pathname={pathname}>AI Assistant</NavLink>
           {isInternal && (
             <NavLink href="/reports" icon={<FileBarChart size={17} />} pathname={pathname}>Reports</NavLink>
@@ -105,6 +114,12 @@ export default function Sidebar({
           )}
           {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
             <NavLink href="/vendors" icon={<TrendingUp size={17} />} pathname={pathname}>Vendor Scorecard</NavLink>
+          )}
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+            <NavLink href="/automations" icon={<Zap size={17} />} pathname={pathname}>Automations</NavLink>
+          )}
+          {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
+            <NavLink href="/settings/integrations" icon={<Plug size={17} />} pathname={pathname}>API & Integrations</NavLink>
           )}
         </NavSection>
 

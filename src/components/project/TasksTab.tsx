@@ -11,6 +11,7 @@ import AiWaitIndicator from "@/components/AiWaitIndicator";
 import AiEditChat from "./AiEditChat";
 import TaskComments from "./TaskComments";
 import TaskDependencies from "./TaskDependencies";
+import TaskGithubLinks from "./TaskGithubLinks";
 import TimelineView from "./TimelineView";
 import PostToProjectRequestaModal from "./PostToProjectRequestaModal";
 
@@ -1095,6 +1096,7 @@ export default function TasksTab({
                           taskId={t.id}
                           otherTasks={detail.tasks.map((ot) => ({ id: ot.id, title: ot.title }))}
                         />
+                        <TaskGithubLinks projectId={detail.project.id} taskId={t.id} />
                       </div>
                     </td>
                     <td className="py-2.5 text-slate-600">{resourceName(t.assigneeId)}</td>

@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { eq, isNull } from "drizzle-orm";
+import Link from "next/link";
+import { Settings2 } from "lucide-react";
 import Topbar from "@/components/Topbar";
 import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getProjectDetail } from "@/lib/portfolio";
@@ -48,6 +50,13 @@ export default async function ProjectDetailPage({
             <StageBadge stage={detail.project.stage} />
             <PriorityBadge priority={detail.project.priority} />
             <RagBadge rag={detail.autoRag} />
+            <Link
+              href={`/projects/${id}/settings`}
+              aria-label="Project settings"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+            >
+              <Settings2 size={16} />
+            </Link>
           </div>
         }
       />

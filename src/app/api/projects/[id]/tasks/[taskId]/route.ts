@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tasks } from "@/lib/db/schema";
+import { tasks, resources, users, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { syncAllocationsFromEffort } from "@/lib/allocations";
 import { notifySlackForProject } from "@/lib/slack";
+import { runAutomationRules } from "@/lib/automation";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 export async function PATCH(
   req: NextRequest,
@@ -47,6 +49,46 @@ export async function PATCH(
   if (body.status && body.status !== "TODO") {
     const emoji = body.status === "DONE" ? "✅" : body.status === "BLOCKED" ? "🚧" : "▶️";
     notifySlackForProject(id, `${emoji} *${updated.title}* is now ${updated.status.replace("_", " ")}`).catch(() => {});
+  }
+
+  if (body.status) {
+    const [project] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, id));
+    dispatchWebhook(project?.organizationId ?? null, "TASK_STATUS_CHANGED", {
+      taskId: updated.id,
+      projectId: id,
+      title: updated.title,
+      status: updated.status,
+    }).catch(() => {});
+  }
+
+  // Fire any matching automation rules -- best-effort, never blocks the response. Resolve
+  // the assignee's resource email and, if that resource has a linked Executa login
+  // (users.resourceId), their user id too, so a NOTIFY action can reach either path.
+  if (updated.assigneeId && ("status" in body || "assigneeId" in body)) {
+    const [resource] = await db.select({ email: resources.email }).from(resources).where(eq(resources.id, updated.assigneeId));
+    const [linkedUser] = resource?.email
+      ? await db.select({ id: users.id }).from(users).where(eq(users.resourceId, updated.assigneeId))
+      : [];
+    runAutomationRules({
+      trigger: "TASK_STATUS_CHANGED",
+      projectId: id,
+      taskId: updated.id,
+      taskTitle: updated.title,
+      assigneeUserId: linkedUser?.id ?? null,
+      assigneeEmail: resource?.email ?? null,
+      fromStatus: body.status ? undefined : undefined,
+      toStatus: updated.status,
+    }).catch(() => {});
+    if ("assigneeId" in body) {
+      runAutomationRules({
+        trigger: "TASK_ASSIGNED",
+        projectId: id,
+        taskId: updated.id,
+        taskTitle: updated.title,
+        assigneeUserId: linkedUser?.id ?? null,
+        assigneeEmail: resource?.email ?? null,
+      }).catch(() => {});
+    }
   }
 
   return NextResponse.json(updated);

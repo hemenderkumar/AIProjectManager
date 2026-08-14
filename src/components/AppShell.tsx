@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
 import AvatarAssistant from "./AvatarAssistant";
 import IssueReporter from "./IssueReporter";
+import GlobalSearch from "./GlobalSearch";
 import type { SessionUser } from "@/lib/auth";
 
 // Wraps the whole authenticated app shell. On md+ screens this renders exactly like the
@@ -60,6 +61,7 @@ export default function AppShell({
       <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
       <AvatarAssistant />
       <IssueReporter />
+      {user && <GlobalSearch />}
     </div>
   );
 }

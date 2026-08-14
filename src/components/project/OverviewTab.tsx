@@ -5,7 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import type { SessionUser } from "@/lib/auth";
-import { Loader2, Trash2, Boxes, Slack, Calendar, Copy, Check } from "lucide-react";
+import { Loader2, Trash2, Boxes, Slack, Calendar, Copy, Check, LayoutTemplate } from "lucide-react";
 import CountryStateFields from "@/components/CountryStateFields";
 import { SUB_STAGE_LABELS } from "@/lib/ideationGates";
 
@@ -37,6 +37,9 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
   const p = detail.project;
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [templateName, setTemplateName] = useState(`${p.name} template`);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(false);
   const [form, setForm] = useState({
     name: p.name,
     description: p.description ?? "",
@@ -483,6 +486,43 @@ export default function OverviewTab({ detail, user }: { detail: ProjectDetail; u
                 </button>
               )}
             </div>
+          </div>
+        </Card>
+      )}
+
+      {canDelete && (
+        <Card title="Save as Template">
+          <p className="text-sm text-slate-500 mb-3">
+            Save this project&rsquo;s charter fields and task skeleton as a reusable template — future
+            projects can be created from it instead of starting blank. See the Templates page.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              className={inputCls}
+              value={templateName}
+              onChange={(e) => { setTemplateName(e.target.value); setTemplateSaved(false); }}
+            />
+            <button
+              onClick={async () => {
+                setSavingTemplate(true);
+                setTemplateSaved(false);
+                try {
+                  const res = await fetch("/api/templates", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "create_from_project", projectId: p.id, name: templateName }),
+                  });
+                  if (res.ok) setTemplateSaved(true);
+                } finally {
+                  setSavingTemplate(false);
+                }
+              }}
+              disabled={savingTemplate || !templateName.trim()}
+              className="shrink-0 flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-accent-200 text-accent-700 hover:bg-accent-50 font-medium disabled:opacity-50"
+            >
+              {savingTemplate ? <Loader2 size={14} className="animate-spin" /> : <LayoutTemplate size={14} />}
+              {templateSaved ? "Saved" : savingTemplate ? "Saving…" : "Save as Template"}
+            </button>
           </div>
         </Card>
       )}
