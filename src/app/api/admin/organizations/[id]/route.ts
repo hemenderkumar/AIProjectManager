@@ -28,9 +28,34 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (typeof body.isActive !== "boolean") return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 });
     patch.isActive = body.isActive;
   }
+  // Billing: admin manual comp override ("hard lock but can be unlocked by admin") and
+  // trial extension. Neither touches Stripe -- comping is purely a manual grant, and
+  // extending the trial just pushes the same isOrgBillingBlocked() deadline further out.
+  if ("billingCompedByAdmin" in body) {
+    if (typeof body.billingCompedByAdmin !== "boolean") {
+      return NextResponse.json({ error: "billingCompedByAdmin must be a boolean" }, { status: 400 });
+    }
+    patch.billingCompedByAdmin = body.billingCompedByAdmin;
+  }
+  if ("trialEndsAt" in body) {
+    const parsed = body.trialEndsAt ? new Date(body.trialEndsAt) : null;
+    if (body.trialEndsAt && Number.isNaN(parsed?.getTime())) {
+      return NextResponse.json({ error: "trialEndsAt must be a valid date" }, { status: 400 });
+    }
+    patch.trialEndsAt = parsed;
+  }
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: "No recognized fields in body" }, { status: 400 });
 
   const [updated] = await db.update(organizations).set(patch).where(eq(organizations.id, id)).returning();
+
+  const detail =
+    "billingCompedByAdmin" in patch
+      ? `${admin.name} ${patch.billingCompedByAdmin ? "comped" : "un-comped"} "${before.name}"'s billing.`
+      : "trialEndsAt" in patch
+        ? `${admin.name} updated "${before.name}"'s trial end date.`
+        : "isActive" in patch
+          ? `${admin.name} ${patch.isActive ? "re-enabled" : "disabled"} "${before.name}".`
+          : `${admin.name} renamed "${before.name}" to "${updated.name}".`;
 
   await logAudit({
     actor: admin,
@@ -40,10 +65,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     organizationId: id,
     beforeValue: JSON.stringify(before),
     afterValue: JSON.stringify(updated),
-    detail:
-      "isActive" in patch
-        ? `${admin.name} ${patch.isActive ? "re-enabled" : "disabled"} "${before.name}".`
-        : `${admin.name} renamed "${before.name}" to "${updated.name}".`,
+    detail,
   });
 
   return NextResponse.json(updated);

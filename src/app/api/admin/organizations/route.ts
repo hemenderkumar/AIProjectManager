@@ -4,6 +4,7 @@ import { organizations, users } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { requireRole, hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { trialEndDate } from "@/lib/billing";
 
 // Client companies (tenants). Kept intentionally minimal — name only — since the actual
 // scoping is driven by organizationId on users/projects, not by anything stored here.
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Owner name, email, and password are all required to create the owner account." }, { status: 400 });
   }
 
-  const [created] = await db.insert(organizations).values({ name: body.name.trim() }).returning();
+  const [created] = await db.insert(organizations).values({ name: body.name.trim(), trialEndsAt: await trialEndDate() }).returning();
 
   let owner = null;
   if (hasOwner) {

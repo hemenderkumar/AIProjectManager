@@ -23,6 +23,7 @@ export async function PATCH(req: NextRequest) {
   if (body.weeklyReportCadence) update.weeklyReportCadence = body.weeklyReportCadence;
   if (body.steeringCadence) update.steeringCadence = body.steeringCadence;
   if (body.avatarVoiceGender) update.avatarVoiceGender = body.avatarVoiceGender;
+  if (typeof body.trialDays === "number" && body.trialDays >= 0) update.trialDays = Math.floor(body.trialDays);
 
   const [existing] = await db.select().from(settings).where(eq(settings.id, "default"));
   if (!existing) {

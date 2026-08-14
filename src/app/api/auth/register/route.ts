@@ -4,6 +4,7 @@ import { registrationRequests, users, organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
+import { trialEndDate } from "@/lib/billing";
 
 // Public — no login required.
 //
@@ -62,7 +63,10 @@ export async function POST(req: NextRequest) {
   let resultingUserId: string | null = null;
   let resultingOrganizationId: string | null = null;
   if (type === "INDIVIDUAL") {
-    const [org] = await db.insert(organizations).values({ name: `${name} (Individual)` }).returning();
+    const [org] = await db
+      .insert(organizations)
+      .values({ name: `${name} (Individual)`, trialEndsAt: await trialEndDate() })
+      .returning();
     const [createdUser] = await db
       .insert(users)
       .values({ name, email, passwordHash, role: "CONTRIBUTOR", organizationId: org.id, verifiedAt: null })

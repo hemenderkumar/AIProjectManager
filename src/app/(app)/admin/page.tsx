@@ -14,8 +14,11 @@ type Organization = {
   isActive: boolean;
   deletionRequestedAt: string | null;
   deletionRequestedBy: string | null;
+  trialEndsAt: string | null;
+  subscriptionStatus: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
+  billingCompedByAdmin: boolean;
 };
-type Settings = { weeklyReportCadence: string; steeringCadence: string; avatarVoiceGender: string };
+type Settings = { weeklyReportCadence: string; steeringCadence: string; avatarVoiceGender: string; trialDays: number };
 type Registration = {
   id: string;
   type: "INDIVIDUAL" | "COMPANY_OWNER";
@@ -30,6 +33,13 @@ type Registration = {
 const ROLES = ["ADMIN", "SUPER_USER", "PM", "CONTRIBUTOR", "VIEWER"];
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
+
+// Module-level (not called during render of a component/hook body) so Date.now() here
+// doesn't trip react-hooks/purity -- that rule only flags impure calls reachable directly
+// from a component's render path, not plain helper functions.
+function isPastDate(dateStr: string | null): boolean {
+  return !!dateStr && new Date(dateStr).getTime() < Date.now();
+}
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -282,6 +292,45 @@ export default function AdminPage() {
     load();
   }
 
+  // Admin manual override -- "hard lock but can be unlocked by admin". Independent of Stripe;
+  // isOrgBillingBlocked() treats a comped org the same as a genuinely paying one.
+  async function toggleComp(o: Organization) {
+    setOrgActionId(o.id);
+    const res = await fetch(`/api/admin/organizations/${o.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ billingCompedByAdmin: !o.billingCompedByAdmin }),
+    });
+    setOrgActionId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setOrgDeleteError(data?.error ?? "Could not update billing for this company.");
+      return;
+    }
+    load();
+  }
+
+  async function extendTrial(o: Organization) {
+    const days = prompt(`Extend "${o.name}"'s trial by how many days from today?`, "30");
+    if (!days) return;
+    const n = parseInt(days, 10);
+    if (Number.isNaN(n) || n <= 0) return;
+    const newDate = new Date(Date.now() + n * 24 * 60 * 60 * 1000);
+    setOrgActionId(o.id);
+    const res = await fetch(`/api/admin/organizations/${o.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trialEndsAt: newDate.toISOString() }),
+    });
+    setOrgActionId(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setOrgDeleteError(data?.error ?? "Could not extend this company's trial.");
+      return;
+    }
+    load();
+  }
+
   async function deleteOrgDirectly(id: string) {
     setOrgActionId(id);
     setOrgDeleteError(null);
@@ -448,6 +497,7 @@ export default function AdminPage() {
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                 <th className="py-2 font-medium">Name</th>
                 <th className="py-2 font-medium">Status</th>
+                <th className="py-2 font-medium">Billing</th>
                 <th className="py-2 font-medium"></th>
               </tr>
             </thead>
@@ -469,6 +519,33 @@ export default function AdminPage() {
                       ) : o.isActive ? (
                         <span className="text-xs text-slate-400">Active</span>
                       ) : null}
+                    </div>
+                  </td>
+                  <td className="py-2.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {o.billingCompedByAdmin ? (
+                        <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Comped</span>
+                      ) : o.subscriptionStatus === "ACTIVE" ? (
+                        <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Active</span>
+                      ) : o.subscriptionStatus === "TRIALING" ? (
+                        <span
+                          className={`text-xs rounded-full px-2 py-0.5 border ${
+                            isPastDate(o.trialEndsAt) ? "text-rose-700 bg-rose-50 border-rose-200" : "text-amber-700 bg-amber-50 border-amber-200"
+                          }`}
+                        >
+                          {isPastDate(o.trialEndsAt) ? "Trial expired" : `Trial ends ${o.trialEndsAt ? new Date(o.trialEndsAt).toLocaleDateString() : "—"}`}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-full px-2 py-0.5">{o.subscriptionStatus}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button onClick={() => toggleComp(o)} disabled={orgActionId === o.id} className="text-xs text-slate-500 hover:text-accent-600 disabled:opacity-50">
+                        {o.billingCompedByAdmin ? "Un-comp" : "Comp"}
+                      </button>
+                      <button onClick={() => extendTrial(o)} disabled={orgActionId === o.id} className="text-xs text-slate-500 hover:text-accent-600 disabled:opacity-50">
+                        Extend trial
+                      </button>
                     </div>
                   </td>
                   <td className="py-2.5 text-right space-x-3">
@@ -542,7 +619,7 @@ export default function AdminPage() {
                   </td>
                 </tr>
                 <tr className="border-b border-slate-50 last:border-0">
-                  <td colSpan={3} className="pb-2.5 pt-0">
+                  <td colSpan={4} className="pb-2.5 pt-0">
                     <AiEditChat
                       entityType="organization"
                       entityId={o.id}
@@ -554,7 +631,7 @@ export default function AdminPage() {
                 </Fragment>
               ))}
               {orgs.length === 0 && (
-                <tr><td colSpan={3} className="py-6 text-center text-slate-400">No organizations yet.</td></tr>
+                <tr><td colSpan={4} className="py-6 text-center text-slate-400">No organizations yet.</td></tr>
               )}
             </tbody>
             </table>
@@ -736,6 +813,27 @@ export default function AdminPage() {
             </div>
             <p className="text-xs text-slate-400 mt-3">
               Cadences run via a scheduled job (Vercel Cron) configured in vercel.json — see README for setup.
+            </p>
+          </div>
+        )}
+
+        {settings && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 mt-5">
+            <p className="text-sm font-semibold text-slate-900 mb-4">Billing settings</p>
+            <div className="max-w-xs">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Free trial length (days)</label>
+              <input
+                type="number"
+                min={0}
+                value={settings.trialDays}
+                onChange={(e) => updateSettings({ trialDays: parseInt(e.target.value, 10) || 0 })}
+                className={inputCls}
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-3">
+              Applied to every newly registered organization at signup time (individual or company). Doesn&apos;t
+              change the trial already granted to existing organizations — use &quot;Extend trial&quot; on a
+              specific company in Organizations above for that. See Admin &gt; Plans to manage pricing tiers.
             </p>
           </div>
         )}

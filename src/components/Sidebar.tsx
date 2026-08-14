@@ -22,6 +22,7 @@ import {
   LayoutTemplate,
   Zap,
   Plug,
+  CreditCard,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import LogoutButton from "./LogoutButton";
@@ -109,6 +110,9 @@ export default function Sidebar({
           {user?.role === "SUPER_USER" && (
             <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>
           )}
+          {user?.role === "SUPER_USER" && (
+            <NavLink href="/billing" icon={<CreditCard size={17} />} pathname={pathname}>Billing</NavLink>
+          )}
           {(user?.role === "SUPER_USER" || user?.role === "ADMIN") && (
             <NavLink href="/vendor-evaluation" icon={<FileSearch size={17} />} pathname={pathname}>Vendor Evaluation</NavLink>
           )}
@@ -129,6 +133,7 @@ export default function Sidebar({
           // actually lives, so it needs to be easy to find, not the last item in a list.
           <NavSection label="Account Management">
             <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Users & Companies</NavLink>
+            <NavLink href="/admin/plans" icon={<CreditCard size={17} />} pathname={pathname}>Plans</NavLink>
           </NavSection>
         )}
       </nav>

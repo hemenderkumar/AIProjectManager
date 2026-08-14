@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { requireRole, hashPassword } from "@/lib/auth";
 import { generatePlaceholderPasswordHash, sendAccountSetupEmail } from "@/lib/passwordReset";
+import { syncSeatQuantity } from "@/lib/billing";
 
 export async function GET() {
   const admin = await requireRole("ADMIN");
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       organizationId: body.organizationId || null,
     })
     .returning({ id: users.id, name: users.name, email: users.email, role: users.role, organizationId: users.organizationId });
+  if (created.organizationId) syncSeatQuantity(created.organizationId).catch(() => {});
 
   if (!body.password) {
     const { emailed, link } = await sendAccountSetupEmail(created, req.nextUrl.origin);

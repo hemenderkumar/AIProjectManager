@@ -5,6 +5,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { requireRole, hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { generatePlaceholderPasswordHash, sendAccountSetupEmail } from "@/lib/passwordReset";
+import { syncSeatQuantity } from "@/lib/billing";
 
 // Roles a SUPER_USER is allowed to hand out to their own teammates. Deliberately excludes
 // ADMIN (platform-wide) and SUPER_USER (account-owner tier) — only a Executa administrator
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
     organizationId: user.organizationId,
     detail: `${user.name} invited ${created.name} (${created.email}) as ${created.role}.`,
   });
+  syncSeatQuantity(user.organizationId).catch(() => {});
 
   if (!body.password) {
     const { emailed, link } = await sendAccountSetupEmail(created, req.nextUrl.origin);

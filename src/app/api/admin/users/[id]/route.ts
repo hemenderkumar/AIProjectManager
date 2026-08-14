@@ -4,6 +4,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole, hashPassword } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { syncSeatQuantity } from "@/lib/billing";
 
 export async function PATCH(
   req: NextRequest,
@@ -48,6 +49,7 @@ export async function DELETE(
   const { id } = await params;
   const [existing] = await db.select({ name: users.name, organizationId: users.organizationId }).from(users).where(eq(users.id, id));
   await db.delete(users).where(eq(users.id, id));
+  if (existing?.organizationId) syncSeatQuantity(existing.organizationId).catch(() => {});
   await logAudit({
     actor: admin, action: "user.deleted", entityType: "user", entityId: id,
     organizationId: existing?.organizationId ?? null, detail: `${admin.name} deleted user "${existing?.name ?? id}".`,

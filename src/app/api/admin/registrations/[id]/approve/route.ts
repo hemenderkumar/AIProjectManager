@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/email";
+import { trialEndDate } from "@/lib/billing";
 
 export async function POST(
   _req: NextRequest,
@@ -57,7 +58,7 @@ export async function POST(
   // other user. COMPANY_OWNER: a real named organization, mirroring the existing "New Company"
   // admin flow (org + its first SUPER_USER owner, created together).
   const orgName = request.type === "COMPANY_OWNER" ? request.companyName! : `${request.name} (Individual)`;
-  const [org] = await db.insert(organizations).values({ name: orgName }).returning();
+  const [org] = await db.insert(organizations).values({ name: orgName, trialEndsAt: await trialEndDate() }).returning();
 
   const [createdUser] = await db
     .insert(users)

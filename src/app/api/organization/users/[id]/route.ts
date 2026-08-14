@@ -4,6 +4,7 @@ import { users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { syncSeatQuantity } from "@/lib/billing";
 
 const ASSIGNABLE_ROLES = ["PM", "CONTRIBUTOR", "VIEWER"] as const;
 
@@ -74,6 +75,7 @@ export async function DELETE(
   }
 
   await db.delete(users).where(and(eq(users.id, id), eq(users.organizationId, actor.organizationId)));
+  syncSeatQuantity(actor.organizationId).catch(() => {});
 
   await logAudit({
     actor, action: "user.deleted", entityType: "user", entityId: id,

@@ -591,6 +591,45 @@ export const milestones = pgTable("milestones", {
   sowId: text("sow_id").references((): AnyPgColumn => sows.id, { onDelete: "cascade" }),
 });
 
+// Billing lifecycle of an organization's subscription. TRIALING is the default for every
+// newly created org (see settings.trialDays); an org stays effectively "unblocked" while
+// TRIALING and trialEndsAt is still in the future, or once ACTIVE via Stripe or an admin
+// comp (organizations.billingCompedByAdmin) — see isOrgBillingBlocked() in lib/billing.ts.
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "TRIALING",
+  "ACTIVE",
+  "PAST_DUE",
+  "CANCELED",
+]);
+
+// A purchasable tier (e.g. "Starter", "Pro", "Enterprise"), admin-managed from
+// Admin > Plans rather than hardcoded — so pricing/limits can change without a deploy.
+// stripePriceId is null until an admin creates the matching Product/Price in the Stripe
+// Dashboard and pastes the id in; a plan without one can't be subscribed to yet (still fine
+// to show as "coming soon"). projectLimit/seatLimit are soft caps read by the UI to nudge
+// upgrades — null means unlimited. Actual entitlement enforcement is just the trial/billing
+// gate (isOrgBillingBlocked); limits here are informational, not hard-enforced per-object
+// quotas, to avoid a second, harder-to-reason-about gating system on top of the first.
+export const plans = pgTable("plans", {
+  id: cuid(),
+  name: text("name").notNull(),
+  description: text("description"),
+  stripePriceId: text("stripe_price_id"),
+  priceCents: integer("price_cents"),
+  billingInterval: text("billing_interval").notNull().default("month"), // "month" | "year"
+  // "flat" = one price for the whole org, quantity 1 at checkout. "per_seat" = price is
+  // per user; checkout quantity is the org's active user count (see billing.ts), and
+  // volume/bulk discounts for larger teams are configured on the Stripe Price itself
+  // (Stripe's native "Graduated"/"Volume" pricing schemes) -- nothing extra to build here,
+  // the checkout just needs to pass quantity instead of always 1.
+  billingModel: text("billing_model").notNull().default("flat"), // "flat" | "per_seat"
+  projectLimit: integer("project_limit"),
+  seatLimit: integer("seat_limit"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // A client company (tenant). Internal staff (your own team) have organizationId = null on
 // their user row and are not "in" any organization; every client-side user belongs to
 // exactly one. Every project optionally belongs to one organization (the client it's for).
@@ -611,6 +650,22 @@ export const organizations = pgTable("organizations", {
   // projects/users/history the way DELETE does. Disabled companies still show in the admin
   // list (so they can be re-enabled) but are excluded from org-picker dropdowns elsewhere.
   isActive: boolean("is_active").notNull().default(true),
+
+  // Billing. Stamped at org-creation time from settings.trialDays (see the three insert sites:
+  // /api/auth/register, /api/admin/registrations/[id]/approve, /api/admin/organizations) --
+  // every org, individual or company, gets a trial the same way. isOrgBillingBlocked() in
+  // lib/billing.ts is the single source of truth for "is this org locked out"; everything else
+  // here just feeds that decision.
+  trialEndsAt: timestamp("trial_ends_at"),
+  subscriptionStatus: subscriptionStatusEnum("subscription_status").notNull().default("TRIALING"),
+  planId: text("plan_id").references(() => plans.id, { onDelete: "set null" }),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  // Admin manual override ("hard lock but can be unlocked by admin") -- independent of Stripe.
+  // isOrgBillingBlocked() treats this the same as a real ACTIVE subscription. Kept as its own
+  // flag (rather than just setting subscriptionStatus="ACTIVE") so the admin UI can still show
+  // "(comped)" and distinguish a real payer from a manual grant.
+  billingCompedByAdmin: boolean("billing_comped_by_admin").notNull().default(false),
 });
 
 // A department/business unit within one client organization (e.g. "Finance", "Operations").
@@ -923,6 +978,9 @@ export const settings = pgTable("settings", {
   weeklyReportCadence: reportCadenceEnum("weekly_report_cadence").notNull().default("WEEKLY"),
   steeringCadence: reportCadenceEnum("steering_cadence").notNull().default("MONTHLY"),
   avatarVoiceGender: text("avatar_voice_gender").notNull().default("female"),
+  // Free trial length applied to every newly created organization -- see the column comment
+  // on organizations.trialEndsAt. Admin-editable from Admin > Automation settings.
+  trialDays: integer("trial_days").notNull().default(14),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
