@@ -8,6 +8,7 @@ type Demand = {
   id: string;
   title: string;
   description: string;
+  expectedOutcome: string | null;
   requestedByName: string;
   requestedByEmail: string;
   status: string;
@@ -109,6 +110,11 @@ export default function DemandPageClient() {
                 {open && (
                   <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
                     <p className="text-sm text-slate-600">{d.description}</p>
+                    {d.expectedOutcome && (
+                      <p className="text-sm text-slate-500">
+                        <span className="font-medium text-slate-600">Expected outcome:</span> {d.expectedOutcome}
+                      </p>
+                    )}
 
                     {d.status === "SUBMITTED" && <TriageForm onSubmit={(notes) => act(d.id, { action: "triage", notes })} />}
                     {d.status === "TRIAGED" && <ScoreForm onSubmit={(v) => act(d.id, { action: "score", ...v })} />}

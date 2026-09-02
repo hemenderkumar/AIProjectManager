@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const title = String(body.title ?? "").trim();
   const description = String(body.description ?? "").trim();
+  const expectedOutcome = String(body.expectedOutcome ?? "").trim() || null;
   const requestedByName = String(body.requestedByName ?? "").trim();
   const requestedByEmail = String(body.requestedByEmail ?? "").trim().toLowerCase();
 
@@ -22,6 +23,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Title, description, your name, and email are all required" }, { status: 400 });
   }
 
-  const created = await submitDemand({ title, description, requestedByName, requestedByEmail, type: body.type });
+  const created = await submitDemand({ title, description, expectedOutcome, requestedByName, requestedByEmail, type: body.type });
   return NextResponse.json(created, { status: 201 });
 }

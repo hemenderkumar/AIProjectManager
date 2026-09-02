@@ -7,12 +7,13 @@ type DemandType = "STRATEGIC" | "RUN_THE_BUSINESS" | "COMPLIANCE" | "ENHANCEMENT
 
 // Public — no login required, same "anyone can submit, nothing happens until reviewed"
 // principle as registrationRequests.
-export async function submitDemand(data: { title: string; description: string; requestedByName: string; requestedByEmail: string; organizationId?: string | null; type?: DemandType }) {
+export async function submitDemand(data: { title: string; description: string; expectedOutcome?: string | null; requestedByName: string; requestedByEmail: string; organizationId?: string | null; type?: DemandType }) {
   const [created] = await db
     .insert(demandRequests)
     .values({
       title: data.title,
       description: data.description,
+      expectedOutcome: data.expectedOutcome ?? null,
       requestedByName: data.requestedByName,
       requestedByEmail: data.requestedByEmail,
       organizationId: data.organizationId ?? null,
@@ -82,7 +83,7 @@ export async function convertDemand(user: SessionUser, id: string) {
     .values({
       name: demand.title,
       organizationId: demand.organizationId,
-      description: demand.description,
+      description: demand.expectedOutcome ? `${demand.description}\n\nExpected outcome: ${demand.expectedOutcome}` : demand.description,
       problemStatement: demand.description,
       stage: "INCEPTION",
       priority: (demand.urgencyScore ?? 0) >= 4 ? "HIGH" : "MEDIUM",

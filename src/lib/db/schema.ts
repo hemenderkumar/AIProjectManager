@@ -1800,6 +1800,10 @@ export const demandRequests = pgTable("demand_requests", {
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull(),
+  // Optional -- kept separate from `description` (the problem statement) so the submitter can
+  // articulate success criteria without cramming it into one field. Gives whoever triages (and
+  // any future AI scoring) a cleaner signal than parsing it back out of a single paragraph.
+  expectedOutcome: text("expected_outcome"),
   requestedByName: text("requested_by_name").notNull(),
   requestedByEmail: text("requested_by_email").notNull(),
   divisionId: text("division_id").references(() => divisions.id, { onDelete: "set null" }),
