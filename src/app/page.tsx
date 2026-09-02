@@ -26,23 +26,23 @@ import {
 const FAQS = [
   {
     q: "How is Executa different from Asana, Monday, or Jira?",
-    a: "Those tools manage tasks once a project already exists. Executa manages the decision to start one, too — every idea passes through AI-assisted feasibility, architecture, and resourcing gates before it becomes a funded project, and the AI drafts the charter, RFP, SOW, and delivery plan instead of you starting from a blank template.",
+    a: "Those tools manage tasks once a project already exists. Executa manages the decision to start one, too — AI-assisted gates before funding, then AI-drafted charters, RFPs, SOWs, and delivery plans instead of a blank template.",
   },
   {
     q: "Do I need a company account, or can I sign up individually?",
-    a: "Individuals get instant, self-service access — no waiting on approval. Company accounts (with multiple teammates, divisions, and shared rate cards) are reviewed by an admin before access is granted, since they involve inviting other people into your organization's workspace.",
+    a: "Individuals get instant, self-service access. Company accounts (multiple teammates, shared rate cards) are reviewed by an admin first, since they invite other people into your workspace.",
   },
   {
     q: "What happens when my trial ends?",
-    a: "You'll see a clear countdown in the app before it happens. Once the trial ends without an active plan, the account is locked (your data is preserved, nothing is deleted) until you subscribe to a plan or an admin grants an extension.",
+    a: "You'll see a countdown in the app first. Once it ends without an active plan, the account locks — your data is preserved, nothing is deleted — until you subscribe or an admin grants an extension.",
   },
   {
     q: "Can I cancel or change plans later?",
-    a: "Yes — billing is self-service through Stripe's customer portal, reachable from Billing inside the app. Upgrades, downgrades, and cancellations take effect through your normal billing cycle.",
+    a: "Yes — billing is self-service through Stripe's customer portal, reachable from Billing inside the app.",
   },
   {
     q: "Is my data secure?",
-    a: "Every action is scoped to your organization and enforced at the API layer, sensitive actions require step-up TOTP verification for finance and platform roles, and every approval, deletion, and rate change is written to an immutable audit log. See Security & compliance below for the full picture.",
+    a: "Every action is scoped to your organization at the API layer, step-up TOTP is required for sensitive finance/platform actions, and every approval, deletion, and rate change is written to an immutable audit log. See Security & compliance below.",
   },
 ];
 
@@ -180,6 +180,39 @@ export default async function HomePage() {
       </Reveal>
 
       <Reveal>
+      <section className="max-w-5xl mx-auto px-6 py-14 border-b border-slate-200">
+        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">Not just another task tracker</p>
+        <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-8 max-w-2xl">
+          Asana and Monday manage tasks once a project already exists. Executa manages the decision
+          to start one — and everything after.
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+          <div>
+            <p className="text-sm font-semibold text-slate-900 mb-1.5">Ideation gates, not a blank board</p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Every idea clears feasibility, architecture, and resourcing gates before it becomes a
+              funded project.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900 mb-1.5">AI drafting, not a blank template</p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Charters, RFPs, SOWs, and delivery plans are AI-drafted from a one-line idea, not built
+              field by field.
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900 mb-1.5">RFP/SOW workflow, built in</p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Evaluate vendors and track deliverables against a Statement of Work without exporting
+              to a separate tool.
+            </p>
+          </div>
+        </div>
+      </section>
+      </Reveal>
+
+      <Reveal>
         <section className="max-w-5xl mx-auto px-6 py-16">
           <HomeDemoCarousel />
         </section>
@@ -219,81 +252,44 @@ export default async function HomePage() {
         <div className="mesh-blob mesh-blob--b top-0 right-1/4 h-80 w-80 bg-emerald-200 opacity-40" />
         <div className="relative z-10 max-w-5xl mx-auto px-6 py-16">
           <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">What you get</p>
-          <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything a boutique consultancy needs to run its own delivery.</h2>
+          <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10">Everything your team needs to run its own delivery — from a PMO to a full consultancy.</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <BentoCard
               hue="violet"
               icon={<Rocket size={18} />}
               title="Full project lifecycle"
-              description="Ideation, charters, sprints or waterfall phases, tasks, risks, budgets, and ongoing support — one tracker from first idea to steady-state."
+              description="Ideation through steady-state support, all in one tracker."
             />
             <BentoCard
               hue="blue"
               icon={<Sparkles size={18} />}
               title="An AI project manager"
-              description="Drafts charters and plans, estimates effort, suggests assignments, briefs you out loud, and answers questions about your whole portfolio."
+              description="Drafts plans, estimates effort, and answers questions about your portfolio."
             />
             <BentoCard
               hue="cyan"
               icon={<FileSearch size={18} />}
               title="Vendor evaluation, built in"
-              description="Draft an RFP from a project charter, invite vendors with a no-login link, and let AI score responses against your own weighted rubric."
+              description="Draft an RFP, invite vendors with a no-login link, and let AI score responses."
             />
             <BentoCard
               hue="emerald"
               icon={<FileBarChart size={18} />}
               title="Reports that look the part"
-              description="Branded, board-ready PDF and PowerPoint exports for status reports, steering committee decks, and executive one-pagers — generated on demand."
+              description="Branded PDF and PowerPoint exports, generated on demand."
             />
             <BentoCard
               hue="amber"
               icon={<Inbox size={18} />}
               title="Demand intake, triaged"
-              description="A public front door for raw project requests — AI scores business value and urgency before anything competes for a delivery slot."
+              description="A public front door for project requests, AI-scored before they compete for a slot."
             />
             <BentoCard
               hue="rose"
               icon={<ShieldCheck size={18} />}
               title="Governed, not just tracked"
-              description="Role-based access, step-up MFA on sensitive actions, and an immutable audit log — built for teams handling client data and vendor spend."
+              description="Role-based access, step-up MFA, and an immutable audit log."
             />
-          </div>
-        </div>
-      </section>
-      </Reveal>
-
-      <Reveal>
-      <section className="max-w-5xl mx-auto px-6 py-16 border-t border-slate-200">
-        <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">Not just another task tracker</p>
-        <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-4 max-w-2xl">
-          Asana and Monday manage tasks once a project already exists. Executa manages the decision
-          to start one — and everything after.
-        </h2>
-        <p className="text-sm text-slate-600 max-w-2xl mb-10">
-          That&apos;s the actual wedge: three things a generic task tracker was never built to do.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-          <div>
-            <p className="text-sm font-semibold text-slate-900 mb-1.5">Ideation gates, not a blank board</p>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Every idea passes through feasibility, architecture, and resourcing gates before it
-              becomes a funded project — so half-baked ideas don&apos;t quietly turn into
-              half-finished projects.
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-900 mb-1.5">AI drafting, not a blank template</p>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Charters, RFPs, SOWs, and delivery plans are AI-drafted from a one-line idea — Waterfall,
-              Scrum, or hybrid — not built one field at a time from an empty template.
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-900 mb-1.5">RFP/SOW workflow, built in</p>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Evaluate vendors, generate a Statement of Work, and track deliverables against it —
-              without exporting anything to a separate procurement tool.
-            </p>
           </div>
         </div>
       </section>
@@ -312,42 +308,30 @@ export default async function HomePage() {
             A floating AI PM is available on every screen, with voice, and it&apos;s grounded in your
             actual portfolio data — not a generic chatbot bolted on top.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <AiCapabilityCard
               hue="violet"
               icon={<Bot size={16} />}
               title="Drafts, not blank pages"
-              description="Charters, RFPs, SOWs, delivery plans, risk logs, and status narratives generated from a one-line prompt, editable before anything is saved."
+              description="Charters, RFPs, SOWs, and plans from a one-line prompt — editable before anything saves."
             />
             <AiCapabilityCard
               hue="blue"
               icon={<TrendingUp size={16} />}
               title="Estimates & recommends"
-              description="Effort estimation, resource assignment suggestions, technical architecture recommendations, and delivery/pricing guidance sourced from your own rate cards."
-            />
-            <AiCapabilityCard
-              hue="cyan"
-              icon={<FileSearch size={16} />}
-              title="Learns from your portfolio"
-              description="Vendor scoring, SOW-vs-actuals drift detection, and cross-project pattern learning — grounded in what actually happened on past projects, not generic advice."
+              description="Effort, assignments, and delivery pricing — sourced from your own rate cards."
             />
             <AiCapabilityCard
               hue="emerald"
               icon={<Sparkles size={16} />}
               title="Ask it anything, out loud"
-              description={"Natural-language Q&A across the whole portfolio or a single project, with a spoken briefing and captions — ask \"what needs my attention?\" and get a real answer."}
+              description={"\"What needs my attention?\" — a real answer, spoken, across your whole portfolio."}
             />
             <AiCapabilityCard
               hue="amber"
               icon={<ShieldCheck size={16} />}
               title="Gated, not unchecked"
-              description="AI-proposed edits go through a review-then-apply flow — you see the diff before anything changes, and every change lands in the audit log."
-            />
-            <AiCapabilityCard
-              hue="rose"
-              icon={<Rocket size={16} />}
-              title="Roadmap-aware"
-              description="Groups ideas into quick-wins vs. long-term investments, suggests prioritization, and reconciles conflicts when a roadmap is revised."
+              description="Every AI edit is a diff you approve first, logged either way."
             />
           </div>
         </div>
@@ -411,6 +395,11 @@ export default async function HomePage() {
             <SecurityRow hue="cyan" icon={<ScrollText size={16} />} title="Immutable audit log" description="Every approval, deletion, and rate change is recorded with before/after values and who made it." />
             <SecurityRow hue="emerald" icon={<Lock size={16} />} title="Self-service data control" description="Export or request deletion of your organization's data at any time, without waiting on support." />
           </div>
+          <p className="text-xs text-slate-400 mt-10 max-w-2xl">
+            AI features run on Anthropic&apos;s API — your project data is sent only to generate the response you asked
+            for, never to train models. Connections are encrypted end to end. Full details in our{" "}
+            <Link href="/privacy" className="text-accent-600 hover:text-accent-700 font-medium">Privacy Policy</Link>.
+          </p>
         </div>
       </section>
       </Reveal>

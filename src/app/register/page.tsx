@@ -61,7 +61,9 @@ export default function RegisterPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm font-semibold text-slate-900 mb-1">Request access to Executa</p>
+            <p className="text-sm font-semibold text-slate-900 mb-1">
+              {type === "INDIVIDUAL" ? "Create your account" : "Request access to Executa"}
+            </p>
             <p className="text-xs text-slate-400 mb-4">
               {type === "INDIVIDUAL"
                 ? "You'll be able to log in right away — an admin reviews new individual accounts afterward, but it won't hold up your access."
@@ -143,7 +145,7 @@ export default function RegisterPage() {
                 disabled={loading}
                 className="w-full px-4 py-2 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 transition-colors text-sm font-medium hover:bg-accent-700 disabled:opacity-50"
               >
-                {loading ? "Submitting..." : "Request access"}
+                {loading ? "Submitting..." : type === "INDIVIDUAL" ? "Create account" : "Request access"}
               </button>
             </form>
             <p className="text-xs text-slate-400 mt-4">

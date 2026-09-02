@@ -78,8 +78,8 @@ function buildDraftInputText(rfp: RfpRow, project: ProjectRow | null): string {
 export async function draftRfpContent(rfp: RfpRow, project: ProjectRow | null): Promise<string> {
   const inputText = buildDraftInputText(rfp, project);
   const system =
-    "You are a procurement specialist drafting a professional Request for Proposal (RFP) document for a boutique " +
-    "IT consultancy's client. Write clear, well-structured prose organized under section headings — start each " +
+    "You are a procurement specialist drafting a professional Request for Proposal (RFP) document on behalf of " +
+    "the organization running this project. Write clear, well-structured prose organized under section headings — start each " +
     "section with a markdown heading on its own line in the exact form '## Heading' (e.g. '## Background', " +
     "'## Scope of Work', '## Requirements', '## Timeline', '## Budget', '## Proposal Submission Instructions', " +
     "'## Evaluation Criteria'), so the document can be rendered with real section headings rather than one wall " +
