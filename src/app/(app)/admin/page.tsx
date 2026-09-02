@@ -2,7 +2,7 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign, KeyRound, Bug, BookOpen, Power } from "lucide-react";
+import { Plus, Trash2, Download, AlertTriangle, ScrollText, Activity, Check, X, UserPlus, DollarSign, KeyRound, Bug, BookOpen, Power, Mail } from "lucide-react";
 import RateCardSection from "@/components/RateCardSection";
 import AiEditChat from "@/components/project/AiEditChat";
 
@@ -58,6 +58,8 @@ export default function AdminPage() {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [regActionId, setRegActionId] = useState<string | null>(null);
   const [regError, setRegError] = useState<string | null>(null);
+  const [reminderSending, setReminderSending] = useState(false);
+  const [reminderStatus, setReminderStatus] = useState<string | null>(null);
 
   const [showCompanyForm, setShowCompanyForm] = useState(false);
   const [companyForm, setCompanyForm] = useState({ name: "", ownerName: "", ownerEmail: "", ownerPassword: "" });
@@ -109,6 +111,23 @@ export default function AdminPage() {
       return;
     }
     load();
+  }
+
+  async function sendPendingReminder() {
+    setReminderSending(true);
+    setReminderStatus(null);
+    const res = await fetch("/api/admin/registrations/remind", { method: "POST" });
+    setReminderSending(false);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setReminderStatus(data?.error ?? "Could not send the reminder.");
+      return;
+    }
+    setReminderStatus(
+      data.emailed > 0
+        ? `Sent one reminder covering ${data.pendingCount} pending request${data.pendingCount === 1 ? "" : "s"} to ${data.emailed} admin${data.emailed === 1 ? "" : "s"}.`
+        : "No email service is configured (or no admins to notify) — nothing was sent."
+    );
   }
 
   async function createCompany() {
@@ -384,6 +403,13 @@ export default function AdminPage() {
               <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <UserPlus size={16} className="text-accent-600" /> Pending Registrations ({pendingRegistrations.length})
               </p>
+              <button
+                onClick={sendPendingReminder}
+                disabled={reminderSending}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
+              >
+                <Mail size={13} /> {reminderSending ? "Sending..." : "Send reminder"}
+              </button>
             </div>
             <p className="text-xs text-slate-400 mb-3">
               Individuals are auto-provisioned and can already log in — they can&apos;t see
@@ -391,7 +417,10 @@ export default function AdminPage() {
               and catching anything that looks wrong, not a gate. Company-owner requests are
               still fully gated: nothing is created (no organization, no login) until you
               approve. Add anyone to specific projects from that project&apos;s Team access section.
+              A daily reminder email (one, covering everything pending) also goes out
+              automatically — use &quot;Send reminder&quot; to trigger it right now instead of waiting.
             </p>
+            {reminderStatus && <p className="text-xs text-slate-500 mb-3">{reminderStatus}</p>}
             {regError && <p className="text-xs text-rose-600 mb-3">{regError}</p>}
             <div className="space-y-2">
               {pendingRegistrations.map((r) => (
