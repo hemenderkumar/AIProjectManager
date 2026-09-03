@@ -16,6 +16,7 @@ import { getPortfolioSummary } from "@/lib/portfolio";
 import { computeInsights } from "@/lib/insights";
 import MyRateCard from "@/components/MyRateCard";
 import AiInsightsPanel from "@/components/AiInsightsPanel";
+import StartWizard from "@/components/StartWizard";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,14 @@ export default async function HomePage() {
       <Topbar title={`Welcome${user ? `, ${user.name.split(" ")[0]}` : ""}`} subtitle="What are you working on today?" />
       <div className="p-8">
         <MyRateCard />
+
+        <div className="max-w-2xl">
+          {/* Auto-open for anyone with nothing created yet (their real "first run"), and a
+              small manual trigger for everyone else -- same feature, different starting
+              visibility so it never gets in the way of someone who already knows which of
+              the buttons below they want. */}
+          <StartWizard autoOpen={summary.activeCount === 0} userName={user?.name ?? ""} userEmail={user?.email ?? ""} />
+        </div>
 
         {summary.activeCount > 0 && (
           <div className="max-w-2xl mb-5">
