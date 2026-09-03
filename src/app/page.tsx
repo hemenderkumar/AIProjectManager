@@ -8,6 +8,7 @@ import LoginCard from "@/components/LoginCard";
 import Reveal from "@/components/Reveal";
 import HomeDemoCarousel from "@/components/HomeDemoCarousel";
 import PublicIntakeTeaser from "@/components/PublicIntakeTeaser";
+import PublicAvatarAssistant from "@/components/PublicAvatarAssistant";
 import {
   Rocket,
   Sparkles,
@@ -467,6 +468,8 @@ export default async function HomePage() {
           </div>
         </div>
       </footer>
+
+      {!user && <PublicAvatarAssistant />}
     </div>
   );
 }
