@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Lightbulb, Inbox, Rocket, ArrowRight, Loader2 } from "lucide-react";
+import { PENDING_INTAKE_KEY } from "@/components/PublicIntakeTeaser";
 
 type TriageResult = {
   type: "IDEA" | "DEMAND" | "PROJECT";
@@ -41,6 +42,40 @@ export default function StartWizard({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<TriageResult | null>(null);
+
+  // Picks up a classification made on the logged-out homepage teaser (PublicIntakeTeaser),
+  // stashed in sessionStorage right before the visitor was sent to /register. If it's there,
+  // open straight to the confirm step with it pre-filled -- whatever they typed before signing
+  // up shouldn't have to be retyped. This has to be a post-mount effect, not a lazy useState
+  // initializer: this page is server-rendered (see home/page.tsx), sessionStorage doesn't exist
+  // during SSR, and seeding client-only state into the initial render would produce a hydration
+  // mismatch against the server-rendered HTML -- reading a browser-only API unavailable at SSR
+  // time is exactly the documented exception to "don't setState in an effect". Runs once; the
+  // key is consumed either way so a later visit to /home doesn't keep reopening it.
+  useEffect(() => {
+    let stashed: string | null = null;
+    try {
+      stashed = sessionStorage.getItem(PENDING_INTAKE_KEY);
+      if (stashed) sessionStorage.removeItem(PENDING_INTAKE_KEY);
+    } catch {
+      return;
+    }
+    if (!stashed) return;
+    try {
+      const parsed = JSON.parse(stashed) as TriageResult;
+      if (parsed?.type && parsed?.title) {
+        // Syncing from sessionStorage (browser-only, unavailable at SSR) into state here;
+        // can't be a lazy initializer without risking a hydration mismatch against the
+        // server-rendered HTML, so this is the documented exception to the rule below.
+        /* eslint-disable react-hooks/set-state-in-effect */
+        setResult(parsed);
+        setOpen(true);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
+    } catch {
+      // malformed stash -- ignore rather than break the page.
+    }
+  }, []);
 
   async function triage() {
     if (!text.trim()) return;

@@ -7,6 +7,7 @@ import { formatPlanPrice } from "@/lib/planFormat";
 import LoginCard from "@/components/LoginCard";
 import Reveal from "@/components/Reveal";
 import HomeDemoCarousel from "@/components/HomeDemoCarousel";
+import PublicIntakeTeaser from "@/components/PublicIntakeTeaser";
 import {
   Rocket,
   Sparkles,
@@ -167,6 +168,20 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {!user && (
+        <Reveal>
+          <section className="relative overflow-hidden bg-slate-50 border-y border-slate-200">
+            <div className="relative z-10 max-w-5xl mx-auto px-6 py-14 text-center">
+              <p className="text-xs font-medium tracking-widest uppercase text-accent-600 mb-2">See it work</p>
+              <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-8 max-w-xl mx-auto">
+                Don&apos;t take our word for it — describe something on your mind and watch Executa sort it out.
+              </h2>
+              <PublicIntakeTeaser />
+            </div>
+          </section>
+        </Reveal>
+      )}
 
       <Reveal>
         <section className="border-y border-slate-200 bg-white">

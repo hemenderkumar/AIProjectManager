@@ -6,7 +6,7 @@ import { activityEvents } from "./db/schema";
  * PAGE_VIEW/ACTION rows get here). Never throws — recording a visit should never block
  * the page/login/request from working. */
 export async function logActivity(opts: {
-  type: "LOGIN" | "PUBLIC_VISIT" | "PAGE_VIEW" | "ACTION";
+  type: "LOGIN" | "PUBLIC_VISIT" | "PAGE_VIEW" | "ACTION" | "PUBLIC_TRIAGE";
   userId?: string | null;
   userName?: string | null;
   path?: string;
