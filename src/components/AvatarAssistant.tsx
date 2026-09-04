@@ -2,7 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Avatar from "./Avatar";
-import { Send, X, Sparkles, Volume2, VolumeX, Square, FolderPlus, FileSearch, ListChecks } from "lucide-react";
+import { Send, X, Sparkles, Volume2, VolumeX, Square, FolderPlus, FileSearch, ListChecks, Webhook, Key, Check, Copy } from "lucide-react";
+
+type WebhookAction = { type: "create_webhook"; url: string | null; events: string[] };
+type ApiKeyAction = { type: "create_api_key"; name: string; scopes: string[] };
+type ChatAction = WebhookAction | ApiKeyAction;
 
 const GREETING = "Hi, I'm your AI PM. What are you looking to do today?";
 // Sticks for the length of the browser tab's session (cleared when the tab closes, not
@@ -30,6 +34,15 @@ export default function AvatarAssistant() {
   // loud on every fresh browser tab, which read as jarring in a shared office/meeting setting.
   const [muted, setMuted] = useState(true);
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+
+  // A webhook/API key the AI PM proposed from the last answer, awaiting the user's confirm —
+  // never created automatically. Cleared on every new question so a stale proposal can't get
+  // confirmed after the conversation has moved on.
+  const [action, setAction] = useState<ChatAction | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [keyCopied, setKeyCopied] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -124,6 +137,9 @@ export default function AvatarAssistant() {
   async function ask(q: string) {
     if (!q.trim()) return;
     setLoading(true);
+    setAction(null);
+    setActionError(null);
+    setCreatedKey(null);
     try {
       const endpoint = activeProjectId ? "/api/ai/project-chat" : "/api/ai/ask";
       const body = activeProjectId ? { projectId: activeProjectId, question: q } : { question: q };
@@ -134,9 +150,58 @@ export default function AvatarAssistant() {
       });
       const data = await res.json();
       speak(data.answer ?? data.error ?? "I couldn't find an answer for that.");
+      if (data.action?.type === "create_webhook" || data.action?.type === "create_api_key") {
+        setAction(data.action);
+      }
     } finally {
       setLoading(false);
       setQuestion("");
+    }
+  }
+
+  // Confirming hits the exact same routes the Settings > Integrations forms use — same
+  // validation, same requireRole("SUPER_USER") gate — so nothing about "created via chat" skips
+  // a check a manual creation would have gone through.
+  async function confirmAction() {
+    if (!action) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      if (action.type === "create_webhook") {
+        if (!action.url || !action.events.length) {
+          setActionError("I need both a destination URL and at least one event before I can create this.");
+          return;
+        }
+        const res = await fetch("/api/webhooks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: action.url, events: action.events }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setActionError(data?.error || "Couldn't create that webhook.");
+          return;
+        }
+        setAction(null);
+        setCaption(`Done — webhook created for ${action.events.join(", ")}.`);
+      } else {
+        const res = await fetch("/api/api-keys", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: action.name, scopes: action.scopes }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setActionError(data?.error || "Couldn't create that API key.");
+          return;
+        }
+        setAction(null);
+        setCreatedKey(data.rawKey);
+      }
+    } catch {
+      setActionError("Couldn't reach the server. Check your connection and try again.");
+    } finally {
+      setActionBusy(false);
     }
   }
 
@@ -211,6 +276,56 @@ export default function AvatarAssistant() {
       <div className="px-4 py-3 text-sm text-slate-700 leading-relaxed max-h-48 overflow-y-auto scrollbar-thin">
         {caption}
       </div>
+
+      {action && (
+        <div className="mx-4 mb-3 border border-accent-200 bg-accent-50/60 rounded-lg p-3 space-y-2">
+          {action.type === "create_webhook" ? (
+            <>
+              <p className="text-xs font-semibold text-accent-900 flex items-center gap-1.5"><Webhook size={13} /> Create this webhook?</p>
+              <p className="text-xs text-slate-600 break-all">{action.url || "(no URL given — tell me the destination first)"}</p>
+              <p className="text-xs text-slate-500">{action.events.length ? action.events.join(", ") : "(no events matched — describe what should trigger it)"}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-semibold text-accent-900 flex items-center gap-1.5"><Key size={13} /> Create this API key?</p>
+              <p className="text-xs text-slate-600">{action.name || "(untitled key)"}</p>
+              <p className="text-xs text-slate-500">scopes: {action.scopes.join(", ")}</p>
+            </>
+          )}
+          {actionError && <p className="text-xs text-rose-600">{actionError}</p>}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={confirmAction}
+              disabled={actionBusy}
+              className="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-accent-600 text-white hover:bg-accent-700 disabled:opacity-50"
+            >
+              {actionBusy ? "Creating…" : "Confirm & create"}
+            </button>
+            <button onClick={() => setAction(null)} className="text-xs text-slate-500 hover:text-slate-700">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {createdKey && (
+        <div className="mx-4 mb-3 border border-amber-200 bg-amber-50 rounded-lg p-3 space-y-1.5">
+          <p className="text-xs font-semibold text-amber-900">API key created — copy it now, it won&apos;t be shown again</p>
+          <div className="flex items-center gap-2">
+            <code className="text-xs text-amber-800 flex-1 truncate">{createdKey}</code>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(createdKey);
+                setKeyCopied(true);
+                setTimeout(() => setKeyCopied(false), 1500);
+              }}
+              className="text-amber-700 hover:text-amber-900 shrink-0"
+            >
+              {keyCopied ? <Check size={14} /> : <Copy size={14} />}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 pb-3 flex gap-2 flex-wrap">
         {activeProjectId ? (

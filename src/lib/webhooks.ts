@@ -17,6 +17,22 @@ export type WebhookEvent =
   | "IDEA_CREATED"
   | "IDEA_STAGE_CHANGED";
 
+// Runtime list mirroring the union above -- server-only code (e.g. the AI PM's webhook-action
+// validator) needs an actual array to check membership against, not just a compile-time type.
+export const WEBHOOK_EVENTS: WebhookEvent[] = [
+  "TASK_STATUS_CHANGED",
+  "PROJECT_STAGE_CHANGED",
+  "DELIVERABLE_APPROVED",
+  "RISK_CREATED",
+  "INCIDENT_CREATED",
+  "INCIDENT_STATUS_CHANGED",
+  "INCIDENT_ESCALATED",
+  "DEMAND_REQUEST_CREATED",
+  "DEMAND_REQUEST_STATUS_CHANGED",
+  "IDEA_CREATED",
+  "IDEA_STAGE_CHANGED",
+];
+
 export async function listWebhooks(user: SessionUser) {
   return db.select().from(webhooks).where(user.organizationId ? eq(webhooks.organizationId, user.organizationId) : isNull(webhooks.organizationId));
 }

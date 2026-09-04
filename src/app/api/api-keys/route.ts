@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
   if (!body.name) return NextResponse.json({ error: "name is required" }, { status: 400 });
-  const created = await createApiKey(user, body.name);
+  const scopes = Array.isArray(body.scopes) ? body.scopes.filter((s: unknown) => s === "read" || s === "write") : [];
+  const created = await createApiKey(user, body.name, scopes.length ? scopes : ["read"]);
   return NextResponse.json(created, { status: 201 });
 }

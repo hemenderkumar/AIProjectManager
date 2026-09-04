@@ -6,6 +6,7 @@ import { sows, deliverables } from "@/lib/db/schema";
 import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { summarizeProjectCore, summarizeSows, summarizeDeliverables } from "@/lib/projectContext";
+import { getCapabilitiesContext } from "@/lib/aiCapabilities";
 
 // A project-scoped "ask a question" endpoint — narrower than the portfolio-wide /api/ai/ask,
 // grounded ONLY in this one project's charter, tasks, risks, milestones, comms, SOWs, and
@@ -37,9 +38,15 @@ Deliverables:
 ${summarizeDeliverables(deliverableRows)}`;
 
   const system = `You are Executa's project assistant, answering a teammate's question about ONE specific
-project using ONLY the context below. If the answer genuinely isn't in this context, say so plainly rather
-than guessing or inventing numbers, dates, or names that aren't given. Keep the answer concise — a few
-sentences, or a short list if the question calls for one.
+project. Most questions should be answered ONLY from the project context below — if the answer genuinely
+isn't in there, say so plainly rather than guessing or inventing numbers, dates, or names that aren't
+given. Keep the answer concise — a few sentences, or a short list if the question calls for one.
+
+The one exception: if they ask a general "how do I..." question about Executa itself (not about this
+project's data) — e.g. how to connect another system, who can do something, where a feature lives — use
+the capability reference below instead, and answer plainly if their role doesn't allow it.
+
+${getCapabilitiesContext(user)}
 
 Project context:
 ${context}`;
