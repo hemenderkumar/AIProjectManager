@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Topbar from "@/components/Topbar";
-import { Inbox, Copy, Check, ChevronDown, ChevronUp, Rocket } from "lucide-react";
+import KpiCard from "@/components/KpiCard";
+import CategoryBar from "@/components/CategoryBar";
+import { Inbox, Copy, Check, ChevronDown, ChevronUp, Rocket, Search } from "lucide-react";
 
 type Demand = {
   id: string;
@@ -36,12 +38,23 @@ const STATUS_STYLES: Record<string, string> = {
 
 const inputCls = "w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
+// Backlog-progression order (matches demandStatusEnum in schema.ts), not alphabetical -- both
+// the filter dropdown and the status chart should read left-to-right as "further along."
+const STATUS_ORDER = ["SUBMITTED", "TRIAGED", "SCORED", "APPROVED", "DEFERRED", "REJECTED", "CONVERTED"];
+const TYPE_OPTIONS = ["STRATEGIC", "RUN_THE_BUSINESS", "COMPLIANCE", "ENHANCEMENT"];
+// Statuses that still need action -- everything else (REJECTED/CONVERTED, and DEFERRED is
+// arguably revisitable but treated as resolved-for-now) is out of the active backlog.
+const OPEN_STATUSES = new Set(["SUBMITTED", "TRIAGED", "SCORED"]);
+
 export default function DemandPageClient() {
   const router = useRouter();
   const [items, setItems] = useState<Demand[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
 
   function load() {
     fetch("/api/demand").then((r) => (r.ok ? r.json() : [])).then((rows) => setItems(Array.isArray(rows) ? rows : [])).finally(() => setLoading(false));
@@ -61,7 +74,32 @@ export default function DemandPageClient() {
     }
   }
 
-  const sorted = [...items].sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0));
+  // KPI/chart summary is computed off the FULL backlog, independent of the filters below --
+  // same relationship as /dashboard's KPI tiles vs. the "Needs Attention" table underneath
+  // them, so narrowing the list with a filter doesn't also shrink the health snapshot.
+  const summary = useMemo(() => {
+    const byStatus: Record<string, number> = {};
+    items.forEach((d) => (byStatus[d.status] = (byStatus[d.status] ?? 0) + 1));
+    const openInBacklog = items.filter((d) => OPEN_STATUSES.has(d.status)).length;
+    const readyToConvert = byStatus.APPROVED ?? 0;
+    const converted = byStatus.CONVERTED ?? 0;
+    const conversionRate = items.length === 0 ? 0 : Math.round((converted / items.length) * 100);
+    return { byStatus, openInBacklog, readyToConvert, converted, conversionRate, total: items.length };
+  }, [items]);
+
+  const statusChartData = STATUS_ORDER.map((s) => ({ label: s.replace(/_/g, " "), count: summary.byStatus[s] ?? 0 }));
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((d) => {
+      if (statusFilter !== "ALL" && d.status !== statusFilter) return false;
+      if (typeFilter !== "ALL" && d.type !== typeFilter) return false;
+      if (q && !`${d.title} ${d.requestedByName} ${d.requestedByEmail}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [items, statusFilter, typeFilter, search]);
+
+  const sorted = [...filtered].sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0));
   const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/demand-request` : "/demand-request";
 
   return (
@@ -71,6 +109,22 @@ export default function DemandPageClient() {
         subtitle="The front door — raw requests land here first, get triaged and scored, then only what's approved becomes a real Idea"
       />
       <div className="p-8 max-w-4xl space-y-4">
+        {!loading && items.length > 0 && (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              <KpiCard label="Open in Backlog" value={summary.openInBacklog} />
+              <KpiCard label="Awaiting Triage" value={summary.byStatus.SUBMITTED ?? 0} tone={(summary.byStatus.SUBMITTED ?? 0) > 0 ? "warn" : "default"} />
+              <KpiCard label="Ready to Convert" value={summary.readyToConvert} tone={summary.readyToConvert > 0 ? "good" : "default"} />
+              <KpiCard label="Converted to Projects" value={summary.converted} />
+              <KpiCard label="Conversion Rate" value={`${summary.conversionRate}%`} hint={`of ${summary.total} total`} />
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4">
+              <p className="text-sm font-semibold text-slate-900 mb-1">Backlog by Status</p>
+              <CategoryBar data={statusChartData} />
+            </div>
+          </>
+        )}
+
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 flex items-center justify-between gap-3">
           <p className="text-xs text-slate-500">Share this link so anyone can submit a request without an Executa account:</p>
           <button
@@ -81,12 +135,50 @@ export default function DemandPageClient() {
           </button>
         </div>
 
+        {!loading && items.length > 0 && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-3 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[160px]">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search title or requester..."
+                className="w-full text-xs border border-slate-200 rounded-lg pl-7 pr-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent-500"
+              />
+            </div>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5">
+              <option value="ALL">All statuses</option>
+              {STATUS_ORDER.map((s) => (
+                <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+              ))}
+            </select>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5">
+              <option value="ALL">All types</option>
+              {TYPE_OPTIONS.map((t) => (
+                <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+              ))}
+            </select>
+            {(statusFilter !== "ALL" || typeFilter !== "ALL" || search) && (
+              <button
+                onClick={() => { setStatusFilter("ALL"); setTypeFilter("ALL"); setSearch(""); }}
+                className="text-xs text-slate-400 hover:text-slate-600"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+
         {loading ? (
           <p className="text-sm text-slate-400 text-center py-10">Loading…</p>
-        ) : sorted.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-10 text-center">
             <Inbox size={28} className="mx-auto text-slate-300 mb-3" />
             <p className="text-sm text-slate-500">Nothing in the backlog yet.</p>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-10 text-center">
+            <p className="text-sm text-slate-500">No requests match these filters.</p>
           </div>
         ) : (
           sorted.map((d) => {
