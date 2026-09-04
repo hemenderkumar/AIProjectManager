@@ -2,6 +2,7 @@ import { db } from "./db";
 import { demandRequests, projects, projectMembers } from "./db/schema";
 import { eq, or, isNull } from "drizzle-orm";
 import type { SessionUser } from "./auth";
+import { dispatchWebhook } from "./webhooks";
 
 type DemandType = "STRATEGIC" | "RUN_THE_BUSINESS" | "COMPLIANCE" | "ENHANCEMENT";
 
@@ -20,6 +21,11 @@ export async function submitDemand(data: { title: string; description: string; e
       type: data.type,
     })
     .returning();
+
+  await dispatchWebhook(created.organizationId, "DEMAND_REQUEST_CREATED", {
+    id: created.id, title: created.title, type: created.type, requestedByName: created.requestedByName,
+  });
+
   return created;
 }
 
@@ -43,6 +49,11 @@ export async function triageDemand(id: string, notes: string, isDuplicateOfId?: 
     .set({ status: "TRIAGED", triageNotes: notes, isDuplicateOfId: isDuplicateOfId ?? null, updatedAt: new Date() })
     .where(eq(demandRequests.id, id))
     .returning();
+  if (updated) {
+    await dispatchWebhook(updated.organizationId, "DEMAND_REQUEST_STATUS_CHANGED", {
+      id: updated.id, title: updated.title, status: updated.status,
+    });
+  }
   return updated;
 }
 
@@ -59,6 +70,11 @@ export async function scoreDemand(id: string, businessValueScore: number, urgenc
     .set({ status: "SCORED", businessValueScore, urgencyScore, effortTshirtSize, priorityScore, updatedAt: new Date() })
     .where(eq(demandRequests.id, id))
     .returning();
+  if (updated) {
+    await dispatchWebhook(updated.organizationId, "DEMAND_REQUEST_STATUS_CHANGED", {
+      id: updated.id, title: updated.title, status: updated.status, priorityScore: updated.priorityScore,
+    });
+  }
   return updated;
 }
 
@@ -68,6 +84,11 @@ export async function decideDemand(user: SessionUser, id: string, decision: "APP
     .set({ status: decision, decisionReason: reason, capacityNotes: capacityNotes ?? null, decidedBy: user.name, decidedAt: new Date(), updatedAt: new Date() })
     .where(eq(demandRequests.id, id))
     .returning();
+  if (updated) {
+    await dispatchWebhook(updated.organizationId, "DEMAND_REQUEST_STATUS_CHANGED", {
+      id: updated.id, title: updated.title, status: updated.status, decisionReason: updated.decisionReason,
+    });
+  }
   return updated;
 }
 
@@ -97,6 +118,10 @@ export async function convertDemand(user: SessionUser, id: string) {
     .update(demandRequests)
     .set({ status: "CONVERTED", convertedProjectId: created.id, convertedAt: new Date(), updatedAt: new Date() })
     .where(eq(demandRequests.id, id));
+
+  await dispatchWebhook(demand.organizationId, "DEMAND_REQUEST_STATUS_CHANGED", {
+    id: demand.id, title: demand.title, status: "CONVERTED", convertedProjectId: created.id,
+  });
 
   return created;
 }

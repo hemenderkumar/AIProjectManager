@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { riskItems } from "@/lib/db/schema";
+import { riskItems, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 export async function GET(
   _req: NextRequest,
@@ -38,5 +39,11 @@ export async function POST(
       status: body.status ?? "OPEN",
     })
     .returning();
+
+  const [project] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, id));
+  await dispatchWebhook(project?.organizationId ?? null, "RISK_CREATED", {
+    id: created.id, description: created.description, impact: created.impact, likelihood: created.likelihood, projectId: created.projectId,
+  });
+
   return NextResponse.json(created, { status: 201 });
 }

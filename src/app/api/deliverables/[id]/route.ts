@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { deliverables, deliverableTestCases } from "@/lib/db/schema";
+import { deliverables, deliverableTestCases, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 async function loadDeliverable(id: string) {
   const [d] = await db.select().from(deliverables).where(eq(deliverables.id, id));
@@ -62,6 +63,13 @@ export async function PATCH(
     await logAudit({
       actor: user, action: "deliverable.status_changed", entityType: "deliverable", entityId: id,
       detail: `${user.name} moved "${updated.title}" to ${updated.status}.`,
+    });
+  }
+
+  if (body.status === "APPROVED" && d.status !== "APPROVED") {
+    const [proj] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, updated.projectId));
+    await dispatchWebhook(proj?.organizationId ?? null, "DELIVERABLE_APPROVED", {
+      id: updated.id, title: updated.title, projectId: updated.projectId, approvedBy: updated.approvedBy,
     });
   }
 

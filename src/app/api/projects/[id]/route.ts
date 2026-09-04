@@ -7,6 +7,7 @@ import { requireProjectAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
 import { roleAtLeast } from "@/lib/auth";
 import { STAGE_FOR_SUB_STAGE } from "@/lib/ideationGates";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 export async function GET(
   _req: NextRequest,
@@ -96,7 +97,7 @@ export async function PATCH(
   // Gate transitions: each only fires once, moving forward exactly one step, and only when
   // the project is actually sitting at the sub-stage that gate belongs to — so replaying an
   // old PATCH (e.g. re-saving an already-approved review) can't push things out of order.
-  const [current] = await db.select({ ideationSubStage: projects.ideationSubStage }).from(projects).where(eq(projects.id, id));
+  const [current] = await db.select({ ideationSubStage: projects.ideationSubStage, stage: projects.stage }).from(projects).where(eq(projects.id, id));
   if (current) {
     if (current.ideationSubStage === "TECHNICAL_FEASIBILITY" && update.technicalReviewStatus === "APPROVED") {
       update.ideationSubStage = "ARCHITECTURE_REVIEW";
@@ -166,6 +167,17 @@ export async function PATCH(
     .returning();
 
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  if (current && current.stage !== updated.stage) {
+    await dispatchWebhook(updated.organizationId, "PROJECT_STAGE_CHANGED", {
+      id: updated.id, name: updated.name, oldStage: current.stage, newStage: updated.stage,
+    });
+  }
+  if (current && current.ideationSubStage !== updated.ideationSubStage) {
+    await dispatchWebhook(updated.organizationId, "IDEA_STAGE_CHANGED", {
+      id: updated.id, name: updated.name, oldSubStage: current.ideationSubStage, newSubStage: updated.ideationSubStage,
+    });
+  }
 
   if (orgChanged) {
     const [org] = updated.organizationId

@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { STAGE_FOR_SUB_STAGE } from "@/lib/ideationGates";
 import { logAudit } from "@/lib/audit";
+import { dispatchWebhook } from "@/lib/webhooks";
 
 export async function DELETE(
   _req: NextRequest,
@@ -76,6 +77,14 @@ export async function PATCH(
         actor: user, action: "idea.confirmed", entityType: "project", entityId: id,
         detail: `Every invited reviewer approved — idea confirmed, advancing to Technical Feasibility.`,
       });
+      await dispatchWebhook(project.organizationId, "IDEA_STAGE_CHANGED", {
+        id: project.id, name: project.name, oldSubStage: project.ideationSubStage, newSubStage: "TECHNICAL_FEASIBILITY",
+      });
+      if (project.stage !== STAGE_FOR_SUB_STAGE.TECHNICAL_FEASIBILITY) {
+        await dispatchWebhook(project.organizationId, "PROJECT_STAGE_CHANGED", {
+          id: project.id, name: project.name, oldStage: project.stage, newStage: STAGE_FOR_SUB_STAGE.TECHNICAL_FEASIBILITY,
+        });
+      }
     }
   }
 

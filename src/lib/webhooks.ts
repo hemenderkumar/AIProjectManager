@@ -4,14 +4,18 @@ import { webhooks } from "./db/schema";
 import { and, eq, isNull, or } from "drizzle-orm";
 import type { SessionUser } from "./auth";
 
-type WebhookEvent =
+export type WebhookEvent =
   | "TASK_STATUS_CHANGED"
   | "PROJECT_STAGE_CHANGED"
   | "DELIVERABLE_APPROVED"
   | "RISK_CREATED"
   | "INCIDENT_CREATED"
   | "INCIDENT_STATUS_CHANGED"
-  | "INCIDENT_ESCALATED";
+  | "INCIDENT_ESCALATED"
+  | "DEMAND_REQUEST_CREATED"
+  | "DEMAND_REQUEST_STATUS_CHANGED"
+  | "IDEA_CREATED"
+  | "IDEA_STAGE_CHANGED";
 
 export async function listWebhooks(user: SessionUser) {
   return db.select().from(webhooks).where(user.organizationId ? eq(webhooks.organizationId, user.organizationId) : isNull(webhooks.organizationId));
