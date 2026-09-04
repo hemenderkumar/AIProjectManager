@@ -7,7 +7,7 @@ import { requireProjectAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
 import { roleAtLeast } from "@/lib/auth";
 import { STAGE_FOR_SUB_STAGE } from "@/lib/ideationGates";
-import { dispatchWebhook } from "@/lib/webhooks";
+import { dispatchWebhooks } from "@/lib/webhooks";
 
 export async function GET(
   _req: NextRequest,
@@ -168,15 +168,15 @@ export async function PATCH(
 
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  if (current && current.stage !== updated.stage) {
-    await dispatchWebhook(updated.organizationId, "PROJECT_STAGE_CHANGED", {
-      id: updated.id, name: updated.name, oldStage: current.stage, newStage: updated.stage,
-    });
-  }
-  if (current && current.ideationSubStage !== updated.ideationSubStage) {
-    await dispatchWebhook(updated.organizationId, "IDEA_STAGE_CHANGED", {
-      id: updated.id, name: updated.name, oldSubStage: current.ideationSubStage, newSubStage: updated.ideationSubStage,
-    });
+  if (current) {
+    const events: Parameters<typeof dispatchWebhooks>[1] = [];
+    if (current.stage !== updated.stage) {
+      events.push({ event: "PROJECT_STAGE_CHANGED", payload: { id: updated.id, name: updated.name, oldStage: current.stage, newStage: updated.stage } });
+    }
+    if (current.ideationSubStage !== updated.ideationSubStage) {
+      events.push({ event: "IDEA_STAGE_CHANGED", payload: { id: updated.id, name: updated.name, oldSubStage: current.ideationSubStage, newSubStage: updated.ideationSubStage } });
+    }
+    await dispatchWebhooks(updated.organizationId, events);
   }
 
   if (orgChanged) {

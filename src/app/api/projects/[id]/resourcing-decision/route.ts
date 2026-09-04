@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { STAGE_FOR_SUB_STAGE } from "@/lib/ideationGates";
 import { logAudit } from "@/lib/audit";
-import { dispatchWebhook } from "@/lib/webhooks";
+import { dispatchWebhooks } from "@/lib/webhooks";
 
 // The last Plan gate, right after Charter is approved: build with the company's own people,
 // or hire a vendor. INTERNAL just unlocks execution as-is -- staffing happens the same way
@@ -56,14 +56,13 @@ export async function POST(
     detail: `${user.name} decided to resource "${updated.name}" ${deliveryMode === "INTERNAL" ? "with internal resources" : "via vendor RFP"} — project moved to Execution.`,
   });
 
-  await dispatchWebhook(updated.organizationId, "IDEA_STAGE_CHANGED", {
-    id: updated.id, name: updated.name, oldSubStage: project.ideationSubStage, newSubStage: updated.ideationSubStage,
-  });
+  const events: Parameters<typeof dispatchWebhooks>[1] = [
+    { event: "IDEA_STAGE_CHANGED", payload: { id: updated.id, name: updated.name, oldSubStage: project.ideationSubStage, newSubStage: updated.ideationSubStage } },
+  ];
   if (project.stage !== updated.stage) {
-    await dispatchWebhook(updated.organizationId, "PROJECT_STAGE_CHANGED", {
-      id: updated.id, name: updated.name, oldStage: project.stage, newStage: updated.stage,
-    });
+    events.push({ event: "PROJECT_STAGE_CHANGED", payload: { id: updated.id, name: updated.name, oldStage: project.stage, newStage: updated.stage } });
   }
+  await dispatchWebhooks(updated.organizationId, events);
 
   let createdRfp: typeof rfps.$inferSelect | null = null;
   if (deliveryMode === "VENDOR" && updated.organizationId) {
