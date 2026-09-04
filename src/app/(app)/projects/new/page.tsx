@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Topbar from "@/components/Topbar";
 import CountryStateFields from "@/components/CountryStateFields";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+import ProjectTemplatePicker from "@/components/ProjectTemplatePicker";
+import { LayoutTemplate, FilePlus2 } from "lucide-react";
 
 type Stakeholder = { id: string; name: string; title: string | null };
 
@@ -22,6 +24,10 @@ function NewProjectForm() {
   // tab to continue brainstorming; everything else (Execution entry point, sidebar, etc.)
   // keeps the old behavior of jumping straight into the AI task planner.
   const isIdeaIntent = searchParams.get("intent") === "idea";
+  // Ideas skip straight to the blank capture form -- project templates carry a full charter +
+  // task skeleton meant for a scoped project, not a brainstorm-stage idea. Everything else
+  // (sidebar, Execution's "Start a New Project", etc.) gets asked how it wants to start.
+  const [mode, setMode] = useState<"choose" | "template" | "form">(isIdeaIntent ? "form" : "choose");
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [aiMessage, setAiMessage] = useState("");
@@ -128,6 +134,47 @@ function NewProjectForm() {
     } finally {
       setAiLoading(false);
     }
+  }
+
+  if (mode === "choose") {
+    return (
+      <div>
+        <Topbar title="New Project" subtitle="How do you want to start?" />
+        <div className="p-8 max-w-3xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => setMode("template")}
+            className="text-left bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6 hover:border-accent-300 hover:shadow-md transition-all"
+          >
+            <LayoutTemplate size={22} className="text-accent-600 mb-3" />
+            <p className="text-sm font-semibold text-slate-900">Start from a template</p>
+            <p className="text-xs text-slate-500 mt-1">
+              Reuse a saved project skeleton — charter fields and tasks pre-filled, with an option to tweak it with AI first.
+            </p>
+          </button>
+          <button
+            onClick={() => setMode("form")}
+            className="text-left bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6 hover:border-accent-300 hover:shadow-md transition-all"
+          >
+            <FilePlus2 size={22} className="text-accent-600 mb-3" />
+            <p className="text-sm font-semibold text-slate-900">Start from scratch</p>
+            <p className="text-xs text-slate-500 mt-1">
+              Fill in a blank project yourself, or describe it in a sentence and let AI draft the fields for you.
+            </p>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "template") {
+    return (
+      <div>
+        <Topbar title="Start from a template" subtitle="Pick a saved project skeleton, optionally tweak it with AI, then name and create it" />
+        <div className="p-8 max-w-3xl">
+          <ProjectTemplatePicker onCreated={(id) => router.push(`/projects/${id}`)} onBack={() => setMode("choose")} />
+        </div>
+      </div>
+    );
   }
 
   return (
