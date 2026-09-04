@@ -10,12 +10,29 @@ import { RagBadge, StageBadge, PriorityBadge } from "@/components/badges";
 import { getPortfolioSummary } from "@/lib/portfolio";
 import { computeInsights } from "@/lib/insights";
 import { getCurrentUser } from "@/lib/auth";
+import { listDemand } from "@/lib/demand";
+import { Lightbulb, Inbox, ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
+// Mirrors the stage set ideation/page.tsx treats as "still in the ideation funnel" (before a
+// project reaches execution) -- kept here too since the dashboard needs the same slice of
+// summary.projects without a second DB round-trip.
+const IDEATION_STAGES = ["INCEPTION", "IDEATION", "CHARTER"];
+// Mirrors OPEN_STATUSES in DemandPageClient.tsx -- statuses that still need action in the
+// demand backlog.
+const DEMAND_OPEN_STATUSES = new Set(["SUBMITTED", "TRIAGED", "SCORED"]);
+
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const summary = await getPortfolioSummary(user);
+  const [summary, demand] = await Promise.all([getPortfolioSummary(user), user ? listDemand(user) : Promise.resolve([])]);
+
+  const ideationProjects = summary.projects.filter((p) => IDEATION_STAGES.includes(p.stage));
+  const ideationReady = ideationProjects.filter((p) => p.ideationSubStage === "READY_FOR_EXECUTION").length;
+  const ideationQuickWins = ideationProjects.filter((p) => p.roadmapStatus?.quickWin).length;
+
+  const demandOpen = demand.filter((d) => DEMAND_OPEN_STATUSES.has(d.status)).length;
+  const demandReadyToConvert = demand.filter((d) => d.status === "APPROVED").length;
 
   const atRisk = summary.projects
     .filter((p) => p.stage !== "CLOSED" && p.autoRag !== "GREEN")
@@ -102,6 +119,50 @@ export default async function DashboardPage() {
             <p className="text-sm font-semibold text-slate-900 mb-1">Projects by Stage</p>
             <StageBar byStage={summary.byStage} />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Link
+            href="/ideation"
+            className="card-lift bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 flex items-start gap-3 hover:border-accent-200 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-lg bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">
+              <Lightbulb size={17} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900">Ideation Pipeline</p>
+                <ArrowRight size={14} className="text-slate-300" />
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5 mb-3">Ideas moving through feasibility, architecture, and charter before execution</p>
+              <div className="flex items-center gap-5">
+                <div><p className="text-lg font-semibold text-slate-900">{ideationProjects.length}</p><p className="text-[11px] text-slate-400">in pipeline</p></div>
+                <div><p className="text-lg font-semibold text-emerald-600">{ideationReady}</p><p className="text-[11px] text-slate-400">ready for execution</p></div>
+                <div><p className="text-lg font-semibold text-slate-900">{ideationQuickWins}</p><p className="text-[11px] text-slate-400">roadmap quick wins</p></div>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/demand"
+            className="card-lift bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 flex items-start gap-3 hover:border-accent-200 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-lg bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">
+              <Inbox size={17} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900">Demand Backlog</p>
+                <ArrowRight size={14} className="text-slate-300" />
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5 mb-3">Raw requests awaiting triage and scoring before they become an Idea</p>
+              <div className="flex items-center gap-5">
+                <div><p className="text-lg font-semibold text-slate-900">{demand.length}</p><p className="text-[11px] text-slate-400">total requests</p></div>
+                <div><p className="text-lg font-semibold text-amber-600">{demandOpen}</p><p className="text-[11px] text-slate-400">open in backlog</p></div>
+                <div><p className="text-lg font-semibold text-emerald-600">{demandReadyToConvert}</p><p className="text-[11px] text-slate-400">ready to convert</p></div>
+              </div>
+            </div>
+          </Link>
         </div>
 
 
