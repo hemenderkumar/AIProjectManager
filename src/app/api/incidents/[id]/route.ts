@@ -4,47 +4,23 @@ import { incidents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
 import { canAccessOptionalProject } from "@/lib/tenancy";
-
-const dateFields = ["reportedAt", "resolvedAt"] as const;
-const allowed = [
-  "projectId", "title", "description", "severity", "status",
-  "reportedBy", "assignee", "reportedAt", "resolvedAt", "resolutionNotes", "aiRecommendation",
-] as const;
+import { patchIncident } from "@/lib/incidents";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const _authUser = await requireRole("CONTRIBUTOR");
-  if (!_authUser) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const user = await requireRole("CONTRIBUTOR");
+  if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { id } = await params;
-
-  const [existing] = await db.select().from(incidents).where(eq(incidents.id, id));
-  if (!existing) return NextResponse.json({ error: "not found" }, { status: 404 });
-  if (!(await canAccessOptionalProject(_authUser, existing.projectId))) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   const body = await req.json();
 
-  const update: Record<string, unknown> = {};
-  for (const key of allowed) {
-    if (!(key in body)) continue;
-    const v = body[key];
-    if ((dateFields as readonly string[]).includes(key)) {
-      update[key] = v ? new Date(v) : null;
-    } else {
-      update[key] = v === "" ? null : v;
-    }
+  const result = await patchIncident(user, id, body);
+  if ("error" in result) {
+    const status = result.error === "not_found" ? 404 : 403;
+    return NextResponse.json({ error: result.error === "not_found" ? "not found" : "Forbidden" }, { status });
   }
-  // Auto-stamp resolvedAt when moving into RESOLVED/CLOSED, if the caller didn't set one.
-  if ((body.status === "RESOLVED" || body.status === "CLOSED") && !("resolvedAt" in body)) {
-    update.resolvedAt = new Date();
-  }
-
-  const [updated] = await db.update(incidents).set(update).where(eq(incidents.id, id)).returning();
-  if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
-  return NextResponse.json(updated);
+  return NextResponse.json(result.incident);
 }
 
 export async function DELETE(

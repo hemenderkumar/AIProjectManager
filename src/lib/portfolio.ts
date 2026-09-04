@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints, ideaReviewers, users } from "./db/schema";
+import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints, ideaReviewers, users, incidents } from "./db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
 import { computeAutoRag, scheduleVarianceDays, budgetVariancePercent, isOverdueTask, riskScore, ProjectForHealth } from "./kpi";
 import { listVisibleProjects } from "./tenancy";
@@ -51,8 +51,21 @@ export async function getAllProjectsWithMetrics(user?: SessionUser | null) {
     .where(inArray(riskItems.projectId, projectIds))
     .groupBy(riskItems.projectId);
 
+  // Open (not RESOLVED/CLOSED) incidents at HIGH or CRITICAL severity, per project -- feeds
+  // computeAutoRag the same way openHighRiskCount does, so an unresolved critical incident
+  // visibly hits a project's health instead of sitting invisibly in the Ongoing Support queue.
+  const incidentAgg = await db
+    .select({
+      projectId: incidents.projectId,
+      openHighSeverityIncidentCount: sql<number>`count(*) filter (where ${incidents.status} <> 'RESOLVED' and ${incidents.status} <> 'CLOSED' and (${incidents.severity} = 'HIGH' or ${incidents.severity} = 'CRITICAL'))`,
+    })
+    .from(incidents)
+    .where(inArray(incidents.projectId, projectIds))
+    .groupBy(incidents.projectId);
+
   const taskByProject = new Map(taskAgg.map((r) => [r.projectId, r]));
   const riskByProject = new Map(riskAgg.map((r) => [r.projectId, r]));
+  const incidentByProject = new Map(incidentAgg.map((r) => [r.projectId, r]));
   // Batched across every visible project in one query, same pattern as the task/risk
   // aggregates above -- lets the Ideation list show "last roadmap call" per row without an
   // N+1 lookup.
@@ -62,11 +75,13 @@ export async function getAllProjectsWithMetrics(user?: SessionUser | null) {
     const t = taskByProject.get(p.id);
     const overdueTaskCount = Number(t?.overdueTaskCount ?? 0);
     const openHighRiskCount = Number(riskByProject.get(p.id)?.openHighRiskCount ?? 0);
+    const openHighSeverityIncidentCount = Number(incidentByProject.get(p.id)?.openHighSeverityIncidentCount ?? 0);
 
     const health = computeAutoRag({
       project: p as unknown as ProjectForHealth,
       overdueTaskCount,
       openHighRiskCount,
+      openHighSeverityIncidentCount,
     });
 
     return {
@@ -77,6 +92,7 @@ export async function getAllProjectsWithMetrics(user?: SessionUser | null) {
       budgetVariancePercent: budgetVariancePercent(p as unknown as ProjectForHealth),
       overdueTaskCount,
       openHighRiskCount,
+      openHighSeverityIncidentCount,
       taskCount: Number(t?.taskCount ?? 0),
       doneTaskCount: Number(t?.doneTaskCount ?? 0),
       roadmapStatus: roadmapStatusByProject.get(p.id) ?? null,
@@ -120,7 +136,7 @@ export async function getProjectDetail(id: string) {
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) return null;
 
-  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices, projectBrainstormEntries, projectSolutionOptions, projectDeliveryRoleMix, projectSprints, projectIdeaReviewers] =
+  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices, projectBrainstormEntries, projectSolutionOptions, projectDeliveryRoleMix, projectSprints, projectIdeaReviewers, projectIncidents] =
     await Promise.all([
       db.select().from(tasks).where(eq(tasks.projectId, id)),
       db.select().from(riskItems).where(eq(riskItems.projectId, id)),
@@ -162,6 +178,7 @@ export async function getProjectDetail(id: string) {
         .from(ideaReviewers)
         .innerJoin(users, eq(ideaReviewers.userId, users.id))
         .where(eq(ideaReviewers.projectId, id)),
+      db.select().from(incidents).where(eq(incidents.projectId, id)),
     ]);
 
   const taskIds = projectTasks.map((t) => t.id);
@@ -173,11 +190,15 @@ export async function getProjectDetail(id: string) {
   const openHighRiskCount = projectRisks.filter(
     (r) => r.status !== "CLOSED" && riskScore(r) >= 6
   ).length;
+  const openHighSeverityIncidentCount = projectIncidents.filter(
+    (i) => i.status !== "RESOLVED" && i.status !== "CLOSED" && (i.severity === "HIGH" || i.severity === "CRITICAL")
+  ).length;
 
   const health = computeAutoRag({
     project: project as unknown as ProjectForHealth,
     overdueTaskCount,
     openHighRiskCount,
+    openHighSeverityIncidentCount,
   });
 
   const roadmapStatusMap = await getLatestRoadmapStatusForProjects([id]);
@@ -188,8 +209,10 @@ export async function getProjectDetail(id: string) {
     autoRagReasons: health.reasons,
     scheduleVarianceDays: scheduleVarianceDays(project as unknown as ProjectForHealth),
     budgetVariancePercent: budgetVariancePercent(project as unknown as ProjectForHealth),
+    openHighSeverityIncidentCount,
     tasks: projectTasks,
     risks: projectRisks,
+    incidents: projectIncidents.sort((a, b) => b.reportedAt.getTime() - a.reportedAt.getTime()),
     statusUpdates: updates.sort((a, b) => b.date.getTime() - a.date.getTime()),
     communications: comms.sort((a, b) => b.date.getTime() - a.date.getTime()),
     milestones: projectMilestones,
@@ -211,7 +234,7 @@ export async function getProjectDetail(id: string) {
 
 export function formatPortfolioForAI(summary: Awaited<ReturnType<typeof getPortfolioSummary>>) {
   const lines = summary.projects.map((p) => {
-    return `- ${p.name} [stage: ${p.stage}, rag: ${p.autoRag}, priority: ${p.priority}, % complete: ${p.percentComplete}%, budget planned/actual: $${p.budgetPlanned}/$${p.budgetActual}, overdue tasks: ${p.overdueTaskCount}, open high risks: ${p.openHighRiskCount}, PM: ${p.projectManager ?? "n/a"}, sponsor: ${p.sponsor ?? "n/a"}] reasons: ${p.autoRagReasons.join("; ")}`;
+    return `- ${p.name} [stage: ${p.stage}, rag: ${p.autoRag}, priority: ${p.priority}, % complete: ${p.percentComplete}%, budget planned/actual: $${p.budgetPlanned}/$${p.budgetActual}, overdue tasks: ${p.overdueTaskCount}, open high risks: ${p.openHighRiskCount}, open high-severity incidents: ${p.openHighSeverityIncidentCount}, PM: ${p.projectManager ?? "n/a"}, sponsor: ${p.sponsor ?? "n/a"}] reasons: ${p.autoRagReasons.join("; ")}`;
   });
   return `Portfolio overview (${summary.projects.length} projects, ${summary.activeCount} active):
 RAG breakdown: ${summary.byRag.GREEN ?? 0} Green / ${summary.byRag.YELLOW ?? 0} Yellow / ${summary.byRag.RED ?? 0} Red

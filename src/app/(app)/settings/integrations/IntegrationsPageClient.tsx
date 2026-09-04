@@ -7,7 +7,15 @@ type ApiKey = { id: string; name: string; keyPrefix: string; scopes: string[]; c
 type WebhookSub = { id: string; url: string; events: string[]; lastDeliveryAt: string | null; lastDeliveryStatus: number | null };
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
-const WEBHOOK_EVENTS = ["TASK_STATUS_CHANGED", "PROJECT_STAGE_CHANGED", "DELIVERABLE_APPROVED", "RISK_CREATED"];
+const WEBHOOK_EVENTS = [
+  "TASK_STATUS_CHANGED",
+  "PROJECT_STAGE_CHANGED",
+  "DELIVERABLE_APPROVED",
+  "RISK_CREATED",
+  "INCIDENT_CREATED",
+  "INCIDENT_STATUS_CHANGED",
+  "INCIDENT_ESCALATED",
+];
 
 export default function IntegrationsPageClient() {
   const [keys, setKeys] = useState<ApiKey[]>([]);

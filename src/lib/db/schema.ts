@@ -904,12 +904,46 @@ export const incidents = pgTable("incidents", {
   description: text("description"),
   severity: priorityEnum("severity").notNull().default("MEDIUM"),
   status: incidentStatusEnum("status").notNull().default("OPEN"),
+  // Free-text fallback (e.g. a customer or external reporter with no Executa account) --
+  // kept alongside the *UserId columns below rather than replaced, since not every reporter
+  // or assignee is necessarily a user in the system.
   reportedBy: text("reported_by"),
   assignee: text("assignee"),
+  // Structured references, set when the reporter/assignee IS an Executa user -- lets the
+  // UI show a real picker and (eventually) notify someone, instead of a name that can typo
+  // or go stale. Nullable/set-null: losing the user shouldn't lose the incident.
+  reportedByUserId: text("reported_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  assigneeUserId: text("assignee_user_id").references(() => users.id, { onDelete: "set null" }),
   reportedAt: timestamp("reported_at").notNull().defaultNow(),
+  // Stamped the first time status moves to IN_PROGRESS (see patchIncident in lib/incidents.ts)
+  // -- lets SLA tracking measure time-to-acknowledge separately from time-to-resolve.
+  acknowledgedAt: timestamp("acknowledged_at"),
   resolvedAt: timestamp("resolved_at"),
   resolutionNotes: text("resolution_notes"),
   aiRecommendation: text("ai_recommendation"),
+  // Stamped the moment severity is set/raised to CRITICAL while it wasn't already -- powers
+  // the INCIDENT_ESCALATED webhook and an "escalated N ago" indicator, without needing a
+  // full audit log just to answer "when did this become critical."
+  escalatedAt: timestamp("escalated_at"),
+  // Set when a resolution spins off a tracked follow-up (root-cause fix, hardening work,
+  // postmortem action item) in the linked project -- see createFollowUpTask in
+  // lib/incidents.ts. Only possible when the incident has a projectId; onDelete set null so
+  // deleting the task doesn't take the incident record down with it.
+  followUpTaskId: text("follow_up_task_id").references(() => tasks.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Chronological timeline/comment log on an incident -- mirrors communicationLogs/statusUpdates
+// for projects. Append-only: lets multiple responders leave dated notes as an incident
+// progresses, instead of overwriting a single resolutionNotes field.
+export const incidentUpdates = pgTable("incident_updates", {
+  id: cuid(),
+  incidentId: text("incident_id")
+    .notNull()
+    .references(() => incidents.id, { onDelete: "cascade" }),
+  authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
+  authorName: text("author_name").notNull(),
+  body: text("body").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -1427,10 +1461,34 @@ export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
   }),
 }));
 
-export const incidentsRelations = relations(incidents, ({ one }) => ({
+export const incidentsRelations = relations(incidents, ({ one, many }) => ({
   project: one(projects, {
     fields: [incidents.projectId],
     references: [projects.id],
+  }),
+  assigneeUser: one(users, {
+    fields: [incidents.assigneeUserId],
+    references: [users.id],
+  }),
+  reportedByUser: one(users, {
+    fields: [incidents.reportedByUserId],
+    references: [users.id],
+  }),
+  followUpTask: one(tasks, {
+    fields: [incidents.followUpTaskId],
+    references: [tasks.id],
+  }),
+  updates: many(incidentUpdates),
+}));
+
+export const incidentUpdatesRelations = relations(incidentUpdates, ({ one }) => ({
+  incident: one(incidents, {
+    fields: [incidentUpdates.incidentId],
+    references: [incidents.id],
+  }),
+  author: one(users, {
+    fields: [incidentUpdates.authorId],
+    references: [users.id],
   }),
 }));
 

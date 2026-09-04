@@ -6,15 +6,18 @@ import IncidentPatterns from "./IncidentPatterns";
 
 type Incident = Parameters<typeof IncidentsBoard>[0]["incidents"];
 type ProjectOption = { id: string; name: string };
+type UserOption = Parameters<typeof IncidentsBoard>[0]["users"];
 
 export default function SupportTabs({
   incidents,
   projects,
+  users,
   defaultBlendedHourlyRate,
   showPatterns = true,
 }: {
   incidents: Incident;
   projects: ProjectOption[];
+  users?: UserOption;
   defaultBlendedHourlyRate?: number;
   // Incident Patterns pools every incident across the whole portfolio (not just this user's
   // own projects) to find recurring themes -- that's internal-only, same as Resources/Rate
@@ -54,7 +57,7 @@ export default function SupportTabs({
         )}
       </div>
 
-      {tab === "incidents" && <IncidentsBoard incidents={incidents} projects={projects} />}
+      {tab === "incidents" && <IncidentsBoard incidents={incidents} projects={projects} users={users ?? []} />}
       {tab === "estimator" && (
         <SupportEstimator projects={projects} defaultBlendedHourlyRate={defaultBlendedHourlyRate} />
       )}

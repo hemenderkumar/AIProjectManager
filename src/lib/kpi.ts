@@ -80,9 +80,14 @@ export function computeAutoRag(params: {
   project: ProjectForHealth;
   overdueTaskCount: number;
   openHighRiskCount: number;
+  // Open incidents (status not RESOLVED/CLOSED) with severity HIGH or CRITICAL, linked to
+  // this project -- an unresolved critical production incident should visibly hit a
+  // project's health the same way an open high-severity risk does. Optional/defaulted to 0
+  // so existing call sites (and any test data) that don't pass it keep working unchanged.
+  openHighSeverityIncidentCount?: number;
   now?: Date;
 }): { rag: RagStatus; reasons: string[] } {
-  const { project, overdueTaskCount, openHighRiskCount } = params;
+  const { project, overdueTaskCount, openHighRiskCount, openHighSeverityIncidentCount = 0 } = params;
   const now = params.now ?? new Date();
   const reasons: string[] = [];
 
@@ -125,6 +130,14 @@ export function computeAutoRag(params: {
   } else if (openHighRiskCount === 1) {
     score += 1;
     reasons.push(`1 open high-severity risk`);
+  }
+
+  if (openHighSeverityIncidentCount >= 2) {
+    score += 2;
+    reasons.push(`${openHighSeverityIncidentCount} open high-severity incidents`);
+  } else if (openHighSeverityIncidentCount === 1) {
+    score += 1;
+    reasons.push(`1 open high-severity incident`);
   }
 
   let rag: RagStatus = "GREEN";
