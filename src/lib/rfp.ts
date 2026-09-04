@@ -74,8 +74,11 @@ function buildDraftInputText(rfp: RfpRow, project: ProjectRow | null): string {
 
 // Produces the full RFP document text vendors will read. Grounded either in a linked
 // project's charter or in the owner's own pointer fields — never invents scope/budget
-// numbers that weren't supplied.
-export async function draftRfpContent(rfp: RfpRow, project: ProjectRow | null): Promise<string> {
+// numbers that weren't supplied. `styleAddendum` is an optional saved STYLE_PRESET
+// instruction (see lib/contentTemplates.ts) appended to the base system prompt — e.g. "use a
+// formal government-procurement register" vs "keep it lightweight for a small vendor" — it
+// steers tone/emphasis only, never invents facts beyond what the base prompt already allows.
+export async function draftRfpContent(rfp: RfpRow, project: ProjectRow | null, styleAddendum?: string | null): Promise<string> {
   const inputText = buildDraftInputText(rfp, project);
   const system =
     "You are a procurement specialist drafting a professional Request for Proposal (RFP) document on behalf of " +
@@ -86,7 +89,8 @@ export async function draftRfpContent(rfp: RfpRow, project: ProjectRow | null): 
     "of text. Do not invent specific numbers, dates, or facts that were not provided — if timeline or budget " +
     "wasn't given, ask vendors to propose their own instead of stating a figure. Keep it grounded, concrete, and " +
     "free of filler. Other than the '## Heading' markers, use plain text — no other markdown (no **, no bullet " +
-    "dashes).";
+    "dashes)." +
+    (styleAddendum ? `\n\nAdditional style guidance for this document: ${styleAddendum}` : "");
   const user = `RFP title: ${rfp.title}\n\nInputs:\n${inputText || "(no additional detail provided — draft a reasonable general-purpose RFP structure the owner can fill in)"}`;
   return askClaude(system, user, 2000);
 }

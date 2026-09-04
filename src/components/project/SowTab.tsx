@@ -6,6 +6,8 @@ import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { Plus, Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, FileText, Gauge, CheckCircle2, AlertTriangle, XCircle, FileDown, Upload, Paperclip, X } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import AiEditChat from "./AiEditChat";
+import { SkeletonPicker, StylePresetPicker, SaveAsSkeletonButton } from "@/components/ContentTemplatePicker";
+import type { SowSkeletonSnapshot } from "@/lib/contentTemplates";
 
 type DriftResult = {
   status: "ON_TRACK" | "MINOR_DRIFT" | "SIGNIFICANT_DRIFT";
@@ -84,6 +86,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [styleTemplateId, setStyleTemplateId] = useState("");
 
   // SOW-vs-actuals drift check, keyed by SOW id — an on-demand AI comparison against live
   // project data, not something re-run automatically on every load.
@@ -115,7 +118,7 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
       const res = await fetch("/api/ai/draft-sow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId }),
+        body: JSON.stringify({ projectId, templateId: styleTemplateId || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -256,18 +259,51 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
 
         {showForm && canManage && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <SkeletonPicker
+                entityType="SOW"
+                onApply={(snapshot: SowSkeletonSnapshot) =>
+                  setForm((f) => ({
+                    ...f,
+                    executiveSummary: snapshot.executiveSummary ?? f.executiveSummary,
+                    scope: snapshot.scope ?? f.scope,
+                    deliverablesSummary: snapshot.deliverablesSummary ?? f.deliverablesSummary,
+                    timeline: snapshot.timeline ?? f.timeline,
+                    fundingTerms: snapshot.fundingTerms ?? f.fundingTerms,
+                    risks: snapshot.risks ?? f.risks,
+                    issues: snapshot.issues ?? f.issues,
+                  }))
+                }
+              />
+              <SaveAsSkeletonButton
+                entityType="SOW"
+                disabled={!form.scope && !form.deliverablesSummary && !form.executiveSummary}
+                buildSnapshot={(): SowSkeletonSnapshot => ({
+                  executiveSummary: form.executiveSummary || null,
+                  scope: form.scope || null,
+                  deliverablesSummary: form.deliverablesSummary || null,
+                  timeline: form.timeline || null,
+                  fundingTerms: form.fundingTerms || null,
+                  risks: form.risks || null,
+                  issues: form.issues || null,
+                })}
+              />
+            </div>
             <div className="border border-accent-100 bg-accent-50/60 rounded-lg p-3 space-y-2">
               <p className="text-xs text-accent-700">
                 Draft the whole SOW from this project&apos;s charter and plan, then review/edit everything below before saving.
               </p>
-              <button
-                onClick={draftWithAI}
-                disabled={drafting}
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
-              >
-                {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                {drafting ? "Drafting..." : "Draft with AI"}
-              </button>
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={draftWithAI}
+                  disabled={drafting}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-600 text-white shadow-sm shadow-accent-600/20 hover:bg-accent-700 disabled:opacity-50 font-medium"
+                >
+                  {drafting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                  {drafting ? "Drafting..." : "Draft with AI"}
+                </button>
+                <StylePresetPicker entityType="SOW" value={styleTemplateId} onChange={setStyleTemplateId} />
+              </div>
               <AiWaitIndicator active={drafting} messages={["Reading the charter and plan...", "Drafting scope, timeline, and funding...", "Writing the full SOW document..."]} />
               {draftError && <p className="text-xs text-rose-600">{draftError}</p>}
             </div>
@@ -479,12 +515,24 @@ export default function SowTab({ detail, user }: { detail: ProjectDetail; user?:
                   </div>
 
                   {canManage && (
-                    <div className="mt-2 pt-2 border-t border-slate-100">
+                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                       <AiEditChat
                         entityType="sow"
                         entityId={s.id}
                         onApplied={() => load()}
                         placeholder='e.g. "extend the timeline by a month"'
+                      />
+                      <SaveAsSkeletonButton
+                        entityType="SOW"
+                        buildSnapshot={(): SowSkeletonSnapshot => ({
+                          executiveSummary: s.executiveSummary,
+                          scope: s.scope,
+                          deliverablesSummary: s.deliverablesSummary,
+                          timeline: s.timeline,
+                          fundingTerms: s.fundingTerms,
+                          risks: s.risks,
+                          issues: s.issues,
+                        })}
                       />
                     </div>
                   )}

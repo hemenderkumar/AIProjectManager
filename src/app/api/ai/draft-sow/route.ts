@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { rfpVendors } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
+import { getStylePresetAddendum } from "@/lib/contentTemplates";
 
 type DraftSowResult = {
   title: string;
@@ -21,12 +22,16 @@ type DraftSowResult = {
 };
 
 export async function POST(req: NextRequest) {
-  const { projectId, rfpVendorId } = await req.json().catch(() => ({}));
+  const { projectId, rfpVendorId, templateId } = await req.json().catch(() => ({}));
   if (!projectId) return NextResponse.json({ error: "projectId is required" }, { status: 400 });
 
   // Drafting is part of creating the SOW, so it's gated the same as actually creating one.
   const user = await requireProjectAccess("SUPER_USER", projectId);
   if (!user) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Optional saved STYLE_PRESET (see lib/contentTemplates.ts) whose instruction is appended
+  // to the drafting prompt below — e.g. a more formal or more concise contract register.
+  const styleAddendum = await getStylePresetAddendum(user, templateId);
 
   const detail = await getProjectDetail(projectId);
   if (!detail) return NextResponse.json({ error: "project not found" }, { status: 404 });
@@ -58,7 +63,7 @@ risks — vendor dependency, IP, timeline slippage — not general project deliv
 "issues": string (known open items to resolve before/during engagement, or "None identified yet"),
 "content": string (the full SOW document as plain text with clear section headers, suitable to send to the
 vendor as-is), "milestones": [{ "name": string, "weekOffset": number (weeks from SOW start) }] with 3-6
-entries }.`;
+entries }.${styleAddendum ? `\n\nAdditional style guidance for this document: ${styleAddendum}` : ""}`;
 
   const user_ = `Project: ${p.name}
 Description: ${p.description || "(none)"}

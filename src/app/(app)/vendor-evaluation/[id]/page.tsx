@@ -5,6 +5,8 @@ import Topbar from "@/components/Topbar";
 import { Sparkles, Loader2, Plus, Trash2, Copy, CheckCircle2, Trophy, Send } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import DownloadPdfLink from "@/components/DownloadPdfLink";
+import { StylePresetPicker, SaveAsSkeletonButton } from "@/components/ContentTemplatePicker";
+import type { RfpSkeletonSnapshot } from "@/lib/contentTemplates";
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 
@@ -53,6 +55,7 @@ export default function RfpDetailPage() {
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [styleTemplateId, setStyleTemplateId] = useState("");
 
   const [criterionForm, setCriterionForm] = useState({ name: "", weightPercent: "" });
   const [criterionSaving, setCriterionSaving] = useState(false);
@@ -111,7 +114,11 @@ export default function RfpDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(docForm),
       });
-      const res = await fetch(`/api/rfps/${id}/draft`, { method: "POST" });
+      const res = await fetch(`/api/rfps/${id}/draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: styleTemplateId || undefined }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setDraftError(data?.error ?? "Drafting failed.");
@@ -253,8 +260,23 @@ export default function RfpDetailPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <p className="text-sm font-semibold text-slate-900">RFP Document</p>
+            <div className="flex items-center gap-3">
+              <StylePresetPicker entityType="RFP" value={styleTemplateId} onChange={setStyleTemplateId} />
+              <SaveAsSkeletonButton
+                entityType="RFP"
+                disabled={!docForm.background && !docForm.scope && !docForm.requirements}
+                buildSnapshot={(): RfpSkeletonSnapshot => ({
+                  background: docForm.background || null,
+                  scope: docForm.scope || null,
+                  requirements: docForm.requirements || null,
+                  timeline: docForm.timeline || null,
+                  budgetRange: docForm.budgetRange || null,
+                  criteria: criteria.map((c) => ({ name: c.name, weightPercent: c.weightPercent })),
+                })}
+              />
+            </div>
             <div className="flex items-center gap-2">
               {rfp.content && (
                 <DownloadPdfLink href={`/api/rfps/${id}/pdf`} filename={`${rfp.title || "rfp"}.pdf`} />

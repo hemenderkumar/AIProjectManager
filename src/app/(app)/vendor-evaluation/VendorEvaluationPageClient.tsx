@@ -3,6 +3,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Topbar from "@/components/Topbar";
 import { Plus, Loader2, FileText, Sparkles } from "lucide-react";
+import { SkeletonPicker } from "@/components/ContentTemplatePicker";
+import type { RfpSkeletonSnapshot } from "@/lib/contentTemplates";
 
 type Rfp = { id: string; title: string; status: string; projectId: string | null; createdAt: string; updatedAt: string };
 type ProjectOption = { id: string; name: string; organizationId: string | null };
@@ -43,6 +45,10 @@ function VendorEvaluationInner() {
   const [form, setForm] = useState({
     title: "", projectId: "", background: "", scope: "", requirements: "", timeline: "", budgetRange: "",
   });
+  // Scoring criteria carried over from a selected skeleton template — posted to
+  // /api/rfps/[id]/criteria right after the RFP row itself is created (criteria live on their
+  // own endpoint, so there's nothing to include in the create-RFP request body).
+  const [pendingCriteria, setPendingCriteria] = useState<{ name: string; weightPercent: number }[]>([]);
   const [saving, setSaving] = useState(false);
   const [draftingNew, setDraftingNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +133,18 @@ function VendorEvaluationInner() {
     return data;
   }
 
+  // Applies any criteria carried over from a selected skeleton template — best-effort, after
+  // the RFP row itself exists, since criteria live on their own endpoint.
+  async function applyPendingCriteria(rfpId: string) {
+    for (const c of pendingCriteria) {
+      await fetch(`/api/rfps/${rfpId}/criteria`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(c),
+      }).catch(() => {});
+    }
+  }
+
   async function createRfp(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) return;
@@ -135,6 +153,7 @@ function VendorEvaluationInner() {
     try {
       const created = await createRfpRow();
       if (!created) return;
+      await applyPendingCriteria(created.id);
       router.push(`/vendor-evaluation/${created.id}`);
     } finally {
       setSaving(false);
@@ -151,6 +170,7 @@ function VendorEvaluationInner() {
     try {
       const created = await createRfpRow();
       if (!created) return;
+      await applyPendingCriteria(created.id);
       // Best-effort: if the AI draft fails (e.g. no charter/pointers to work from), still
       // land on the RFP's own page — it's created either way, and "Draft with AI" is right
       // there to retry.
@@ -194,7 +214,23 @@ function VendorEvaluationInner() {
 
         {showForm && (
           <form onSubmit={createRfp} className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 space-y-4">
-            <p className="text-sm font-semibold text-slate-900">New Request for Proposal</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-900">New Request for Proposal</p>
+              <SkeletonPicker
+                entityType="RFP"
+                onApply={(snapshot: RfpSkeletonSnapshot) => {
+                  setForm((f) => ({
+                    ...f,
+                    background: snapshot.background ?? f.background,
+                    scope: snapshot.scope ?? f.scope,
+                    requirements: snapshot.requirements ?? f.requirements,
+                    timeline: snapshot.timeline ?? f.timeline,
+                    budgetRange: snapshot.budgetRange ?? f.budgetRange,
+                  }));
+                  setPendingCriteria(snapshot.criteria ?? []);
+                }}
+              />
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">
                 <span className="block text-xs font-medium text-slate-500 mb-1">Title *</span>
@@ -214,6 +250,7 @@ function VendorEvaluationInner() {
               If the linked project already has a completed charter, AI will draft the RFP from it automatically.
               Otherwise, add a few pointers below and AI will draft from those instead — all optional, and everything
               can be edited before you publish.
+              {pendingCriteria.length > 0 && ` ${pendingCriteria.length} scoring criteria from the template will be added too.`}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <label className="block">

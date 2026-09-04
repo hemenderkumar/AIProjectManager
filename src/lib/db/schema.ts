@@ -1679,6 +1679,38 @@ export const projectTemplates = pgTable("project_templates", {
 });
 
 // ---------------------------------------------------------------------------
+// Feature: content templates for RFPs, SOWs, and status reports — the same
+// reusable-template idea as projectTemplates, generalized with an entityType
+// discriminator instead of forking the table three times. Two unrelated
+// "kinds" share the shape: a SKELETON is a reusable starting-point snapshot of
+// the entity's own pointer/summary fields (+ RFP scoring criteria), applied by
+// the client when starting a new RFP/SOW; a STYLE_PRESET is just a named,
+// reusable instruction string appended to the existing hardcoded AI system
+// prompt for that entity's draft/generate flow (draftRfpContent, draft-sow,
+// reportGenerator) — it never touches the entity's persisted fields. Status
+// reports have no persisted section content to snapshot (see reportGenerator.ts
+// — content is computed fresh from live portfolio data every time), so they
+// only ever get STYLE_PRESET rows, never SKELETON.
+// ---------------------------------------------------------------------------
+
+export const contentTemplateEntityEnum = pgEnum("content_template_entity", ["RFP", "SOW", "STATUS_REPORT"]);
+export const contentTemplateKindEnum = pgEnum("content_template_kind", ["SKELETON", "STYLE_PRESET"]);
+
+export const contentTemplates = pgTable("content_templates", {
+  id: cuid(),
+  // null = shared/starter template usable by any organization, same convention as
+  // projectTemplates.organizationId.
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  entityType: contentTemplateEntityEnum("entity_type").notNull(),
+  kind: contentTemplateKindEnum("kind").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  snapshot: jsonb("snapshot").notNull(),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
 // Feature: custom fields + per-project workflow configuration
 // ---------------------------------------------------------------------------
 
