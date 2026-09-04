@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Topbar from "@/components/Topbar";
 import KpiCard from "@/components/KpiCard";
 import CategoryBar from "@/components/CategoryBar";
+import DivisionFilterSelect from "@/components/DivisionFilterSelect";
 import { Inbox, Copy, Check, ChevronDown, ChevronUp, Rocket, Search } from "lucide-react";
 
 type Demand = {
@@ -23,6 +24,7 @@ type Demand = {
   decisionReason: string | null;
   capacityNotes: string | null;
   convertedProjectId: string | null;
+  divisionId: string | null;
   createdAt: string;
 };
 
@@ -54,12 +56,20 @@ export default function DemandPageClient() {
   const [copied, setCopied] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [typeFilter, setTypeFilter] = useState("ALL");
+  const [divisionFilter, setDivisionFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [divisions, setDivisions] = useState<{ id: string; name: string }[]>([]);
 
   function load() {
     fetch("/api/demand").then((r) => (r.ok ? r.json() : [])).then((rows) => setItems(Array.isArray(rows) ? rows : [])).finally(() => setLoading(false));
   }
   useEffect(load, []);
+  // Demand rows already carry a direct divisionId column (no stakeholder join needed, unlike
+  // projects/ideas), so we only need the id->name directory here for the filter + display label.
+  useEffect(() => {
+    fetch("/api/organization/divisions").then((r) => (r.ok ? r.json() : [])).then((rows) => setDivisions(Array.isArray(rows) ? rows : [])).catch(() => {});
+  }, []);
+  const divisionNameById = useMemo(() => new Map(divisions.map((d) => [d.id, d.name])), [divisions]);
 
   async function act(id: string, body: Record<string, unknown>) {
     await fetch(`/api/demand/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -94,10 +104,11 @@ export default function DemandPageClient() {
     return items.filter((d) => {
       if (statusFilter !== "ALL" && d.status !== statusFilter) return false;
       if (typeFilter !== "ALL" && d.type !== typeFilter) return false;
+      if (divisionFilter !== "ALL" && d.divisionId !== divisionFilter) return false;
       if (q && !`${d.title} ${d.requestedByName} ${d.requestedByEmail}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [items, statusFilter, typeFilter, search]);
+  }, [items, statusFilter, typeFilter, divisionFilter, search]);
 
   const sorted = [...filtered].sort((a, b) => (b.priorityScore ?? 0) - (a.priorityScore ?? 0));
   const publicUrl = typeof window !== "undefined" ? `${window.location.origin}/demand-request` : "/demand-request";
@@ -158,9 +169,10 @@ export default function DemandPageClient() {
                 <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
               ))}
             </select>
-            {(statusFilter !== "ALL" || typeFilter !== "ALL" || search) && (
+            <DivisionFilterSelect value={divisionFilter} onChange={setDivisionFilter} divisions={divisions} />
+            {(statusFilter !== "ALL" || typeFilter !== "ALL" || divisionFilter !== "ALL" || search) && (
               <button
-                onClick={() => { setStatusFilter("ALL"); setTypeFilter("ALL"); setSearch(""); }}
+                onClick={() => { setStatusFilter("ALL"); setTypeFilter("ALL"); setDivisionFilter("ALL"); setSearch(""); }}
                 className="text-xs text-slate-400 hover:text-slate-600"
               >
                 Clear
@@ -194,7 +206,10 @@ export default function DemandPageClient() {
                       </span>
                       {d.priorityScore != null && <span className="text-xs text-slate-400">score {d.priorityScore.toFixed(1)}</span>}
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">{d.requestedByName} · {d.requestedByEmail}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {d.requestedByName} · {d.requestedByEmail}
+                      {d.divisionId && divisionNameById.get(d.divisionId) && <> · {divisionNameById.get(d.divisionId)}</>}
+                    </p>
                   </div>
                   {open ? <ChevronUp size={16} className="text-slate-400 shrink-0" /> : <ChevronDown size={16} className="text-slate-400 shrink-0" />}
                 </button>
