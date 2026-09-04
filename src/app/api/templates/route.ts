@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth";
-import { listTemplates, createTemplateFromProject, createProjectFromTemplate } from "@/lib/templates";
+import { listTemplates, createTemplateFromProject, createProjectFromTemplate, createProjectFromSnapshot, type TemplateSnapshot } from "@/lib/templates";
 
 export async function GET() {
   const user = await requireRole("VIEWER");
@@ -29,7 +29,13 @@ export async function POST(req: NextRequest) {
     if (!body.templateId || !body.newProjectName) {
       return NextResponse.json({ error: "templateId and newProjectName are required" }, { status: 400 });
     }
-    const created = await createProjectFromTemplate(user, body.templateId, body.newProjectName);
+    // If the client sent an AI-tweaked snapshot (from POST /api/ai/template-tweak, reviewed
+    // by the user first), create from that instead of re-reading the original template --
+    // same snapshot shape, so createProjectFromSnapshot doesn't need to know which path it
+    // came from.
+    const created = body.snapshot
+      ? await createProjectFromSnapshot(user, body.snapshot as TemplateSnapshot, body.newProjectName)
+      : await createProjectFromTemplate(user, body.templateId, body.newProjectName);
     if (!created) return NextResponse.json({ error: "template not found" }, { status: 404 });
     return NextResponse.json(created, { status: 201 });
   }

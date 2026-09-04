@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { projectTemplates, projects, tasks, projectMembers } from "./db/schema";
-import { eq, or, isNull } from "drizzle-orm";
+import { eq, or, isNull, and } from "drizzle-orm";
 import { canAccessProject } from "./tenancy";
 import type { SessionUser } from "./auth";
 
@@ -69,11 +69,11 @@ export async function createTemplateFromProject(user: SessionUser, projectId: st
   return created;
 }
 
-export async function createProjectFromTemplate(user: SessionUser, templateId: string, newProjectName: string) {
-  const [template] = await db.select().from(projectTemplates).where(eq(projectTemplates.id, templateId));
-  if (!template) return null;
-  const snapshot = template.snapshot as TemplateSnapshot;
-
+// Shared by both the direct "use this template as-is" path and the AI-tweaked path
+// (POST /api/ai/template-tweak proposes an adjusted snapshot, which the client then submits
+// back here unchanged) -- one place turns a snapshot into a real project either way, so the
+// two flows can't drift.
+export async function createProjectFromSnapshot(user: SessionUser, snapshot: TemplateSnapshot, newProjectName: string) {
   const [created] = await db
     .insert(projects)
     .values({
@@ -105,4 +105,24 @@ export async function createProjectFromTemplate(user: SessionUser, templateId: s
   }
 
   return created;
+}
+
+export async function createProjectFromTemplate(user: SessionUser, templateId: string, newProjectName: string) {
+  const [template] = await db.select().from(projectTemplates).where(eq(projectTemplates.id, templateId));
+  if (!template) return null;
+  return createProjectFromSnapshot(user, template.snapshot as TemplateSnapshot, newProjectName);
+}
+
+// Same org-wide-or-shared visibility rule as listTemplates, scoped down to one template --
+// used by the AI tweak endpoint so it can't be pointed at another organization's private
+// template by id.
+export async function getTemplate(user: SessionUser, templateId: string) {
+  const visibility = user.organizationId
+    ? or(eq(projectTemplates.organizationId, user.organizationId), isNull(projectTemplates.organizationId))
+    : isNull(projectTemplates.organizationId);
+  const [template] = await db
+    .select()
+    .from(projectTemplates)
+    .where(and(eq(projectTemplates.id, templateId), visibility));
+  return template ?? null;
 }
