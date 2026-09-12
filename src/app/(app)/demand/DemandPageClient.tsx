@@ -5,7 +5,7 @@ import Topbar from "@/components/Topbar";
 import KpiCard from "@/components/KpiCard";
 import CategoryBar from "@/components/CategoryBar";
 import DivisionFilterSelect from "@/components/DivisionFilterSelect";
-import { Inbox, Copy, Check, ChevronDown, ChevronUp, Rocket, Search } from "lucide-react";
+import { Inbox, Copy, Check, ChevronDown, ChevronUp, Rocket, Search, TrendingUp } from "lucide-react";
 
 type Demand = {
   id: string;
@@ -48,6 +48,31 @@ const TYPE_OPTIONS = ["STRATEGIC", "RUN_THE_BUSINESS", "COMPLIANCE", "ENHANCEMEN
 // arguably revisitable but treated as resolved-for-now) is out of the active backlog.
 const OPEN_STATUSES = new Set(["SUBMITTED", "TRIAGED", "SCORED"]);
 
+type ForecastItem = {
+  id: string;
+  title: string;
+  status: string;
+  type: string | null;
+  divisionId: string | null;
+  effortSize: "S" | "M" | "L" | "XL";
+  hours: number;
+  cost: number;
+  cumulativeHoursBefore: number;
+  projectedStartWeek: number;
+};
+
+type ForecastGroup = { key: string; hours: number; cost: number; count: number };
+
+type Forecast = {
+  items: ForecastItem[];
+  totalHours: number;
+  totalCost: number;
+  weeksToClear: number;
+  byDivision: ForecastGroup[];
+  byType: ForecastGroup[];
+  assumptions: { blendedHourlyRate: number; teamCapacityHoursPerWeek: number };
+};
+
 export default function DemandPageClient() {
   const router = useRouter();
   const [items, setItems] = useState<Demand[]>([]);
@@ -59,9 +84,12 @@ export default function DemandPageClient() {
   const [divisionFilter, setDivisionFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [divisions, setDivisions] = useState<{ id: string; name: string }[]>([]);
+  const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [showForecastDetail, setShowForecastDetail] = useState(false);
 
   function load() {
     fetch("/api/demand").then((r) => (r.ok ? r.json() : [])).then((rows) => setItems(Array.isArray(rows) ? rows : [])).finally(() => setLoading(false));
+    fetch("/api/forecast/demand").then((r) => (r.ok ? r.json() : null)).then(setForecast).catch(() => {});
   }
   useEffect(load, []);
   // Demand rows already carry a direct divisionId column (no stakeholder join needed, unlike
@@ -134,6 +162,60 @@ export default function DemandPageClient() {
               <CategoryBar data={statusChartData} />
             </div>
           </>
+        )}
+
+        {forecast && forecast.items.length > 0 && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 space-y-3">
+            <button onClick={() => setShowForecastDetail((v) => !v)} className="w-full flex items-center justify-between gap-3 text-left">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={15} className="text-accent-600" />
+                <p className="text-sm font-semibold text-slate-900">Pipeline Forecast</p>
+                <span className="text-xs text-slate-400">— rough, editable assumptions, not a promise</span>
+              </div>
+              {showForecastDetail ? <ChevronUp size={16} className="text-slate-400 shrink-0" /> : <ChevronDown size={16} className="text-slate-400 shrink-0" />}
+            </button>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <KpiCard label="Pipeline Hours" value={forecast.totalHours.toLocaleString()} hint={`${forecast.items.length} item${forecast.items.length === 1 ? "" : "s"} in flight`} />
+              <KpiCard label="Rough Projected Cost" value={`$${Math.round(forecast.totalCost).toLocaleString()}`} hint={`at $${forecast.assumptions.blendedHourlyRate}/hr blended`} />
+              <KpiCard label="Weeks to Clear" value={forecast.weeksToClear} hint={`at ${forecast.assumptions.teamCapacityHoursPerWeek}h/wk assumed capacity`} tone={forecast.weeksToClear > 12 ? "warn" : "default"} />
+              <KpiCard label="Next Up" value={forecast.items[0]?.title ?? "—"} hint={forecast.items[0] ? `${forecast.items[0].effortSize} · could start week ${forecast.items[0].projectedStartWeek}` : undefined} />
+            </div>
+
+            {showForecastDetail && (
+              <div className="pt-2 border-t border-slate-100 space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <ForecastGroupTable title="By Division" groups={forecast.byDivision} />
+                  <ForecastGroupTable title="By Type" groups={forecast.byType} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-600 mb-1.5">Queue order (top 8)</p>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-slate-400 text-left">
+                        <th className="font-medium pb-1">Item</th>
+                        <th className="font-medium pb-1">Size</th>
+                        <th className="font-medium pb-1 text-right">Hours</th>
+                        <th className="font-medium pb-1 text-right">Cost</th>
+                        <th className="font-medium pb-1 text-right">Starts wk</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {forecast.items.slice(0, 8).map((i) => (
+                        <tr key={i.id} className="border-t border-slate-50">
+                          <td className="py-1 text-slate-700 truncate max-w-[220px]">{i.title}</td>
+                          <td className="py-1 text-slate-500">{i.effortSize}</td>
+                          <td className="py-1 text-right text-slate-500">{i.hours.toLocaleString()}</td>
+                          <td className="py-1 text-right text-slate-500">${Math.round(i.cost).toLocaleString()}</td>
+                          <td className="py-1 text-right text-slate-500">{i.projectedStartWeek}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4 flex items-center justify-between gap-3">
@@ -244,6 +326,35 @@ export default function DemandPageClient() {
           })
         )}
       </div>
+    </div>
+  );
+}
+
+function ForecastGroupTable({ title, groups }: { title: string; groups: ForecastGroup[] }) {
+  if (groups.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs font-semibold text-slate-600 mb-1.5">{title}</p>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-slate-400 text-left">
+            <th className="font-medium pb-1">Group</th>
+            <th className="font-medium pb-1 text-right">Items</th>
+            <th className="font-medium pb-1 text-right">Hours</th>
+            <th className="font-medium pb-1 text-right">Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g) => (
+            <tr key={g.key} className="border-t border-slate-50">
+              <td className="py-1 text-slate-700">{g.key}</td>
+              <td className="py-1 text-right text-slate-500">{g.count}</td>
+              <td className="py-1 text-right text-slate-500">{g.hours.toLocaleString()}</td>
+              <td className="py-1 text-right text-slate-500">${Math.round(g.cost).toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
