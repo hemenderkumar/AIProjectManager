@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import ApproveIdeaButton from "@/components/ApproveIdeaButton";
 import ExportButtons from "@/components/ExportButtons";
 import EACForecast from "@/components/EACForecast";
+import ForecastAccuracyTracker from "@/components/ForecastAccuracyTracker";
 import { PlusCircle, Rocket, Lightbulb } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -141,6 +142,7 @@ export default async function ExecutionPage() {
         </div>
 
         <EACForecast />
+        <ForecastAccuracyTracker />
       </div>
     </div>
   );

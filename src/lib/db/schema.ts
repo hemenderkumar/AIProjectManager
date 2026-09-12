@@ -421,6 +421,32 @@ export const skillRoleMap = pgTable(
   })
 );
 
+// Daily snapshot of the Feature 3 EAC forecast for one project, captured opportunistically
+// (see /api/forecast/eac's route -- it upserts one row per project per day whenever anyone
+// loads the Execution page) rather than on a cron, so this table self-populates from normal
+// usage with no scheduler dependency. This is what makes the forecast accuracy tracker
+// possible: once a project closes, its stored snapshots' `eac` values can be compared against
+// the project's actual final cost to see how far off the forecast was, and how that error
+// shrank (or didn't) as more progress got logged.
+export const eacSnapshots = pgTable(
+  "eac_snapshots",
+  {
+    id: cuid(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    snapshotDate: text("snapshot_date").notNull(), // YYYY-MM-DD, one row per project per day
+    eac: real("eac"), // null on days the forecast had insufficient data to compute one
+    actualCostToDate: real("actual_cost_to_date").notNull(),
+    physicalPercentComplete: real("physical_percent_complete"),
+    budgetPlanned: real("budget_planned").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("eac_snapshot_project_date_uq").on(t.projectId, t.snapshotDate),
+  })
+);
+
 export const projectResources = pgTable(
   "project_resources",
   {

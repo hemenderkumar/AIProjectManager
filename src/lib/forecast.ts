@@ -645,3 +645,98 @@ export function computeCapacityVsDemandForecast(
     overAllocatedResources,
   };
 }
+
+// -----------------------------------------------------------------------------------------
+// Forecast accuracy tracker: how good has the Feature 3 EAC actually been?
+//
+// Every EAC assumption in this file (blendedHourlyRate, minPercentCompleteForEac) is a
+// plain, editable guess, not a measured constant -- this is what lets them get corrected
+// against reality instead of staying fixed forever. /api/forecast/eac opportunistically
+// writes one eac_snapshots row per project per day (no cron needed -- it self-populates from
+// normal Execution page usage); once a project closes, we can compare what the forecast said
+// at various points in its life against what the project's cost actually turned out to be.
+//
+// "Actual final cost" is computed the exact same way EAC's own actualCostToDate is (logged
+// hours x rate + non-pending invoices) rather than the manually-typed budgetActual field --
+// same reasoning as the rest of Feature 3: we're checking our own method's prediction against
+// our own method's later, more complete observation, not against a number a PM may or may not
+// have kept current.
+// -----------------------------------------------------------------------------------------
+
+export type EACSnapshotInput = {
+  snapshotDate: string; // YYYY-MM-DD
+  eac: number | null;
+  physicalPercentComplete: number | null;
+};
+
+export type ForecastAccuracySample = {
+  snapshotDate: string;
+  eac: number;
+  percentCompleteAtSnapshot: number | null;
+  errorPercent: number; // (eac - finalActualCost) / finalActualCost * 100; positive = overestimated
+};
+
+export type ForecastAccuracyProjectResult = {
+  projectId: string;
+  projectName: string;
+  finalActualCost: number;
+  snapshotCount: number;
+  // The earliest and latest snapshot with a usable (non-null) eac value -- shows whether the
+  // forecast's error shrank as the project progressed, same "not just one number" transparency
+  // stance as the rest of this file. Both may be the same sample if only one snapshot exists.
+  earliestSample: ForecastAccuracySample | null;
+  latestSample: ForecastAccuracySample | null;
+};
+
+export type ForecastAccuracyResult = {
+  projects: ForecastAccuracyProjectResult[]; // closed projects with at least one usable snapshot
+  meanAbsoluteErrorPercentEarly: number | null; // across every project's earliest usable sample
+  meanAbsoluteErrorPercentLate: number | null; // across every project's latest usable sample
+  evaluatedProjectCount: number;
+};
+
+export function computeForecastAccuracy(
+  closedProjects: { id: string; name: string }[],
+  snapshotsByProject: Map<string, EACSnapshotInput[]>,
+  finalActualCostByProject: Map<string, number>
+): ForecastAccuracyResult {
+  const projects: ForecastAccuracyProjectResult[] = [];
+
+  for (const p of closedProjects) {
+    const finalActualCost = finalActualCostByProject.get(p.id);
+    if (finalActualCost === undefined || finalActualCost <= 0) continue;
+
+    const usable = (snapshotsByProject.get(p.id) ?? [])
+      .filter((s): s is EACSnapshotInput & { eac: number } => s.eac !== null)
+      .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate));
+    if (usable.length === 0) continue;
+
+    const toSample = (s: EACSnapshotInput & { eac: number }): ForecastAccuracySample => ({
+      snapshotDate: s.snapshotDate,
+      eac: s.eac,
+      percentCompleteAtSnapshot: s.physicalPercentComplete,
+      errorPercent: ((s.eac - finalActualCost) / finalActualCost) * 100,
+    });
+
+    projects.push({
+      projectId: p.id,
+      projectName: p.name,
+      finalActualCost,
+      snapshotCount: usable.length,
+      earliestSample: toSample(usable[0]),
+      latestSample: toSample(usable[usable.length - 1]),
+    });
+  }
+
+  const meanAbs = (samples: (ForecastAccuracySample | null)[]) => {
+    const present = samples.filter((s): s is ForecastAccuracySample => s !== null);
+    return present.length > 0 ? present.reduce((s, x) => s + Math.abs(x.errorPercent), 0) / present.length : null;
+  };
+
+  return {
+    projects,
+    meanAbsoluteErrorPercentEarly: meanAbs(projects.map((p) => p.earliestSample)),
+    meanAbsoluteErrorPercentLate: meanAbs(projects.map((p) => p.latestSample)),
+    evaluatedProjectCount: projects.length,
+  };
+}
