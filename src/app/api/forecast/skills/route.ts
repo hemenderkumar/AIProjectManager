@@ -3,7 +3,7 @@ import { requireInternal } from "@/lib/tenancy";
 import { listVisibleProjects } from "@/lib/tenancy";
 import { computeSkillCapacityForecast, totalAllocationByResource, type SkillDemandTask } from "@/lib/forecast";
 import { db } from "@/lib/db";
-import { tasks, resources, projectResources, rateCards } from "@/lib/db/schema";
+import { tasks, resources, projectResources, rateCards, skillRoleMap } from "@/lib/db/schema";
 import { and, inArray, isNull, ne } from "drizzle-orm";
 
 // Internal-only, same gate as the Resources roster and Rate Cards — this surfaces staff
@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json(computeSkillCapacityForecast([], [], new Map(), []));
   }
 
-  const [unstaffedTaskRows, resourceRows, allocationRows, rateCardRows] = await Promise.all([
+  const [unstaffedTaskRows, resourceRows, allocationRows, rateCardRows, skillRoleRows] = await Promise.all([
     db
       .select()
       .from(tasks)
@@ -32,7 +32,9 @@ export async function GET() {
     db.select().from(resources),
     db.select().from(projectResources).where(inArray(projectResources.projectId, activeProjectIds)),
     db.select().from(rateCards).where(isNull(rateCards.organizationId)),
+    db.select().from(skillRoleMap),
   ]);
+  const skillRoleById = new Map(skillRoleRows.map((r) => [r.skill, r.role]));
 
   // AI-executed and vendor-executed tasks aren't candidates for internal staffing at all — the
   // former runs itself, the latter is meant to go out to ProjectRequesta/an external vendor —
@@ -55,6 +57,13 @@ export async function GET() {
     allocationRows.map((a) => ({ resourceId: a.resourceId, allocationPercent: a.allocationPercent }))
   );
 
-  const forecast = computeSkillCapacityForecast(demandTasks, resourceRows, allocationPercentByResource, rateCardRows);
+  const forecast = computeSkillCapacityForecast(
+    demandTasks,
+    resourceRows,
+    allocationPercentByResource,
+    rateCardRows,
+    undefined,
+    skillRoleById
+  );
   return NextResponse.json(forecast);
 }

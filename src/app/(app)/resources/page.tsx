@@ -4,6 +4,7 @@ import Topbar from "@/components/Topbar";
 import { Plus, Trash2, Search } from "lucide-react";
 import { SOURCING_TYPES, SOURCING_LABELS, type SourcingType } from "@/lib/deliveryModel";
 import RateCardSection from "@/components/RateCardSection";
+import SkillRoleMapSection from "@/components/SkillRoleMapSection";
 import SkillCapacityForecast from "@/components/SkillCapacityForecast";
 import ExportButtons from "@/components/ExportButtons";
 
@@ -385,6 +386,7 @@ export default function ResourcesPage() {
         </div>
 
         <RateCardSection />
+        <SkillRoleMapSection />
         <SkillCapacityForecast />
       </div>
     </div>

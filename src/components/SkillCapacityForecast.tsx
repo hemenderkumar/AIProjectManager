@@ -14,6 +14,8 @@ type SkillGap = {
   gapHours: number;
   coveredCost: number;
   gapRate: number;
+  gapRateSource: "mapped" | "inferred" | "skill";
+  resolvedRole: string | null;
   gapCost: number;
   totalCost: number;
   tasks: SkillGapTaskRef[];
@@ -90,7 +92,15 @@ export default function SkillCapacityForecast() {
                   <p className="text-xs text-slate-500">
                     {Math.round(g.demandHours)}h demanded · {Math.round(g.availableCapacityHours)}h available from{" "}
                     {g.matchedResourceNames.length > 0 ? g.matchedResourceNames.join(", ") : "no one on the roster"}
-                    {hasGap && <> · gap priced at ${g.gapRate.toFixed(0)}/hr</>}
+                    {hasGap && (
+                      <>
+                        {" "}
+                        · gap priced at ${g.gapRate.toFixed(0)}/hr
+                        {g.resolvedRole
+                          ? ` as ${g.resolvedRole} (${g.gapRateSource === "mapped" ? "mapped" : "inferred from roster"})`
+                          : " using the skill name itself — add a Skill → Role mapping below for an accurate rate"}
+                      </>
+                    )}
                   </p>
                   <table className="w-full text-xs">
                     <thead>

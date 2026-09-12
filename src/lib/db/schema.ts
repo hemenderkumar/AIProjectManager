@@ -401,6 +401,26 @@ export const rateCards = pgTable(
   })
 );
 
+// Skill -> role mapping used by the skill capacity forecast (lib/forecast.ts's
+// computeSkillCapacityForecast) to price an uncovered skill gap against a real rate-card role
+// rather than treating the skill name itself as a role. Global/company-wide (not org-scoped
+// like rateCards) since "React maps to Frontend Engineer" is a taxonomy fact, not something
+// that differs per client. One role per skill; when a skill has no row here, the forecast
+// falls back to inferring a role from matched resources' own `role` field, and only falls
+// through to the raw skill name (today's approximate behavior) when neither is available.
+export const skillRoleMap = pgTable(
+  "skill_role_map",
+  {
+    id: cuid(),
+    skill: text("skill").notNull(),
+    role: text("role").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("skill_role_map_skill_uq").on(t.skill),
+  })
+);
+
 export const projectResources = pgTable(
   "project_resources",
   {

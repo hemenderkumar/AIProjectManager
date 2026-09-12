@@ -171,6 +171,7 @@ export type SkillDemandTask = {
 export type ResourceForCapacity = {
   id: string;
   name: string;
+  role: string | null;
   skills: string[] | null;
   capacityHoursPerWk: number | null;
   costPerHour: number | null;
@@ -205,7 +206,15 @@ export type SkillGap = {
   availableCapacityHours: number; // spare capacity across matched resources, over the horizon
   gapHours: number; // demand beyond what spare capacity can absorb
   coveredCost: number; // portion covered by existing staff, at their own blended costPerHour
-  gapRate: number; // $/hr used to price the uncovered portion — see rate-card-lookup caveat below
+  gapRate: number; // $/hr used to price the uncovered portion
+  // Where gapRate's role lookup came from — surfaced for transparency, same "editable
+  // assumption, not a black box" stance as the rest of this file:
+  //   "mapped"   — an explicit skill_role_map row exists for this skill (most accurate)
+  //   "inferred" — no mapping row, but matched resources' own `role` field agreed on one
+  //   "skill"    — neither available; findRate was called with the raw skill name itself
+  //                (today's approximate fallback — add a mapping to fix this permanently)
+  gapRateSource: "mapped" | "inferred" | "skill";
+  resolvedRole: string | null; // the role string actually used for the rate-card lookup
   gapCost: number;
   totalCost: number;
   tasks: SkillGapTaskRef[];
@@ -236,12 +245,33 @@ function normalizeSkill(s: string): string {
   return s.trim().toLowerCase();
 }
 
+// Picks the most common (mode) role among a set of matched resources — used as the
+// second-best signal for a skill's rate-card role when there's no explicit mapping. Ties
+// break on whichever role was seen first, which is an arbitrary but stable choice.
+function modeRole(matched: ResourceForCapacity[]): string | null {
+  const counts = new Map<string, number>();
+  for (const r of matched) {
+    if (!r.role) continue;
+    counts.set(r.role, (counts.get(r.role) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [role, count] of counts.entries()) {
+    if (count > bestCount) {
+      best = role;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 export function computeSkillCapacityForecast(
   unstaffedTasks: SkillDemandTask[],
   resources: ResourceForCapacity[],
   allocationPercentByResource: Map<string, number>,
   rateCards: RateCardEntry[],
-  assumptions: SkillCapacityAssumptions = DEFAULT_SKILL_CAPACITY_ASSUMPTIONS
+  assumptions: SkillCapacityAssumptions = DEFAULT_SKILL_CAPACITY_ASSUMPTIONS,
+  skillRoleMap: Map<string, string> = new Map()
 ): SkillCapacityForecastResult {
   // Group unstaffed task hours by required skill. A task naming multiple required skills adds
   // its hours to each one, deliberately not split across them — covering just one of a task's
@@ -278,12 +308,17 @@ export function computeSkillCapacityForecast(
     const gapHours = Math.max(0, demandHours - availableCapacityHours);
     const avgInternalRate = availableCapacityHours > 0 ? weightedCostSum / availableCapacityHours : 0;
     const coveredCost = coveredHours * avgInternalRate;
-    // Rough on purpose: rate cards are keyed by role (e.g. "Data Engineer"), not by individual
-    // skill tags (e.g. "Snowflake") — an exact match is the exception, not the rule. findRate's
-    // built-in fallback (same-sourcing-type average, then a flat default) keeps this from ever
-    // silently costing a gap at $0; a precise per-role lookup needs skill-to-role mapping this
-    // MVP doesn't attempt.
-    const gapRate = findRate(rateCards, skill, assumptions.sourcingTypeForGapRate);
+    // Rate cards are keyed by role (e.g. "Data Engineer"), not by individual skill tags (e.g.
+    // "Snowflake") — resolve the skill to a role in priority order: an explicit mapping row
+    // (most accurate), else the role most of this skill's matched resources actually hold,
+    // else fall back to calling findRate with the raw skill name (today's rough approximation
+    // — findRate's own fallback chain keeps this from ever silently costing a gap at $0, but
+    // adding a skill_role_map row is what actually fixes it).
+    const mappedRole = skillRoleMap.get(skill) ?? null;
+    const inferredRole = mappedRole ? null : modeRole(matched);
+    const resolvedRole = mappedRole ?? inferredRole;
+    const gapRateSource: SkillGap["gapRateSource"] = mappedRole ? "mapped" : inferredRole ? "inferred" : "skill";
+    const gapRate = findRate(rateCards, resolvedRole ?? skill, assumptions.sourcingTypeForGapRate);
     const gapCost = gapHours * gapRate;
 
     gaps.push({
@@ -295,6 +330,8 @@ export function computeSkillCapacityForecast(
       gapHours,
       coveredCost,
       gapRate,
+      gapRateSource,
+      resolvedRole,
       gapCost,
       totalCost: coveredCost + gapCost,
       tasks: tasks.sort((a, b) => {
