@@ -23,6 +23,7 @@ import {
   Zap,
   Plug,
   CreditCard,
+  LineChart,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import type { ModuleKey } from "@/lib/modules";
@@ -129,6 +130,9 @@ export default function Sidebar({
           )}
           {isInternal && (
             <NavLink href="/resources" icon={<Users size={17} />} pathname={pathname}>Resources</NavLink>
+          )}
+          {isInternal && (
+            <NavLink href="/forecast" icon={<LineChart size={17} />} pathname={pathname}>Forecasting</NavLink>
           )}
           {user?.role === "SUPER_USER" && (
             <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>
