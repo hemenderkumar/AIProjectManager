@@ -316,3 +316,203 @@ export function computeSkillCapacityForecast(
     assumptions,
   };
 }
+
+// -----------------------------------------------------------------------------------------
+// Feature 3: project cost & schedule Estimate-At-Completion (EAC) forecast.
+//
+// The obvious way to build this would be to project `budgetActual` and `percentComplete`
+// forward. That doesn't hold up under inspection: both are plain numbers a PM types into a
+// form (see OverviewTab.tsx / StatusTab.tsx's number inputs) — nothing in the codebase ever
+// auto-computes either one, so budgetActual sits at the schema default of $0 on any project
+// nobody has manually updated, and percentComplete is only as fresh as the last status
+// update someone bothered to file. An EAC built on top of those would look precise while
+// resting on numbers nobody is obliged to keep current.
+//
+// Instead this uses the one figure the app *does* keep current automatically: tasks.actualHours,
+// which recomputeActualHours() re-sums from real logged time entries on every add/delete (see
+// the time-entries API routes). From tasks + resources + invoices we derive, per project:
+//   - actualCostToDate: sum(task.actualHours x assignee's costPerHour), falling back to the
+//     same blendedHourlyRate constant used elsewhere for unassigned tasks or resources with no
+//     rate on file, plus any invoice not sitting in PENDING (PAID/OVERDUE/DISPUTED all mean the
+//     cost was actually incurred, whether or not it has been settled yet)
+//   - physicalPercentComplete: actualHours / estimateHours summed across the project's tasks —
+//     this can't go stale the way a status-update field can, since it only moves when real
+//     hours get logged against real estimates
+// EAC follows the standard "assume today's burn rate holds" formula: EAC = actualCostToDate /
+// physicalPercentComplete. Below assumptions.minPercentCompleteForEac this is deliberately
+// withheld (insufficientData: true) rather than shown, since dividing by a tiny percentage
+// turns early noise into a wild, misleading number. The same "hold the current pace" idea is
+// applied to elapsed calendar time to project a schedule EAC (a projected completion date)
+// against the project's targetEndDate.
+// -----------------------------------------------------------------------------------------
+
+export type EACAssumptions = {
+  // $/hr fallback for a task with no assignee, or an assignee with no costPerHour on file —
+  // same constant used as the blended rate elsewhere in this file, so the app's various rough
+  // dollar figures agree with each other.
+  blendedHourlyRate: number;
+  // Below this fraction of physical completion, EAC/VAC/schedule projection are withheld
+  // rather than shown — an early number divided by e.g. 1% complete swings wildly with every
+  // hour logged and would do more to mislead than inform.
+  minPercentCompleteForEac: number;
+  // Invoice statuses treated as cost actually incurred (as opposed to PENDING — not yet a
+  // real, booked cost).
+  invoiceStatusesCountedAsIncurred: string[];
+};
+
+export const DEFAULT_EAC_ASSUMPTIONS: EACAssumptions = {
+  blendedHourlyRate: 90,
+  minPercentCompleteForEac: 0.05,
+  invoiceStatusesCountedAsIncurred: ["PAID", "OVERDUE", "DISPUTED"],
+};
+
+export type EACTaskInput = {
+  id: string;
+  assigneeId: string | null;
+  estimateHours: number | null;
+  actualHours: number | null;
+};
+
+export type EACResourceInput = { id: string; costPerHour: number | null };
+
+export type EACInvoiceInput = { amount: number; status: string };
+
+export type EACProjectInput = {
+  id: string;
+  name: string;
+  budgetPlanned: number | null;
+  startDate: string | Date | null;
+  targetEndDate: string | Date | null;
+};
+
+export type ProjectEACResult = {
+  projectId: string;
+  projectName: string;
+  totalEstimateHours: number;
+  totalActualHours: number;
+  physicalPercentComplete: number | null; // null when the project has no estimated hours yet
+  laborCostToDate: number;
+  invoiceCostToDate: number;
+  actualCostToDate: number;
+  budgetPlanned: number;
+  eac: number | null; // null when insufficientData
+  vac: number | null; // budgetPlanned - eac; positive = projected to come in under budget
+  insufficientData: boolean; // true when physical % complete is null or below the minimum threshold
+  scheduleStartDate: string | null;
+  scheduleTargetEndDate: string | null;
+  projectedEndDate: string | null; // null when insufficientData or startDate is missing
+  scheduleSlipDays: number | null; // positive = projected to finish late; null when not computable
+};
+
+export function computeProjectEAC(
+  project: EACProjectInput,
+  tasks: EACTaskInput[],
+  resources: EACResourceInput[],
+  invoices: EACInvoiceInput[],
+  assumptions: EACAssumptions = DEFAULT_EAC_ASSUMPTIONS,
+  now: Date = new Date()
+): ProjectEACResult {
+  const rateByResource = new Map(
+    resources.map((r) => [r.id, r.costPerHour && r.costPerHour > 0 ? r.costPerHour : assumptions.blendedHourlyRate])
+  );
+
+  let totalEstimateHours = 0;
+  let totalActualHours = 0;
+  let laborCostToDate = 0;
+  for (const t of tasks) {
+    const est = t.estimateHours ?? 0;
+    const act = t.actualHours ?? 0;
+    totalEstimateHours += est;
+    totalActualHours += act;
+    const rate = t.assigneeId ? rateByResource.get(t.assigneeId) ?? assumptions.blendedHourlyRate : assumptions.blendedHourlyRate;
+    laborCostToDate += act * rate;
+  }
+
+  const invoiceCostToDate = invoices
+    .filter((inv) => assumptions.invoiceStatusesCountedAsIncurred.includes(inv.status))
+    .reduce((s, inv) => s + inv.amount, 0);
+  const actualCostToDate = laborCostToDate + invoiceCostToDate;
+
+  const physicalPercentComplete = totalEstimateHours > 0 ? totalActualHours / totalEstimateHours : null;
+  const budgetPlanned = project.budgetPlanned ?? 0;
+
+  const hasEnoughProgress = physicalPercentComplete !== null && physicalPercentComplete >= assumptions.minPercentCompleteForEac;
+  const eac = hasEnoughProgress ? actualCostToDate / (physicalPercentComplete as number) : null;
+  const vac = eac !== null && budgetPlanned > 0 ? budgetPlanned - eac : null;
+
+  const start = project.startDate ? new Date(project.startDate) : null;
+  const target = project.targetEndDate ? new Date(project.targetEndDate) : null;
+  let projectedEndDate: string | null = null;
+  let scheduleSlipDays: number | null = null;
+  if (start && hasEnoughProgress) {
+    const elapsedDays = Math.max(0, (now.getTime() - start.getTime()) / 86_400_000);
+    const projectedTotalDays = elapsedDays / (physicalPercentComplete as number);
+    const projected = new Date(start.getTime() + projectedTotalDays * 86_400_000);
+    projectedEndDate = projected.toISOString();
+    if (target) {
+      scheduleSlipDays = Math.round((projected.getTime() - target.getTime()) / 86_400_000);
+    }
+  }
+
+  return {
+    projectId: project.id,
+    projectName: project.name,
+    totalEstimateHours,
+    totalActualHours,
+    physicalPercentComplete,
+    laborCostToDate,
+    invoiceCostToDate,
+    actualCostToDate,
+    budgetPlanned,
+    eac,
+    vac,
+    insufficientData: !hasEnoughProgress,
+    scheduleStartDate: start ? start.toISOString() : null,
+    scheduleTargetEndDate: target ? target.toISOString() : null,
+    projectedEndDate,
+    scheduleSlipDays,
+  };
+}
+
+export type PortfolioEACResult = {
+  projects: ProjectEACResult[]; // sorted: at-risk (over budget or projected late) first, then by actualCostToDate desc
+  totalBudgetPlanned: number;
+  totalActualCostToDate: number;
+  totalProjectedCost: number; // sum of eac where computable, actualCostToDate as a floor otherwise
+  projectsAtRisk: number; // vac < 0 (projected overrun) or scheduleSlipDays > 0 (projected late)
+  projectsWithInsufficientData: number;
+  assumptions: EACAssumptions;
+};
+
+export function computePortfolioEAC(
+  projects: EACProjectInput[],
+  tasksByProject: Map<string, EACTaskInput[]>,
+  resources: EACResourceInput[],
+  invoicesByProject: Map<string, EACInvoiceInput[]>,
+  assumptions: EACAssumptions = DEFAULT_EAC_ASSUMPTIONS,
+  now: Date = new Date()
+): PortfolioEACResult {
+  const results = projects.map((p) =>
+    computeProjectEAC(p, tasksByProject.get(p.id) ?? [], resources, invoicesByProject.get(p.id) ?? [], assumptions, now)
+  );
+
+  function isAtRisk(r: ProjectEACResult) {
+    return (r.vac !== null && r.vac < 0) || (r.scheduleSlipDays !== null && r.scheduleSlipDays > 0);
+  }
+
+  results.sort((a, b) => {
+    const riskDiff = Number(isAtRisk(b)) - Number(isAtRisk(a));
+    if (riskDiff !== 0) return riskDiff;
+    return b.actualCostToDate - a.actualCostToDate;
+  });
+
+  return {
+    projects: results,
+    totalBudgetPlanned: results.reduce((s, r) => s + r.budgetPlanned, 0),
+    totalActualCostToDate: results.reduce((s, r) => s + r.actualCostToDate, 0),
+    totalProjectedCost: results.reduce((s, r) => s + (r.eac ?? r.actualCostToDate), 0),
+    projectsAtRisk: results.filter(isAtRisk).length,
+    projectsWithInsufficientData: results.filter((r) => r.insufficientData).length,
+    assumptions,
+  };
+}

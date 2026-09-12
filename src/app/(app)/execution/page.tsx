@@ -5,6 +5,7 @@ import { getAllProjectsWithMetrics } from "@/lib/portfolio";
 import { getCurrentUser } from "@/lib/auth";
 import ApproveIdeaButton from "@/components/ApproveIdeaButton";
 import ExportButtons from "@/components/ExportButtons";
+import EACForecast from "@/components/EACForecast";
 import { PlusCircle, Rocket, Lightbulb } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -138,6 +139,8 @@ export default async function ExecutionPage() {
             </table>
           </div>
         </div>
+
+        <EACForecast />
       </div>
     </div>
   );
