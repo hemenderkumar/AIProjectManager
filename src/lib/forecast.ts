@@ -553,3 +553,95 @@ export function computePortfolioEAC(
     assumptions,
   };
 }
+
+// -----------------------------------------------------------------------------------------
+// Combined view: demand pipeline vs. current staffing capacity.
+//
+// Feature 1's demand forecast projects the backlog's clearing timeline against a flat,
+// assumed weekly throughput (DEFAULT_FORECAST_ASSUMPTIONS.teamCapacityHoursPerWeek, ~160h/wk).
+// That's a reasonable starting placeholder, but Feature 2's data already tells us the roster's
+// *actual* free capacity right now (each resource's capacityHoursPerWk net of their current
+// allocationPercent across active projects). This reprojects the same queue using that real
+// number instead of the assumption, and surfaces overall utilization + who's individually
+// over-allocated — directly answering "can we take on this new demand given who's already
+// stretched thin?" rather than leaving that judgment to a flat constant.
+//
+// Deliberately does NOT attempt a per-skill match between pipeline demand and roster skills:
+// demand_requests are tagged only with a division and a type, not required skills (unlike
+// tasks.requiredSkills), so a precise skill-level overlay isn't possible without adding that
+// field to the backlog intake form — a real gap, not something to fake with a guess.
+// -----------------------------------------------------------------------------------------
+
+export type CapacityVsDemandItem = DemandForecastItem & {
+  // Recomputed using realWeeklyFreeCapacityHours below instead of the flat assumption Feature
+  // 1 uses on its own — how many weeks out this item would start given the roster's actual
+  // current spare capacity.
+  projectedStartWeekAtRealCapacity: number;
+};
+
+export type OverAllocatedResource = { id: string; name: string; allocationPercent: number };
+
+export type CapacityVsDemandResult = {
+  items: CapacityVsDemandItem[];
+  totalDemandHours: number;
+  byDivision: DemandForecastGroup[];
+  byType: DemandForecastGroup[];
+  // Sum of every resource's capacityHoursPerWk, ignoring current allocation — the roster's
+  // theoretical max weekly throughput.
+  totalWeeklyGrossCapacityHours: number;
+  // Same sum, net of each resource's current allocationPercent across active projects — what's
+  // actually free to pick up new work this week.
+  realWeeklyFreeCapacityHours: number;
+  // 100 - (free / gross) — how stretched the roster is right now, independent of the pipeline.
+  currentUtilizationPercent: number;
+  // The flat constant Feature 1 uses on its own, shown alongside the real number for comparison.
+  assumedWeeklyCapacityHours: number;
+  weeksToClearAtRealCapacity: number;
+  weeksToClearAtAssumedCapacity: number;
+  // Resources allocated over 100% across their active projects — a direct, named answer to
+  // "who's already stretched thin."
+  overAllocatedResources: OverAllocatedResource[];
+};
+
+export function computeCapacityVsDemandForecast(
+  demandForecast: DemandForecastResult,
+  resources: ResourceForCapacity[],
+  allocationPercentByResource: Map<string, number>
+): CapacityVsDemandResult {
+  const totalWeeklyGrossCapacityHours = resources.reduce((s, r) => s + (r.capacityHoursPerWk ?? 40), 0);
+  const realWeeklyFreeCapacityHours = resources.reduce((s, r) => {
+    const weekly = r.capacityHoursPerWk ?? 40;
+    const allocated = Math.min(100, allocationPercentByResource.get(r.id) ?? 0);
+    return s + Math.max(0, weekly * (1 - allocated / 100));
+  }, 0);
+  const currentUtilizationPercent =
+    totalWeeklyGrossCapacityHours > 0 ? Math.round((1 - realWeeklyFreeCapacityHours / totalWeeklyGrossCapacityHours) * 100) : 0;
+
+  let cumulative = 0;
+  const items: CapacityVsDemandItem[] = demandForecast.items.map((item) => {
+    const projectedStartWeekAtRealCapacity =
+      realWeeklyFreeCapacityHours > 0 ? Math.floor(cumulative / realWeeklyFreeCapacityHours) : Infinity;
+    cumulative += item.hours;
+    return { ...item, projectedStartWeekAtRealCapacity };
+  });
+
+  const overAllocatedResources: OverAllocatedResource[] = resources
+    .map((r) => ({ id: r.id, name: r.name, allocationPercent: allocationPercentByResource.get(r.id) ?? 0 }))
+    .filter((r) => r.allocationPercent > 100)
+    .sort((a, b) => b.allocationPercent - a.allocationPercent);
+
+  return {
+    items,
+    totalDemandHours: demandForecast.totalHours,
+    byDivision: demandForecast.byDivision,
+    byType: demandForecast.byType,
+    totalWeeklyGrossCapacityHours,
+    realWeeklyFreeCapacityHours,
+    currentUtilizationPercent,
+    assumedWeeklyCapacityHours: demandForecast.assumptions.teamCapacityHoursPerWeek,
+    weeksToClearAtRealCapacity:
+      realWeeklyFreeCapacityHours > 0 ? Math.ceil(demandForecast.totalHours / realWeeklyFreeCapacityHours) : Infinity,
+    weeksToClearAtAssumedCapacity: demandForecast.weeksToClear,
+    overAllocatedResources,
+  };
+}

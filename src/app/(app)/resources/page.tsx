@@ -6,6 +6,7 @@ import { SOURCING_TYPES, SOURCING_LABELS, type SourcingType } from "@/lib/delive
 import RateCardSection from "@/components/RateCardSection";
 import SkillRoleMapSection from "@/components/SkillRoleMapSection";
 import SkillCapacityForecast from "@/components/SkillCapacityForecast";
+import CapacityVsDemandForecast from "@/components/CapacityVsDemandForecast";
 import ExportButtons from "@/components/ExportButtons";
 
 type Resource = {
@@ -388,6 +389,7 @@ export default function ResourcesPage() {
         <RateCardSection />
         <SkillRoleMapSection />
         <SkillCapacityForecast />
+        <CapacityVsDemandForecast />
       </div>
     </div>
   );
