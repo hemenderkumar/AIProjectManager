@@ -835,6 +835,12 @@ export const users = pgTable("users", {
   // (see getCurrentTheme() in lib/auth.ts) and renders it straight onto <html> server-side,
   // so there's no flash-of-wrong-theme to guard against on load.
   theme: text("theme").notNull().default("indigo"),
+  // Set when this person dismisses the "Getting Started" checklist on /home (either by
+  // clicking its close control, or automatically once every item is complete -- see
+  // getOnboardingChecklist() in lib/onboarding.ts). Null means "still show it if there's
+  // anything left to do." Per-user rather than per-organization since what a VIEWER has
+  // and hasn't tried is independent of what their SUPER_USER teammate has.
+  onboardingDismissedAt: timestamp("onboarding_dismissed_at"),
 });
 
 // A sign-up submitted through the public /register page. The password is hashed at

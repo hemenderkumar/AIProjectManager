@@ -14,9 +14,11 @@ import {
 import { getCurrentUser } from "@/lib/auth";
 import { getPortfolioSummary } from "@/lib/portfolio";
 import { computeInsights } from "@/lib/insights";
+import { getOnboardingChecklist, isOnboardingDismissed, type OnboardingItem } from "@/lib/onboarding";
 import MyRateCard from "@/components/MyRateCard";
 import AiInsightsPanel from "@/components/AiInsightsPanel";
 import StartWizard from "@/components/StartWizard";
+import OnboardingChecklist from "@/components/OnboardingChecklist";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +29,22 @@ export default async function HomePage() {
   // already watching the portfolio without turning the welcome screen into a report.
   const summary = await getPortfolioSummary(user);
   const insights = computeInsights(summary).slice(0, 2);
+  const [onboardingItems, onboardingDismissed]: [OnboardingItem[], boolean] = user
+    ? await Promise.all([getOnboardingChecklist(user), isOnboardingDismissed(user.id)])
+    : [[], true];
+  const showOnboarding = !onboardingDismissed && onboardingItems.some((i) => !i.completed);
 
   return (
     <div>
       <Topbar title={`Welcome${user ? `, ${user.name.split(" ")[0]}` : ""}`} subtitle="What are you working on today?" />
       <div className="p-8">
         <MyRateCard />
+
+        {showOnboarding && (
+          <div className="max-w-2xl">
+            <OnboardingChecklist items={onboardingItems} />
+          </div>
+        )}
 
         <div className="max-w-2xl">
           {/* Auto-open for anyone with nothing created yet (their real "first run"), and a
