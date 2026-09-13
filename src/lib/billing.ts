@@ -97,6 +97,15 @@ export async function createCheckoutSession(params: {
   // tier-breakpoint logic on our side.
   const quantity = plan.billingModel === "per_seat" ? Math.max(1, await countActiveSeats(org.id)) : 1;
 
+  // Promo codes (see lib/promo.ts): if this org has a standing SPECIFIC_ORG invite, apply it
+  // automatically -- the whole point of a personal invite is that the recipient never has to
+  // go find and type a code. Otherwise, let Stripe's own Checkout UI offer a code-entry field
+  // so a GROUP or GENERIC code (shared by email or social) can be typed in manually. Stripe's
+  // API rejects passing both `discounts` and `allow_promotion_codes` on the same session, so
+  // this is genuinely either/or, not both.
+  const { findActiveSpecificPromoForOrg } = await import("./promo");
+  const specificPromo = await findActiveSpecificPromoForOrg(org.id);
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
@@ -105,6 +114,9 @@ export async function createCheckoutSession(params: {
     cancel_url: params.cancelUrl,
     metadata: { organizationId: org.id, planId: plan.id },
     subscription_data: { metadata: { organizationId: org.id, planId: plan.id } },
+    ...(specificPromo?.stripePromotionCodeId
+      ? { discounts: [{ promotion_code: specificPromo.stripePromotionCodeId }] }
+      : { allow_promotion_codes: true }),
   });
   return session;
 }

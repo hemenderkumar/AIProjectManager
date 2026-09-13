@@ -8,6 +8,7 @@ import {
   Sparkles,
   PlusCircle,
   ShieldCheck,
+  Tag,
   FileBarChart,
   Users,
   Lightbulb,
@@ -168,6 +169,7 @@ export default function Sidebar({
           <NavSection label="Account Management">
             <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Users & Companies</NavLink>
             <NavLink href="/admin/plans" icon={<CreditCard size={17} />} pathname={pathname}>Plans</NavLink>
+            <NavLink href="/admin/promo-codes" icon={<Tag size={17} />} pathname={pathname}>Promo Codes</NavLink>
           </NavSection>
         )}
       </nav>

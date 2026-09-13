@@ -767,6 +767,70 @@ export const organizations = pgTable("organizations", {
   brandColor: text("brand_color"),
 });
 
+// Who a promo code is meant for, distinct from who *can technically* redeem it (Stripe itself
+// enforces the actual restriction -- see lib/promo.ts):
+//   SPECIFIC_ORG  -- one named organization (a hand-picked prospect like eWorkConnections). The
+//                    Stripe promotion code is created with `customer` set to that org's Stripe
+//                    Customer, so Stripe itself refuses redemption by anyone else. Auto-applied
+//                    at checkout -- the org never has to type a code.
+//   GROUP         -- a shared code for a defined cohort (e.g. "Beta partners", "Q1 pilot
+//                    orgs"). Nothing in Stripe distinguishes "group" from "generic" -- this is
+//                    enforced by distribution + maxRedemptions, same as any real-world group
+//                    coupon. groupLabel is purely descriptive for the admin list.
+//   GENERIC       -- a public code meant to be shared anywhere (social media, a landing page).
+//                    Relies entirely on maxRedemptions/expiresAt for containment.
+export const promoScopeEnum = pgEnum("promo_scope", ["SPECIFIC_ORG", "GROUP", "GENERIC"]);
+
+// Maps 1:1 to a Stripe Coupon's `duration`: ONCE applies to the customer's first invoice only,
+// FOREVER applies for the life of the subscription, REPEATING applies for exactly
+// durationInMonths invoices. Most acquisition promos should be ONCE or a short REPEATING
+// window -- FOREVER is available for a rare "lifetime deal" case but isn't the default.
+export const promoDurationEnum = pgEnum("promo_duration", ["ONCE", "REPEATING", "FOREVER"]);
+
+// A discount an admin can generate and hand out -- backed by a real Stripe Coupon +
+// Promotion Code (see lib/promo.ts createPromoCode) so Stripe is the actual source of truth
+// for "is this code still valid, and how many times has it been used." This table exists
+// alongside Stripe for two things Stripe doesn't give us for free: our own admin list/audit
+// trail, and the SPECIFIC_ORG auto-apply-at-checkout flow (billing.ts looks this table up by
+// targetOrganizationId, not by asking Stripe "which coupons does this customer have").
+export const promoCodes = pgTable("promo_codes", {
+  id: cuid(),
+  // Always stored upper-cased (see normalizePromoCode in lib/promo.ts) -- this is also the
+  // literal string Stripe's Promotion Code is created with, so what the admin sees here is
+  // exactly what someone would type into Stripe Checkout's "Add promotion code" field.
+  code: text("code").notNull().unique(),
+  percentOff: integer("percent_off").notNull(), // 10-100, enforced in lib/promo.ts
+  scope: promoScopeEnum("scope").notNull(),
+  duration: promoDurationEnum("duration").notNull().default("ONCE"),
+  durationInMonths: integer("duration_in_months"), // only meaningful when duration = REPEATING
+  // SPECIFIC_ORG only. Nullable rather than a separate table since only one scope needs it.
+  targetOrganizationId: text("target_organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  // GROUP only, purely descriptive (e.g. "Beta partners", "Consulting-firm pilot") -- shown in
+  // the admin list so a shared code's intent isn't lost once it's out in the world.
+  groupLabel: text("group_label"),
+  maxRedemptions: integer("max_redemptions"), // null = unlimited (only sane for SPECIFIC_ORG)
+  redemptionCount: integer("redemption_count").notNull().default(0),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").notNull().default(true),
+  stripeCouponId: text("stripe_coupon_id"),
+  stripePromotionCodeId: text("stripe_promotion_code_id"),
+  createdBy: text("created_by"), // snapshot of the admin's name, same convention as organizations.deletionRequestedBy
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// One row per successful redemption -- written from the Stripe webhook (checkout.session.
+// completed) once the discount is confirmed applied, not at promo-creation time. Gives the
+// admin list a real "who actually used this" trail beyond the raw counter on promoCodes.
+export const promoRedemptions = pgTable("promo_redemptions", {
+  id: cuid(),
+  promoCodeId: text("promo_code_id").notNull().references(() => promoCodes.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+  organizationName: text("organization_name"), // snapshot -- survives the org being deleted later
+  stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  redeemedAt: timestamp("redeemed_at").notNull().defaultNow(),
+});
+
 // Enterprise SAML SSO, one identity provider per organization (v1 -- no multi-IdP support).
 // SUPER_USER-managed from My Organization; see lib/sso.ts for how this drives the actual
 // SP-initiated login flow. Executa acts only as the Service Provider (SP) side of SAML -- these

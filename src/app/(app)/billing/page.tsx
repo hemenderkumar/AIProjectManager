@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Topbar from "@/components/Topbar";
-import { CreditCard, CheckCircle2, Users, FolderKanban } from "lucide-react";
+import { CreditCard, CheckCircle2, Users, FolderKanban, Gift } from "lucide-react";
 import { formatPlanPrice } from "@/lib/planFormat";
 
 type Plan = {
@@ -32,6 +32,7 @@ type Status = {
     seats: { current: number; limit: number | null };
     projects: { current: number; limit: number | null };
   };
+  availablePromo?: { code: string; percentOff: number } | null;
 };
 
 // Module-level, not called during render of the component body -- see the matching comment
@@ -140,6 +141,13 @@ export default function BillingPage() {
             >
               {portalBusy ? "Opening…" : "Manage billing"}
             </button>
+          </div>
+        )}
+
+        {status.availablePromo && (
+          <div className="mb-6 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-700 flex items-center gap-2">
+            <Gift size={16} className="shrink-0" />
+            You have an exclusive {status.availablePromo.percentOff}% discount ({status.availablePromo.code}) — it&apos;ll be applied automatically when you subscribe below.
           </div>
         )}
 
