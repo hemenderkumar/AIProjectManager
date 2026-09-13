@@ -1,4 +1,5 @@
 import { findRate, type RateCardEntry, type SourcingType } from "./deliveryModel";
+import { startOfWeek, startOfMonth, addWeeks, addMonths, format, differenceInCalendarWeeks, differenceInCalendarMonths } from "date-fns";
 
 // Deterministic (non-AI) demand-pipeline forecast. Same philosophy as supportEstimate.ts:
 // every assumption here is a plain, editable number, not a model's guess — this turns the
@@ -739,4 +740,217 @@ export function computeForecastAccuracy(
     meanAbsoluteErrorPercentLate: meanAbs(projects.map((p) => p.latestSample)),
     evaluatedProjectCount: projects.length,
   };
+}
+
+// -----------------------------------------------------------------------------------------
+// Skill demand re-attributed to project (top-level = project, not skill).
+//
+// computeSkillCapacityForecast above already computes the correct, roster-wide truth for
+// "is skill X short-staffed, and by how much" -- coverage is a shared-resource question, not
+// something one project owns in isolation (a resource idle on Project A's books is spare
+// capacity Project B's work could use too). So this doesn't re-derive gap/coverage per
+// project; it re-attributes the already-computed skill-level gapHours back to the projects
+// driving that demand, prorated by each project's share of the skill's total demand hours.
+// That's a transparent, editable assumption (proportional attribution), not a claim that a
+// project's need is independently, exclusively unmet.
+// -----------------------------------------------------------------------------------------
+
+export type ProjectSkillDetail = {
+  skill: string;
+  demandHours: number; // this project's share of demand for this skill
+  gapHours: number; // demandHours * (skill's overall gapHours / skill's overall demandHours)
+  matchedResourceCount: number; // roster-wide, shown for context (not project-specific)
+  resolvedRole: string | null;
+  gapRateSource: "mapped" | "inferred" | "skill";
+  gapRate: number;
+  tasks: SkillGapTaskRef[];
+};
+
+export type ProjectSkillForecast = {
+  projectId: string;
+  projectName: string;
+  totalDemandHours: number;
+  totalGapHours: number;
+  skills: ProjectSkillDetail[]; // sorted by gapHours desc
+};
+
+export type SkillForecastByProjectResult = {
+  projects: ProjectSkillForecast[]; // sorted by totalGapHours desc, then totalDemandHours desc
+};
+
+export function computeSkillForecastByProject(
+  unstaffedTasks: SkillDemandTask[],
+  skillGaps: SkillGap[],
+  assumptions: SkillCapacityAssumptions = DEFAULT_SKILL_CAPACITY_ASSUMPTIONS
+): SkillForecastByProjectResult {
+  const gapBySkill = new Map(skillGaps.map((g) => [g.skill, g]));
+
+  const byProject = new Map<string, { projectName: string; skills: Map<string, { demandHours: number; tasks: SkillGapTaskRef[] }> }>();
+  for (const t of unstaffedTasks) {
+    const skills = (t.requiredSkills ?? []).map(normalizeSkill).filter(Boolean);
+    if (skills.length === 0) continue;
+    const hours = t.estimateHours && t.estimateHours > 0 ? t.estimateHours : assumptions.defaultTaskHours;
+    const proj = byProject.get(t.projectId) ?? { projectName: t.projectName, skills: new Map() };
+    for (const skill of skills) {
+      const s = proj.skills.get(skill) ?? { demandHours: 0, tasks: [] };
+      s.demandHours += hours;
+      s.tasks.push({ id: t.id, projectId: t.projectId, projectName: t.projectName, title: t.title, hours, dueDate: t.dueDate });
+      proj.skills.set(skill, s);
+    }
+    byProject.set(t.projectId, proj);
+  }
+
+  const projects: ProjectSkillForecast[] = [];
+  for (const [projectId, proj] of byProject.entries()) {
+    const skills: ProjectSkillDetail[] = [];
+    for (const [skill, s] of proj.skills.entries()) {
+      const overall = gapBySkill.get(skill);
+      const gapRatio = overall && overall.demandHours > 0 ? overall.gapHours / overall.demandHours : 0;
+      skills.push({
+        skill,
+        demandHours: s.demandHours,
+        gapHours: s.demandHours * gapRatio,
+        matchedResourceCount: overall?.matchedResourceCount ?? 0,
+        resolvedRole: overall?.resolvedRole ?? null,
+        gapRateSource: overall?.gapRateSource ?? "skill",
+        gapRate: overall?.gapRate ?? 0,
+        tasks: s.tasks.sort((a, b) => {
+          const at = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+          const bt = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+          return at - bt;
+        }),
+      });
+    }
+    skills.sort((a, b) => b.gapHours - a.gapHours);
+    projects.push({
+      projectId,
+      projectName: proj.projectName,
+      totalDemandHours: skills.reduce((s, x) => s + x.demandHours, 0),
+      totalGapHours: skills.reduce((s, x) => s + x.gapHours, 0),
+      skills,
+    });
+  }
+
+  projects.sort((a, b) => b.totalGapHours - a.totalGapHours || b.totalDemandHours - a.totalDemandHours);
+  return { projects };
+}
+
+// -----------------------------------------------------------------------------------------
+// Time-phased required-headcount-by-skill projection (weekly and monthly).
+//
+// "How many X do we need, and by when" -- buckets each short-staffed skill's unstaffed-task
+// hours by the task's dueDate (undated tasks are treated as needed now, the same conservative
+// "assume the work is live" stance the rest of the app takes with unclassified tasks), scales
+// each bucket's demand down by the skill's overall gap ratio (same proportional-attribution
+// idea as computeSkillForecastByProject -- only the currently-uncovered share of demand
+// implies a hiring/sourcing need), and converts the resulting gap hours into a headcount
+// figure via a plain, editable hoursPerFtePerWeek assumption. Skills with no current gap are
+// left out entirely -- there's nothing to project.
+// -----------------------------------------------------------------------------------------
+
+export type SkillHeadcountBucket = {
+  periodStart: string; // ISO date, start of the week/month
+  periodLabel: string;
+  demandHours: number;
+  gapHours: number;
+  requiredHeadcount: number;
+};
+
+export type SkillHeadcountForecast = {
+  skill: string;
+  weekly: SkillHeadcountBucket[];
+  monthly: SkillHeadcountBucket[];
+};
+
+export type SkillHeadcountAssumptions = {
+  hoursPerFtePerWeek: number; // standard headcount-hours conversion; matches resources' own capacityHoursPerWk default
+  weeklyHorizonWeeks: number; // how many weeks ahead to bucket
+  monthlyHorizonMonths: number; // how many months ahead to bucket
+};
+
+export const DEFAULT_SKILL_HEADCOUNT_ASSUMPTIONS: SkillHeadcountAssumptions = {
+  hoursPerFtePerWeek: 40,
+  weeklyHorizonWeeks: 12,
+  monthlyHorizonMonths: 6,
+};
+
+export function computeSkillHeadcountForecast(
+  unstaffedTasks: SkillDemandTask[],
+  skillGaps: SkillGap[],
+  assumptions: SkillHeadcountAssumptions = DEFAULT_SKILL_HEADCOUNT_ASSUMPTIONS,
+  now: Date = new Date()
+): SkillHeadcountForecast[] {
+  const gapBySkill = new Map(skillGaps.map((g) => [g.skill, g]));
+  const nowWeekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const nowMonthStart = startOfMonth(now);
+
+  const tasksBySkill = new Map<string, SkillDemandTask[]>();
+  for (const t of unstaffedTasks) {
+    const skills = (t.requiredSkills ?? []).map(normalizeSkill).filter(Boolean);
+    for (const skill of skills) {
+      const arr = tasksBySkill.get(skill) ?? [];
+      arr.push(t);
+      tasksBySkill.set(skill, arr);
+    }
+  }
+
+  const results: SkillHeadcountForecast[] = [];
+  for (const [skill, tasks] of tasksBySkill.entries()) {
+    const overall = gapBySkill.get(skill);
+    const gapRatio = overall && overall.demandHours > 0 ? overall.gapHours / overall.demandHours : 0;
+    if (gapRatio <= 0) continue; // fully covered by the roster -- no hiring/sourcing signal to project
+
+    const weeklyMap = new Map<number, number>(); // week index (0 = this week) -> demand hours
+    const monthlyMap = new Map<number, number>();
+    for (const t of tasks) {
+      const hours = t.estimateHours && t.estimateHours > 0 ? t.estimateHours : DEFAULT_SKILL_CAPACITY_ASSUMPTIONS.defaultTaskHours;
+      const due = t.dueDate ? new Date(t.dueDate) : now;
+      const weekIdx = Math.max(0, differenceInCalendarWeeks(due, nowWeekStart, { weekStartsOn: 1 }));
+      const monthIdx = Math.max(0, differenceInCalendarMonths(due, nowMonthStart));
+      if (weekIdx < assumptions.weeklyHorizonWeeks) {
+        weeklyMap.set(weekIdx, (weeklyMap.get(weekIdx) ?? 0) + hours);
+      }
+      if (monthIdx < assumptions.monthlyHorizonMonths) {
+        monthlyMap.set(monthIdx, (monthlyMap.get(monthIdx) ?? 0) + hours);
+      }
+    }
+
+    const weekly: SkillHeadcountBucket[] = [...weeklyMap.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([idx, demandHours]) => {
+        const periodStart = addWeeks(nowWeekStart, idx);
+        const gapHours = demandHours * gapRatio;
+        return {
+          periodStart: periodStart.toISOString(),
+          periodLabel: `Wk of ${format(periodStart, "MMM d")}`,
+          demandHours,
+          gapHours,
+          requiredHeadcount: Math.ceil(gapHours / assumptions.hoursPerFtePerWeek),
+        };
+      });
+
+    const hoursPerFtePerMonth = assumptions.hoursPerFtePerWeek * 4.33; // avg weeks/month
+    const monthly: SkillHeadcountBucket[] = [...monthlyMap.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([idx, demandHours]) => {
+        const periodStart = addMonths(nowMonthStart, idx);
+        const gapHours = demandHours * gapRatio;
+        return {
+          periodStart: periodStart.toISOString(),
+          periodLabel: format(periodStart, "MMM yyyy"),
+          demandHours,
+          gapHours,
+          requiredHeadcount: Math.ceil(gapHours / hoursPerFtePerMonth),
+        };
+      });
+
+    results.push({ skill, weekly, monthly });
+  }
+
+  results.sort((a, b) => {
+    const peak = (f: SkillHeadcountForecast) => f.weekly.reduce((m, w) => Math.max(m, w.requiredHeadcount), 0);
+    return peak(b) - peak(a);
+  });
+
+  return results;
 }

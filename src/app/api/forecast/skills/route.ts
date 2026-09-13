@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireInternal } from "@/lib/tenancy";
 import { listVisibleProjects } from "@/lib/tenancy";
-import { computeSkillCapacityForecast, totalAllocationByResource, type SkillDemandTask } from "@/lib/forecast";
+import {
+  computeSkillCapacityForecast,
+  computeSkillForecastByProject,
+  computeSkillHeadcountForecast,
+  totalAllocationByResource,
+  type SkillDemandTask,
+} from "@/lib/forecast";
 import { db } from "@/lib/db";
 import { tasks, resources, projectResources, rateCards, skillRoleMap } from "@/lib/db/schema";
 import { and, inArray, isNull, ne } from "drizzle-orm";
@@ -21,7 +27,8 @@ export async function GET() {
   const projectNameById = new Map(activeProjects.map((p) => [p.id, p.name]));
 
   if (activeProjectIds.length === 0) {
-    return NextResponse.json(computeSkillCapacityForecast([], [], new Map(), []));
+    const empty = computeSkillCapacityForecast([], [], new Map(), []);
+    return NextResponse.json({ ...empty, byProject: [], headcount: [] });
   }
 
   const [unstaffedTaskRows, resourceRows, allocationRows, rateCardRows, skillRoleRows] = await Promise.all([
@@ -65,5 +72,12 @@ export async function GET() {
     undefined,
     skillRoleById
   );
-  return NextResponse.json(forecast);
+
+  // Project-first and time-phased views re-attribute this same skill-level gap data rather
+  // than recomputing coverage independently -- see the comments on both functions in
+  // lib/forecast.ts for why (capacity is a shared roster resource, not owned per project).
+  const byProject = computeSkillForecastByProject(demandTasks, forecast.skills);
+  const headcount = computeSkillHeadcountForecast(demandTasks, forecast.skills);
+
+  return NextResponse.json({ ...forecast, byProject: byProject.projects, headcount });
 }
