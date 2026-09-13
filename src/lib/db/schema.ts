@@ -767,6 +767,39 @@ export const organizations = pgTable("organizations", {
   brandColor: text("brand_color"),
 });
 
+// Enterprise SAML SSO, one identity provider per organization (v1 -- no multi-IdP support).
+// SUPER_USER-managed from My Organization; see lib/sso.ts for how this drives the actual
+// SP-initiated login flow. Executa acts only as the Service Provider (SP) side of SAML -- these
+// fields describe the customer's IdP, not us.
+export const ssoConfigurations = pgTable("sso_configurations", {
+  id: cuid(),
+  organizationId: text("organization_id")
+    .notNull()
+    .unique()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  // The work-email domain this org's employees sign in with (e.g. "acme.com") -- how the
+  // "Sign in with SSO" flow on the login page finds which organization's IdP to redirect a
+  // given email to (see /api/sso/discover). Also re-checked against the IdP's asserted NameID
+  // at login time as a defense-in-depth guard against a misconfigured IdP.
+  emailDomain: text("email_domain").notNull().unique(),
+  idpEntityId: text("idp_entity_id").notNull(),
+  idpSsoUrl: text("idp_sso_url").notNull(),
+  // PEM-encoded X.509 certificate the IdP signs its SAMLResponse assertions with. This -- not
+  // XML schema validation -- is the actual security boundary for the whole feature: whoever
+  // holds the matching private key is trusted as "this org's IdP." See the samlify
+  // wantAssertionsSigned setting in lib/sso.ts, which rejects any response that isn't signed
+  // with this exact certificate.
+  idpCertificate: text("idp_certificate").notNull(),
+  // Role granted to a brand-new user the first time they sign in via this IdP (no existing
+  // Executa account). Defaults to the least-privileged tier -- an org can raise a specific
+  // person's role afterward from the team list like any other teammate.
+  defaultRole: userRoleEnum("default_role").notNull().default("VIEWER"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // A department/business unit within one client organization (e.g. "Finance", "Operations").
 // Company-owner-managed (add/remove from the My Organization page) so a SUPER_USER can
 // organize their own team and stakeholders without needing Executa support to do it for them.

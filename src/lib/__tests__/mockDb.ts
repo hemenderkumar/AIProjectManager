@@ -36,6 +36,10 @@ export function createMockDb() {
     chain[method] = vi.fn(() => chain);
   }
   chain.then = (resolve: (v: Row[]) => void) => resolve(queue.length ? queue.shift()! : []);
+  // Some call sites chain `.catch(() => {})` onto a best-effort write (e.g. bumping
+  // lastLoginAt) so a transient failure never blocks the real result. The mock never rejects,
+  // so this is just a no-op that keeps the chain callable the same way.
+  chain.catch = vi.fn(() => chain);
 
   return {
     db: chain as unknown as typeof import("@/lib/db").db,
