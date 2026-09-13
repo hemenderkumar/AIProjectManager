@@ -841,6 +841,40 @@ export const promoRedemptions = pgTable("promo_redemptions", {
   redeemedAt: timestamp("redeemed_at").notNull().defaultNow(),
 });
 
+// Deliberately distinct from costItems/costItemCategoryEnum, which price out a *client's*
+// project (Executa is the vendor billing them). This table is the mirror image: Executa's own
+// operating expenses as a business -- payroll, contractors, infrastructure, tooling, and so on
+// -- used only for internal profitability reporting (see lib/finance.ts getProfitability()).
+// Recording an expense here never moves money; it's a manual ledger entry an ADMIN enters
+// after paying someone through whatever real channel (payroll provider, bank transfer,
+// invoice) they actually used -- Executa has no payment-execution capability of its own and
+// isn't meant to gain one through this table.
+export const businessExpenseCategoryEnum = pgEnum("business_expense_category", [
+  "PAYROLL",
+  "CONTRACTOR",
+  "INFRASTRUCTURE",
+  "TOOLING",
+  "MARKETING",
+  "LEGAL_AND_ADMIN",
+  "OTHER",
+]);
+
+export const businessExpenses = pgTable("business_expenses", {
+  id: cuid(),
+  category: businessExpenseCategoryEnum("category").notNull(),
+  payeeName: text("payee_name").notNull(), // e.g. an employee or contractor's name, or a vendor
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("usd"),
+  expenseDate: timestamp("expense_date").notNull(), // when it was actually paid/incurred, not created_at
+  // A recurring entry (e.g. monthly payroll) is still one row per actual payment -- isRecurring
+  // just flags "expect another one of these," it does not auto-generate future rows. Admins log
+  // each payment as it happens, same as every other manually-entered record in this app.
+  isRecurring: boolean("is_recurring").notNull().default(false),
+  notes: text("notes"),
+  createdBy: text("created_by"), // snapshot of the admin's name
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // Enterprise SAML SSO, one identity provider per organization (v1 -- no multi-IdP support).
 // SUPER_USER-managed from My Organization; see lib/sso.ts for how this drives the actual
 // SP-initiated login flow. Executa acts only as the Service Provider (SP) side of SAML -- these

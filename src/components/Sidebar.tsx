@@ -170,6 +170,7 @@ export default function Sidebar({
             <NavLink href="/admin" icon={<ShieldCheck size={17} />} pathname={pathname}>Users & Companies</NavLink>
             <NavLink href="/admin/plans" icon={<CreditCard size={17} />} pathname={pathname}>Plans</NavLink>
             <NavLink href="/admin/promo-codes" icon={<Tag size={17} />} pathname={pathname}>Promo Codes</NavLink>
+            <NavLink href="/admin/finance" icon={<TrendingUp size={17} />} pathname={pathname}>Finance</NavLink>
           </NavSection>
         )}
       </nav>
