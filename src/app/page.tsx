@@ -23,6 +23,10 @@ import {
   Bot,
   TrendingUp,
   Check,
+  DollarSign,
+  LayoutGrid,
+  Users,
+  Fingerprint,
 } from "lucide-react";
 
 const FAQS = [
@@ -45,6 +49,10 @@ const FAQS = [
   {
     q: "Is my data secure?",
     a: "Every action is scoped to your organization at the API layer, step-up TOTP is required for sensitive finance/platform actions, and every approval, deletion, and rate change is written to an immutable audit log. See Security & compliance below.",
+  },
+  {
+    q: "Do you support single sign-on (SSO)?",
+    a: "Yes — SAML 2.0 for any identity provider, including Okta and Azure AD. An admin configures your IdP once under Organization settings, and teammates sign in with their existing company credentials from then on.",
   },
 ];
 
@@ -306,6 +314,24 @@ export default async function HomePage() {
               title="Governed, not just tracked"
               description="Role-based access, step-up MFA, and an immutable audit log."
             />
+            <BentoCard
+              hue="blue"
+              icon={<DollarSign size={18} />}
+              title="Budget baselines, not just totals"
+              description="Lock a baseline, track planned vs. actual, and export straight to QuickBooks or Xero."
+            />
+            <BentoCard
+              hue="rose"
+              icon={<LayoutGrid size={18} />}
+              title="A dashboard for your client, too"
+              description="Milestones, deliverables, invoices, and a satisfaction pulse — their own portal, no status email."
+            />
+            <BentoCard
+              hue="amber"
+              icon={<Users size={18} />}
+              title="See the hiring gap before it hurts"
+              description="Forward-looking capacity vs. demand by skill, so you know who to hire before a project stalls."
+            />
           </div>
         </div>
       </section>
@@ -405,8 +431,9 @@ export default async function HomePage() {
           <h2 className="text-xl font-semibold text-slate-900 tracking-tight mb-10 max-w-2xl">
             Built for teams that handle client data and vendor spend, not just to-do lists.
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             <SecurityRow hue="blue" icon={<ShieldCheck size={16} />} title="Role-based access" description="Every request is scoped to your organization and role at the API layer — Admin, Super User, PM, Contributor, Viewer." />
+            <SecurityRow hue="amber" icon={<Fingerprint size={16} />} title="Enterprise SSO (SAML)" description="Sign in through Okta, Azure AD, or any SAML 2.0 identity provider, with signature-verified assertions." />
             <SecurityRow hue="violet" icon={<KeyRound size={16} />} title="Step-up MFA" description="TOTP verification required for Finance Approver and Platform-level roles on sensitive actions." />
             <SecurityRow hue="cyan" icon={<ScrollText size={16} />} title="Immutable audit log" description="Every approval, deletion, and rate change is recorded with before/after values and who made it." />
             <SecurityRow hue="emerald" icon={<Lock size={16} />} title="Self-service data control" description="Export or request deletion of your organization's data at any time, without waiting on support." />
