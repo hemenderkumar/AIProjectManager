@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
-import { ArrowLeft, Plus, Power, Copy, Check, Users, Tag, Megaphone } from "lucide-react";
+import { ArrowLeft, Plus, Power, Copy, Check, Users, Tag, Megaphone, DollarSign, TrendingUp, Repeat } from "lucide-react";
 
 type Scope = "SPECIFIC_ORG" | "GROUP" | "GENERIC";
 type Duration = "ONCE" | "REPEATING" | "FOREVER";
@@ -26,7 +26,19 @@ type PromoCode = {
 
 type Org = { id: string; name: string };
 
+type FinancialSummary = {
+  totalRedemptions: number;
+  totalDiscountGivenCents: number;
+  totalSubscriptionRevenueCents: number;
+  estimatedActiveMonthlyDiscountCents: number;
+  byCode: Array<{ promoCodeId: string; redemptions: number; totalDiscountCents: number; totalRevenueCents: number }>;
+};
+
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent-500";
+
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
 
 const SCOPE_META: Record<Scope, { label: string; icon: React.ReactNode; hint: string }> = {
   SPECIFIC_ORG: { label: "Specific organization", icon: <Users size={12} />, hint: "Auto-applied at checkout for one named org -- they never have to type a code." },
@@ -41,6 +53,7 @@ const SCOPE_META: Record<Scope, { label: string; icon: React.ReactNode; hint: st
 export default function PromoCodesPage() {
   const [promos, setPromos] = useState<PromoCode[]>([]);
   const [orgs, setOrgs] = useState<Org[]>([]);
+  const [financials, setFinancials] = useState<FinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -62,11 +75,17 @@ export default function PromoCodesPage() {
     Promise.all([
       fetch("/api/admin/promo-codes").then((r) => r.json()),
       fetch("/api/admin/organizations").then((r) => r.json()),
-    ]).then(([promoData, orgData]) => {
+      fetch("/api/admin/promo-codes/financials").then((r) => r.json()),
+    ]).then(([promoData, orgData, financialData]) => {
       setPromos(promoData);
       setOrgs(orgData);
+      setFinancials(financialData);
       setLoading(false);
     });
+  }
+
+  function codeFinancials(promoCodeId: string) {
+    return financials?.byCode.find((c) => c.promoCodeId === promoCodeId) ?? { redemptions: 0, totalDiscountCents: 0, totalRevenueCents: 0 };
   }
 
   useEffect(() => {
@@ -138,6 +157,15 @@ export default function PromoCodesPage() {
         }
       />
       <div className="p-8">
+        {financials && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <FinancialCard icon={<Users size={14} />} label="Total redemptions" value={String(financials.totalRedemptions)} />
+            <FinancialCard icon={<DollarSign size={14} />} label="Total discount given" value={formatCents(financials.totalDiscountGivenCents)} hint="Lifetime, realized" />
+            <FinancialCard icon={<Repeat size={14} />} label="Active recurring discount" value={`${formatCents(financials.estimatedActiveMonthlyDiscountCents)}/mo`} hint="REPEATING/FOREVER promos on still-active subscriptions" />
+            <FinancialCard icon={<TrendingUp size={14} />} label="Revenue from promo signups" value={formatCents(financials.totalSubscriptionRevenueCents)} hint="What they actually paid, post-discount" />
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-slate-900">All promo codes</p>
           <button
@@ -279,12 +307,16 @@ export default function PromoCodesPage() {
                   <th className="px-4 py-3">Off</th>
                   <th className="px-4 py-3">For</th>
                   <th className="px-4 py-3">Redemptions</th>
+                  <th className="px-4 py-3">Discount given</th>
+                  <th className="px-4 py-3">Revenue</th>
                   <th className="px-4 py-3">Expires</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {promos.map((p) => (
+                {promos.map((p) => {
+                  const cf = codeFinancials(p.id);
+                  return (
                   <tr key={p.id} className={`border-b border-slate-50 last:border-0 ${p.isActive ? "" : "opacity-50"}`}>
                     <td className="px-4 py-3">
                       <button onClick={() => copyCode(p)} className="flex items-center gap-1.5 font-mono text-xs font-medium text-slate-800 hover:text-accent-700">
@@ -301,6 +333,8 @@ export default function PromoCodesPage() {
                     <td className="px-4 py-3 text-slate-500">
                       {p.redemptionCount}{p.maxRedemptions ? ` / ${p.maxRedemptions}` : ""}
                     </td>
+                    <td className="px-4 py-3 text-slate-500">{cf.totalDiscountCents ? formatCents(cf.totalDiscountCents) : "—"}</td>
+                    <td className="px-4 py-3 text-slate-500">{cf.totalRevenueCents ? formatCents(cf.totalRevenueCents) : "—"}</td>
                     <td className="px-4 py-3 text-slate-500">{p.expiresAt ? new Date(p.expiresAt).toLocaleDateString() : "Never"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">
@@ -313,15 +347,26 @@ export default function PromoCodesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {promos.length === 0 && (
-                  <tr><td colSpan={6} className="py-6 text-center text-slate-400">No promo codes yet — create one above.</td></tr>
+                  <tr><td colSpan={8} className="py-6 text-center text-slate-400">No promo codes yet — create one above.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function FinancialCard({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-4">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-1.5">{icon} {label}</p>
+      <p className="text-lg font-semibold text-slate-900">{value}</p>
+      {hint && <p className="text-[11px] text-slate-400 mt-1">{hint}</p>}
     </div>
   );
 }

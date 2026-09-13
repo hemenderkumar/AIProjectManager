@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { promoCodes, promoRedemptions, organizations } from "./db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { getStripe } from "./billing";
 import type { SessionUser } from "./auth";
 
@@ -157,6 +157,10 @@ export async function recordPromoRedemption(params: {
   organizationName: string | null;
   stripeCheckoutSessionId: string;
   stripeSubscriptionId: string | null;
+  amountDiscountedCents: number | null;
+  subscriptionAmountCents: number | null;
+  currency: string | null;
+  planName: string | null;
 }) {
   const [promo] = await db.select().from(promoCodes).where(eq(promoCodes.stripePromotionCodeId, params.stripePromotionCodeId));
   if (!promo) return;
@@ -166,10 +170,119 @@ export async function recordPromoRedemption(params: {
     organizationName: params.organizationName,
     stripeCheckoutSessionId: params.stripeCheckoutSessionId,
     stripeSubscriptionId: params.stripeSubscriptionId,
+    amountDiscountedCents: params.amountDiscountedCents,
+    subscriptionAmountCents: params.subscriptionAmountCents,
+    currency: params.currency,
+    planName: params.planName,
   });
   await db.update(promoCodes).set({ redemptionCount: promo.redemptionCount + 1 }).where(eq(promoCodes.id, promo.id));
 }
 
 export async function listPromoRedemptions(promoCodeId: string) {
   return db.select().from(promoRedemptions).where(eq(promoRedemptions.promoCodeId, promoCodeId)).orderBy(desc(promoRedemptions.redeemedAt));
+}
+
+export type PromoFinancialSummary = {
+  totalRedemptions: number;
+  // Lifetime realized discount value across every redemption, in cents. NOTE: summed across
+  // currencies as if they were all the same (fine while Stripe is only configured for one
+  // currency, which is the only setup this app's billing.ts supports today -- see the single
+  // hardcoded currency assumption there too). Revisit if/when multi-currency billing lands.
+  totalDiscountGivenCents: number;
+  totalSubscriptionRevenueCents: number; // sum of what promo-driven signups actually paid (post-discount)
+  // REPEATING/FOREVER promos where the org's subscription is still ACTIVE -- i.e. the discount
+  // is (probably) still being applied on their next invoice too, not just the one we saw.
+  // Approximate by design: we don't re-poll Stripe per-org to confirm the discount is still
+  // literally attached (it could have been removed manually, or a REPEATING window could have
+  // lapsed) -- this is a planning estimate, not a reconciled accounting figure.
+  estimatedActiveMonthlyDiscountCents: number;
+  byCode: Array<{
+    promoCodeId: string;
+    code: string;
+    scope: PromoScope;
+    percentOff: number;
+    duration: PromoDuration;
+    isActive: boolean;
+    redemptions: number;
+    totalDiscountCents: number;
+    totalRevenueCents: number;
+  }>;
+  byMonth: Array<{ month: string; redemptions: number; discountCents: number }>;
+};
+
+// Rolls every redemption up into the numbers that actually matter for a growth/finance
+// conversation: how much has this program cost in realized discounts, what did those signups
+// actually pay, and how much of that discount is still recurring every month. Deliberately
+// computed in JS over already-scoped rows (mirrors the same in-memory-join pattern used by
+// getClientPortalData and the capacity forecast) rather than a SQL GROUP BY -- promo redemption
+// volume for an early-stage product is small enough that this is simpler to read and verify
+// than a multi-table aggregate query, and it can be revisited if that stops being true.
+export async function getPromoFinancialSummary(): Promise<PromoFinancialSummary> {
+  const [allCodes, allRedemptions] = await Promise.all([listPromoCodes(), db.select().from(promoRedemptions)]);
+
+  const orgIds = Array.from(new Set(allRedemptions.map((r) => r.organizationId).filter((id): id is string => !!id)));
+  const orgStatuses = orgIds.length
+    ? await db.select({ id: organizations.id, subscriptionStatus: organizations.subscriptionStatus }).from(organizations).where(inArray(organizations.id, orgIds))
+    : [];
+  const statusByOrgId = new Map(orgStatuses.map((o) => [o.id, o.subscriptionStatus]));
+  const codeById = new Map(allCodes.map((c) => [c.id, c]));
+
+  let totalDiscountGivenCents = 0;
+  let totalSubscriptionRevenueCents = 0;
+  let estimatedActiveMonthlyDiscountCents = 0;
+  const byMonthMap = new Map<string, { redemptions: number; discountCents: number }>();
+  const byCodeMap = new Map<string, { redemptions: number; totalDiscountCents: number; totalRevenueCents: number }>();
+
+  for (const r of allRedemptions) {
+    const discount = r.amountDiscountedCents ?? 0;
+    const revenue = r.subscriptionAmountCents ?? 0;
+    totalDiscountGivenCents += discount;
+    totalSubscriptionRevenueCents += revenue;
+
+    const promo = codeById.get(r.promoCodeId);
+    if (promo && (promo.duration === "REPEATING" || promo.duration === "FOREVER")) {
+      const orgStatus = r.organizationId ? statusByOrgId.get(r.organizationId) : null;
+      if (orgStatus === "ACTIVE") estimatedActiveMonthlyDiscountCents += discount;
+    }
+
+    const monthKey = r.redeemedAt.toISOString().slice(0, 7); // "2026-09"
+    const monthEntry = byMonthMap.get(monthKey) ?? { redemptions: 0, discountCents: 0 };
+    monthEntry.redemptions += 1;
+    monthEntry.discountCents += discount;
+    byMonthMap.set(monthKey, monthEntry);
+
+    const codeEntry = byCodeMap.get(r.promoCodeId) ?? { redemptions: 0, totalDiscountCents: 0, totalRevenueCents: 0 };
+    codeEntry.redemptions += 1;
+    codeEntry.totalDiscountCents += discount;
+    codeEntry.totalRevenueCents += revenue;
+    byCodeMap.set(r.promoCodeId, codeEntry);
+  }
+
+  const byCode = allCodes
+    .map((c) => {
+      const entry = byCodeMap.get(c.id) ?? { redemptions: 0, totalDiscountCents: 0, totalRevenueCents: 0 };
+      return {
+        promoCodeId: c.id,
+        code: c.code,
+        scope: c.scope,
+        percentOff: c.percentOff,
+        duration: c.duration,
+        isActive: c.isActive,
+        ...entry,
+      };
+    })
+    .sort((a, b) => b.totalDiscountCents - a.totalDiscountCents);
+
+  const byMonth = Array.from(byMonthMap.entries())
+    .map(([month, v]) => ({ month, ...v }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  return {
+    totalRedemptions: allRedemptions.length,
+    totalDiscountGivenCents,
+    totalSubscriptionRevenueCents,
+    estimatedActiveMonthlyDiscountCents,
+    byCode,
+    byMonth,
+  };
 }

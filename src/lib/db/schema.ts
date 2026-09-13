@@ -828,6 +828,16 @@ export const promoRedemptions = pgTable("promo_redemptions", {
   organizationName: text("organization_name"), // snapshot -- survives the org being deleted later
   stripeCheckoutSessionId: text("stripe_checkout_session_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  // Financial snapshot at the moment of redemption, read straight from the Checkout Session
+  // Stripe already computed rather than recalculated from percentOff * plan price -- avoids
+  // drifting from reality if the plan's price or the coupon changes later. amountDiscountedCents
+  // is session.total_details.amount_discount (what this redemption is worth); subscriptionAmount
+  // Cents is session.amount_total (what the org's first invoice actually came to, post-discount).
+  // See getPromoFinancialSummary() in lib/promo.ts for how these roll up into a report.
+  amountDiscountedCents: integer("amount_discounted_cents"),
+  subscriptionAmountCents: integer("subscription_amount_cents"),
+  currency: text("currency"),
+  planName: text("plan_name"), // snapshot -- survives the plan being renamed/deleted later
   redeemedAt: timestamp("redeemed_at").notNull().defaultNow(),
 });
 

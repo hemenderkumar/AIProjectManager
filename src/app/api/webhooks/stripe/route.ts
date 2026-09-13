@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe, syncSubscriptionFromStripe } from "@/lib/billing";
 import { recordPromoRedemption } from "@/lib/promo";
+import { db } from "@/lib/db";
+import { plans } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // Inbound webhook from Stripe (distinct from the outbound webhooks feature in
 // src/lib/webhooks.ts, which notifies external URLs about Executa events). Public by
@@ -42,23 +45,32 @@ export async function POST(req: NextRequest) {
 
       // Promo redemption bookkeeping (see lib/promo.ts) -- only relevant on the completed
       // session itself, not the subscription-lifecycle events, since that's the one moment a
-      // discount is actually applied. Re-retrieved with `expand: ["discounts"]` because that
-      // array isn't populated on the base webhook payload. Best-effort: a failure here must
-      // never affect subscription activation, which syncSubscriptionFromStripe above already
-      // handled independently.
+      // discount is actually applied. Re-retrieved with `expand: ["discounts", "total_details"]`
+      // because neither is populated on the base webhook payload. The financial snapshot
+      // (amount_discount, amount_total) is read straight from what Stripe already computed for
+      // this specific session rather than recalculated from percentOff * plan price, so it can
+      // never drift from what Stripe actually charged. Best-effort: a failure here must never
+      // affect subscription activation, which syncSubscriptionFromStripe above already handled
+      // independently.
       if (event.type === "checkout.session.completed") {
         try {
           const baseSession = event.data.object as Stripe.Checkout.Session;
-          const fullSession = await getStripe().checkout.sessions.retrieve(baseSession.id, { expand: ["discounts"] });
+          const fullSession = await getStripe().checkout.sessions.retrieve(baseSession.id, { expand: ["discounts", "total_details"] });
           const promotionCodeId = fullSession.discounts?.[0]?.promotion_code;
           if (typeof promotionCodeId === "string") {
             const organizationId = fullSession.metadata?.organizationId ?? null;
+            const planId = fullSession.metadata?.planId ?? null;
+            const [plan] = planId ? await db.select({ name: plans.name }).from(plans).where(eq(plans.id, planId)) : [null];
             await recordPromoRedemption({
               stripePromotionCodeId: promotionCodeId,
               organizationId,
               organizationName: fullSession.customer_details?.name ?? null,
               stripeCheckoutSessionId: fullSession.id,
               stripeSubscriptionId: typeof fullSession.subscription === "string" ? fullSession.subscription : null,
+              amountDiscountedCents: fullSession.total_details?.amount_discount ?? null,
+              subscriptionAmountCents: fullSession.amount_total ?? null,
+              currency: fullSession.currency ?? null,
+              planName: plan?.name ?? null,
             });
           }
         } catch {
