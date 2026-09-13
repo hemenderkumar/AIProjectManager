@@ -5,6 +5,7 @@ import {
   computeSkillCapacityForecast,
   computeSkillForecastByProject,
   computeSkillHeadcountForecast,
+  computeProjectSkillTimePhasedForecast,
   totalAllocationByResource,
   type SkillDemandTask,
 } from "@/lib/forecast";
@@ -28,7 +29,7 @@ export async function GET() {
 
   if (activeProjectIds.length === 0) {
     const empty = computeSkillCapacityForecast([], [], new Map(), []);
-    return NextResponse.json({ ...empty, byProject: [], headcount: [] });
+    return NextResponse.json({ ...empty, byProject: [], headcount: [], byProjectTimePhased: [] });
   }
 
   const [unstaffedTaskRows, resourceRows, allocationRows, rateCardRows, skillRoleRows] = await Promise.all([
@@ -78,6 +79,7 @@ export async function GET() {
   // lib/forecast.ts for why (capacity is a shared roster resource, not owned per project).
   const byProject = computeSkillForecastByProject(demandTasks, forecast.skills);
   const headcount = computeSkillHeadcountForecast(demandTasks, forecast.skills);
+  const byProjectTimePhased = computeProjectSkillTimePhasedForecast(demandTasks, forecast.skills);
 
-  return NextResponse.json({ ...forecast, byProject: byProject.projects, headcount });
+  return NextResponse.json({ ...forecast, byProject: byProject.projects, headcount, byProjectTimePhased });
 }

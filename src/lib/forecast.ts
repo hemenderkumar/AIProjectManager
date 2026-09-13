@@ -954,3 +954,149 @@ export function computeSkillHeadcountForecast(
 
   return results;
 }
+
+// -----------------------------------------------------------------------------------------
+// Project-first, time-phased drill-down: Project -> Month -> Skill -> Week.
+//
+// Combines computeSkillForecastByProject's project attribution with
+// computeSkillHeadcountForecast's time-bucketing into one nested structure, scoped per
+// project, so "what does Project X need, and when" can be drilled into directly instead of
+// cross-referencing two separate views. Each task's hours land in exactly one month bucket
+// (startOfMonth of its dueDate, or now for undated tasks -- same conservative "assume it's
+// needed now" stance used throughout this file) and are further split into week sub-buckets
+// purely for display granularity within that month; gap hours at every level are the same
+// proportional attribution as computeSkillForecastByProject (this skill's overall gap ratio
+// applied to this bucket's demand), not an independently re-derived coverage number.
+// -----------------------------------------------------------------------------------------
+
+export type ProjectSkillWeekBucket = {
+  weekStart: string;
+  weekLabel: string;
+  demandHours: number;
+  gapHours: number;
+  requiredHeadcount: number;
+};
+
+export type ProjectMonthSkillBucket = {
+  skill: string;
+  resolvedRole: string | null;
+  gapRateSource: "mapped" | "inferred" | "skill";
+  gapRate: number;
+  demandHours: number;
+  gapHours: number;
+  requiredHeadcount: number;
+  weeks: ProjectSkillWeekBucket[]; // sorted chronologically
+};
+
+export type ProjectMonthBucket = {
+  monthStart: string;
+  monthLabel: string;
+  demandHours: number;
+  gapHours: number;
+  skills: ProjectMonthSkillBucket[]; // sorted by gapHours desc
+};
+
+export type ProjectTimePhasedForecast = {
+  projectId: string;
+  projectName: string;
+  totalDemandHours: number;
+  totalGapHours: number;
+  months: ProjectMonthBucket[]; // sorted chronologically
+};
+
+export function computeProjectSkillTimePhasedForecast(
+  unstaffedTasks: SkillDemandTask[],
+  skillGaps: SkillGap[],
+  assumptions: SkillHeadcountAssumptions = DEFAULT_SKILL_HEADCOUNT_ASSUMPTIONS,
+  now: Date = new Date()
+): ProjectTimePhasedForecast[] {
+  const gapBySkill = new Map(skillGaps.map((g) => [g.skill, g]));
+  const nowMonthStart = startOfMonth(now);
+
+  type WeekAgg = { weekStart: Date; demandHours: number };
+  type SkillAgg = { weeks: Map<string, WeekAgg> };
+  type MonthAgg = { monthStart: Date; skills: Map<string, SkillAgg> };
+  type ProjectAgg = { projectName: string; months: Map<string, MonthAgg> };
+
+  const byProject = new Map<string, ProjectAgg>();
+
+  for (const t of unstaffedTasks) {
+    const skills = (t.requiredSkills ?? []).map(normalizeSkill).filter(Boolean);
+    if (skills.length === 0) continue;
+    const hours = t.estimateHours && t.estimateHours > 0 ? t.estimateHours : DEFAULT_SKILL_CAPACITY_ASSUMPTIONS.defaultTaskHours;
+    const due = t.dueDate ? new Date(t.dueDate) : now;
+    const monthStart = startOfMonth(due);
+    const monthIdx = Math.max(0, differenceInCalendarMonths(monthStart, nowMonthStart));
+    if (monthIdx >= assumptions.monthlyHorizonMonths) continue;
+    const weekStart = startOfWeek(due, { weekStartsOn: 1 });
+    const monthKey = monthStart.toISOString();
+    const weekKey = weekStart.toISOString();
+
+    const proj = byProject.get(t.projectId) ?? { projectName: t.projectName, months: new Map() };
+    const month = proj.months.get(monthKey) ?? { monthStart, skills: new Map() };
+    for (const skill of skills) {
+      const skillAgg = month.skills.get(skill) ?? { weeks: new Map() };
+      const week = skillAgg.weeks.get(weekKey) ?? { weekStart, demandHours: 0 };
+      week.demandHours += hours;
+      skillAgg.weeks.set(weekKey, week);
+      month.skills.set(skill, skillAgg);
+    }
+    proj.months.set(monthKey, month);
+    byProject.set(t.projectId, proj);
+  }
+
+  const results: ProjectTimePhasedForecast[] = [];
+  for (const [projectId, proj] of byProject.entries()) {
+    const months: ProjectMonthBucket[] = [];
+    for (const month of proj.months.values()) {
+      const skills: ProjectMonthSkillBucket[] = [];
+      for (const [skill, skillAgg] of month.skills.entries()) {
+        const overall = gapBySkill.get(skill);
+        const gapRatio = overall && overall.demandHours > 0 ? overall.gapHours / overall.demandHours : 0;
+        const weeks: ProjectSkillWeekBucket[] = [...skillAgg.weeks.values()]
+          .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
+          .map((w) => {
+            const gapHours = w.demandHours * gapRatio;
+            return {
+              weekStart: w.weekStart.toISOString(),
+              weekLabel: `Wk of ${format(w.weekStart, "MMM d")}`,
+              demandHours: w.demandHours,
+              gapHours,
+              requiredHeadcount: Math.ceil(gapHours / assumptions.hoursPerFtePerWeek),
+            };
+          });
+        const demandHours = weeks.reduce((s, w) => s + w.demandHours, 0);
+        const gapHours = weeks.reduce((s, w) => s + w.gapHours, 0);
+        skills.push({
+          skill,
+          resolvedRole: overall?.resolvedRole ?? null,
+          gapRateSource: overall?.gapRateSource ?? "skill",
+          gapRate: overall?.gapRate ?? 0,
+          demandHours,
+          gapHours,
+          requiredHeadcount: Math.ceil(gapHours / (assumptions.hoursPerFtePerWeek * 4.33)),
+          weeks,
+        });
+      }
+      skills.sort((a, b) => b.gapHours - a.gapHours);
+      months.push({
+        monthStart: month.monthStart.toISOString(),
+        monthLabel: format(month.monthStart, "MMM yyyy"),
+        demandHours: skills.reduce((s, x) => s + x.demandHours, 0),
+        gapHours: skills.reduce((s, x) => s + x.gapHours, 0),
+        skills,
+      });
+    }
+    months.sort((a, b) => a.monthStart.localeCompare(b.monthStart));
+    results.push({
+      projectId,
+      projectName: proj.projectName,
+      totalDemandHours: months.reduce((s, m) => s + m.demandHours, 0),
+      totalGapHours: months.reduce((s, m) => s + m.gapHours, 0),
+      months,
+    });
+  }
+
+  results.sort((a, b) => b.totalGapHours - a.totalGapHours || b.totalDemandHours - a.totalDemandHours);
+  return results;
+}
