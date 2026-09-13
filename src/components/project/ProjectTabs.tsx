@@ -11,6 +11,7 @@ import RisksTab from "./RisksTab";
 import MilestonesTab from "./MilestonesTab";
 import ReportTab from "./ReportTab";
 import InvoicesTab from "./InvoicesTab";
+import BudgetTab from "./BudgetTab";
 import DeliveryTab from "./DeliveryTab";
 import SowTab from "./SowTab";
 import DeliverablesTab from "./DeliverablesTab";
@@ -39,6 +40,7 @@ const TABS = [
   "Risks",
   "Milestones",
   "Invoices",
+  "Budget",
   "Delivery & Pricing",
   "SOW",
   "Deliverables",
@@ -52,7 +54,7 @@ const TABS = [
 const TAB_GROUPS: { label: string; icon: React.ReactNode; tabs: (typeof TABS)[number][] }[] = [
   { label: "Plan", icon: <Compass size={14} />, tabs: ["Plan", "Milestones"] },
   { label: "Execute", icon: <Rocket size={14} />, tabs: ["Tasks", "Resources", "Status Tracking", "Risks", "Communications"] },
-  { label: "Commercial", icon: <Receipt size={14} />, tabs: ["SOW", "Deliverables", "Delivery & Pricing", "Invoices"] },
+  { label: "Commercial", icon: <Receipt size={14} />, tabs: ["SOW", "Deliverables", "Delivery & Pricing", "Invoices", "Budget"] },
   { label: "Insights", icon: <BarChart3 size={14} />, tabs: ["Ask AI", "C-Level Report"] },
 ];
 
@@ -135,6 +137,7 @@ export default function ProjectTabs({
       {active === "Risks" && <RisksTab detail={detail} />}
       {active === "Milestones" && <MilestonesTab detail={detail} />}
       {active === "Invoices" && <InvoicesTab detail={detail} />}
+      {active === "Budget" && <BudgetTab detail={detail} user={user} />}
       {active === "Delivery & Pricing" && <DeliveryTab detail={detail} rateCards={rateCards} />}
       {active === "SOW" && <SowTab detail={detail} user={user} />}
       {active === "Deliverables" && <DeliverablesTab detail={detail} user={user} />}

@@ -920,6 +920,67 @@ export const invoices = pgTable("invoices", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const budgetChangeRequestStatusEnum = pgEnum("budget_change_request_status", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);
+
+// A locked, versioned snapshot of a project's approved budget. Distinct from
+// projects.budgetPlanned (the live, freely-editable top-line figure a PM can just type over)
+// and costItems (the itemized breakdown that can be edited or deleted at any time) -- once a
+// baseline is locked, it's meant to be an immutable historical record: what was actually
+// approved, and when. Every approved budgetChangeRequest produces a NEW baseline row
+// (versionNumber + 1) rather than mutating an existing one, so "what was the approved budget
+// as of March 1st" stays answerable no matter how many changes land later. Exactly one
+// baseline per project has isActive = true at any time; approving a change flips the old one's
+// isActive off (and stamps supersededAt) in the same transaction that inserts the new one.
+export const budgetBaselines = pgTable("budget_baselines", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  versionNumber: integer("version_number").notNull(),
+  totalAmount: real("total_amount").notNull(),
+  // Free-text snapshot of the itemized cost breakdown at lock time -- kept as a point-in-time
+  // record independent of the live costItems rows, which may be edited or deleted after this
+  // baseline is locked. A baseline must never silently reflect edits made after the fact.
+  breakdownSnapshot: text("breakdown_snapshot"),
+  notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
+  lockedBy: text("locked_by").notNull(), // snapshot of the locking user's name
+  lockedAt: timestamp("locked_at").notNull().defaultNow(),
+  supersededAt: timestamp("superseded_at"),
+});
+
+// A proposed change against the currently active baseline -- the audit trail of *why* the
+// budget moved, not just that it did. Approving one creates a new budgetBaselines row (active
+// baseline's total + amountDelta) and links back via resultingBaselineId; rejecting one just
+// records the decision and leaves the active baseline untouched. Nothing here ever mutates a
+// baseline in place -- see the comment on budgetBaselines above for why that matters.
+export const budgetChangeRequests = pgTable("budget_change_requests", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  // The baseline this change was proposed against -- nullable (rather than required) so a
+  // change request can still be filed on a project that hasn't locked its first baseline yet;
+  // approving it in that case both creates baseline v1 and resolves the request in one step.
+  baselineId: text("baseline_id").references((): AnyPgColumn => budgetBaselines.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  amountDelta: real("amount_delta").notNull(), // positive = increase, negative = decrease
+  status: budgetChangeRequestStatusEnum("status").notNull().default("PENDING"),
+  requestedBy: text("requested_by").notNull(), // snapshot of the requesting user's name
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  decidedBy: text("decided_by"),
+  decidedAt: timestamp("decided_at"),
+  decisionNotes: text("decision_notes"),
+  // Set only once approval creates the new baseline -- lets the UI link "this change" -> "the
+  // baseline version it produced" without re-deriving the relationship.
+  resultingBaselineId: text("resulting_baseline_id").references((): AnyPgColumn => budgetBaselines.id, { onDelete: "set null" }),
+});
+
 export const timeEntries = pgTable("time_entries", {
   id: cuid(),
   taskId: text("task_id")
@@ -1423,6 +1484,8 @@ export const projectsRelations = relations(projects, ({ many, one }) => ({
   milestones: many(milestones),
   costItems: many(costItems),
   invoices: many(invoices),
+  budgetBaselines: many(budgetBaselines),
+  budgetChangeRequests: many(budgetChangeRequests),
   incidents: many(incidents),
   brainstormEntries: many(brainstormEntries),
   solutionOptions: many(solutionOptions),
@@ -1493,6 +1556,25 @@ export const invoicesRelations = relations(invoices, ({ one }) => ({
   project: one(projects, {
     fields: [invoices.projectId],
     references: [projects.id],
+  }),
+}));
+
+export const budgetBaselinesRelations = relations(budgetBaselines, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [budgetBaselines.projectId],
+    references: [projects.id],
+  }),
+  changeRequests: many(budgetChangeRequests),
+}));
+
+export const budgetChangeRequestsRelations = relations(budgetChangeRequests, ({ one }) => ({
+  project: one(projects, {
+    fields: [budgetChangeRequests.projectId],
+    references: [projects.id],
+  }),
+  baseline: one(budgetBaselines, {
+    fields: [budgetChangeRequests.baselineId],
+    references: [budgetBaselines.id],
   }),
 }));
 
