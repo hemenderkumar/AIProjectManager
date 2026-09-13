@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
 import { Key, Webhook, Trash2, Copy, Check, Plus } from "lucide-react";
 
-type ApiKey = { id: string; name: string; keyPrefix: string; scopes: string[]; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
+type ApiKey = { id: string; name: string; keyPrefix: string; scopes: string[]; projectId: string | null; projectName: string | null; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
 type WebhookSub = { id: string; url: string; events: string[]; lastDeliveryAt: string | null; lastDeliveryStatus: number | null };
+type ProjectOption = { id: string; name: string };
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 const WEBHOOK_EVENTS = [
@@ -24,8 +25,12 @@ const WEBHOOK_EVENTS = [
 export default function IntegrationsPageClient() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyScopes, setNewKeyScopes] = useState<string[]>(["read"]);
+  const [newKeyProjectId, setNewKeyProjectId] = useState<string>("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
 
   const [hooks, setHooks] = useState<WebhookSub[]>([]);
   const [newHookUrl, setNewHookUrl] = useState("");
@@ -37,20 +42,29 @@ export default function IntegrationsPageClient() {
   function loadHooks() {
     fetch("/api/webhooks").then((r) => (r.ok ? r.json() : [])).then((rows) => setHooks(Array.isArray(rows) ? rows : []));
   }
-  useEffect(() => { loadKeys(); loadHooks(); }, []);
+  function loadProjects() {
+    fetch("/api/projects").then((r) => (r.ok ? r.json() : [])).then((rows) => setProjects(Array.isArray(rows) ? rows.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name })) : []));
+  }
+  useEffect(() => { loadKeys(); loadHooks(); loadProjects(); }, []);
 
   async function createKey() {
-    if (!newKeyName.trim()) return;
+    if (!newKeyName.trim() || !newKeyScopes.length) return;
+    setKeyError(null);
     const res = await fetch("/api/api-keys", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newKeyName }),
+      body: JSON.stringify({ name: newKeyName, scopes: newKeyScopes, projectId: newKeyProjectId || null }),
     });
     if (res.ok) {
       const created = await res.json();
       setRevealedKey(created.rawKey);
       setNewKeyName("");
+      setNewKeyScopes(["read"]);
+      setNewKeyProjectId("");
       loadKeys();
+    } else {
+      const body = await res.json().catch(() => ({}));
+      setKeyError(body.error || "Could not create API key");
     }
   }
 
@@ -105,16 +119,49 @@ export default function IntegrationsPageClient() {
           <div className="space-y-2 mb-3">
             {keys.map((k) => (
               <div key={k.id} className="flex items-center justify-between text-sm border border-slate-100 rounded-lg px-3 py-2">
-                <span className="text-slate-700">{k.name} <span className="text-xs text-slate-400 font-mono">{k.keyPrefix}…</span></span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-700">{k.name} <span className="text-xs text-slate-400 font-mono">{k.keyPrefix}…</span></span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {k.scopes.map((s) => (
+                      <span key={s} className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{s}</span>
+                    ))}
+                    {k.projectName ? (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent-50 text-accent-700">restricted to {k.projectName}</span>
+                    ) : (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-50 text-slate-400">all projects</span>
+                    )}
+                  </div>
+                </div>
                 <button onClick={() => revokeKey(k.id)} className="text-slate-400 hover:text-rose-600"><Trash2 size={14} /></button>
               </div>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="space-y-2">
             <input className={inputCls} placeholder="Key name, e.g. Zapier integration" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
-            <button onClick={createKey} className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700">
-              <Plus size={13} /> Create
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
+                {["read", "write"].map((s) => (
+                  <label key={s} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newKeyScopes.includes(s)}
+                      onChange={(e) => setNewKeyScopes((prev) => (e.target.checked ? [...prev, s] : prev.filter((x) => x !== s)))}
+                    />
+                    {s}
+                  </label>
+                ))}
+              </div>
+              <select className={inputCls + " w-auto"} value={newKeyProjectId} onChange={(e) => setNewKeyProjectId(e.target.value)}>
+                <option value="">All projects (unrestricted)</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <button onClick={createKey} className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700">
+                <Plus size={13} /> Create
+              </button>
+            </div>
+            {keyError && <p className="text-xs text-rose-600">{keyError}</p>}
           </div>
         </div>
 

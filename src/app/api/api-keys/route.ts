@@ -15,6 +15,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   if (!body.name) return NextResponse.json({ error: "name is required" }, { status: 400 });
   const scopes = Array.isArray(body.scopes) ? body.scopes.filter((s: unknown) => s === "read" || s === "write") : [];
-  const created = await createApiKey(user, body.name, scopes.length ? scopes : ["read"]);
-  return NextResponse.json(created, { status: 201 });
+  try {
+    const created = await createApiKey(user, body.name, scopes.length ? scopes : ["read"], body.projectId || null);
+    return NextResponse.json(created, { status: 201 });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Could not create API key" }, { status: 400 });
+  }
 }

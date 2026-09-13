@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tasks, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { verifyApiKey, extractBearerToken } from "@/lib/apiKeys";
+import { verifyApiKey, extractBearerToken, isApiKeyAllowedForProject } from "@/lib/apiKeys";
 
 async function authOrNull(req: NextRequest, projectId: string) {
   const rawKey = extractBearerToken(req.headers.get("authorization"));
   if (!rawKey) return null;
   const auth = await verifyApiKey(rawKey);
   if (!auth) return null;
+  if (!isApiKeyAllowedForProject(auth, projectId)) return null; // key restricted to a different project
   if (!auth.organizationId) return auth; // internal key -- unrestricted, mirrors ADMIN
   const [project] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, projectId));
   if (!project) return null;

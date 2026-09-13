@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { incidents, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { verifyApiKey, extractBearerToken } from "@/lib/apiKeys";
+import { verifyApiKey, extractBearerToken, isApiKeyAllowedForProject, resolveApiKeyProjectId } from "@/lib/apiKeys";
 import { dispatchWebhook } from "@/lib/webhooks";
 
 // Same key-scoped visibility rule as /api/public/v1/projects (#322): a key created for a
@@ -29,7 +29,10 @@ export async function GET(req: NextRequest) {
     .from(incidents)
     .innerJoin(projects, eq(incidents.projectId, projects.id))
     .where(eq(projects.organizationId, auth.organizationId));
-  return NextResponse.json({ data: rows.map((r) => r.incident) });
+  // A project-restricted key (see isApiKeyAllowedForProject) narrows further, on top of the
+  // org filter above -- it only ever sees the one project it was issued for.
+  const visible = auth.projectId ? rows.filter((r) => r.incident.projectId === auth.projectId) : rows;
+  return NextResponse.json({ data: visible.map((r) => r.incident) });
 }
 
 export async function POST(req: NextRequest) {
@@ -48,7 +51,16 @@ export async function POST(req: NextRequest) {
 
   // A key scoped to an organization may only file incidents against that org's own projects
   // (or leave it unlinked) -- it can't attach an incident to another organization's project.
-  const projectId: string | null = body.projectId || null;
+  // A key that's ALSO project-restricted (see isApiKeyAllowedForProject) narrows this further:
+  // it can only ever file against that one project. resolveApiKeyProjectId lets a
+  // project-restricted key omit projectId from the request entirely and have it default to
+  // the project the key was issued for -- a single-project integration shouldn't have to pass
+  // the same projectId on every call.
+  const requestedProjectId: string | null = body.projectId || null;
+  const projectId = resolveApiKeyProjectId(auth, requestedProjectId);
+  if (!isApiKeyAllowedForProject(auth, projectId)) {
+    return NextResponse.json({ error: "This API key is restricted to a different project" }, { status: 403 });
+  }
   if (projectId && auth.organizationId) {
     const [project] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, projectId));
     if (!project || (project.organizationId && project.organizationId !== auth.organizationId)) {
@@ -65,9 +77,13 @@ export async function POST(req: NextRequest) {
       description: body.description || null,
       severity: severity as (typeof incidents.$inferInsert)["severity"],
       status: (body.status || "OPEN") as (typeof incidents.$inferInsert)["status"],
-      reportedBy: body.reportedBy || null,
+      // Falls back to the key's own name (the "which application" label an admin set when
+      // creating it) so a ticket filed by an integration that didn't bother passing reportedBy
+      // still shows something more useful than blank -- e.g. "Datadog" instead of nothing.
+      reportedBy: body.reportedBy || auth.name,
       assignee: body.assignee || null,
       escalatedAt: severity === "CRITICAL" ? new Date() : null,
+      createdViaApiKeyId: auth.keyId,
     })
     .returning();
 
@@ -75,7 +91,7 @@ export async function POST(req: NextRequest) {
     ? (await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, projectId)))[0]?.organizationId ?? null
     : null;
   await dispatchWebhook(orgId, "INCIDENT_CREATED", {
-    id: created.id, title: created.title, severity: created.severity, status: created.status, projectId: created.projectId, source: "public-api",
+    id: created.id, title: created.title, severity: created.severity, status: created.status, projectId: created.projectId, source: "public-api", application: auth.name,
   });
 
   return NextResponse.json({ data: created }, { status: 201 });

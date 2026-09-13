@@ -1245,6 +1245,12 @@ export const incidents = pgTable("incidents", {
   // or go stale. Nullable/set-null: losing the user shouldn't lose the incident.
   reportedByUserId: text("reported_by_user_id").references(() => users.id, { onDelete: "set null" }),
   assigneeUserId: text("assignee_user_id").references(() => users.id, { onDelete: "set null" }),
+  // Set only when this incident was filed through the public API (see POST /api/public/v1/
+  // incidents) -- an audit trail of which integration/application actually created it,
+  // independent of whatever free-text reportedBy the caller supplied. apiKeys is declared
+  // later in this file, hence the lazy AnyPgColumn callback (same forward-reference pattern
+  // already used elsewhere in this schema, e.g. milestones.sowId).
+  createdViaApiKeyId: text("created_via_api_key_id").references((): AnyPgColumn => apiKeys.id, { onDelete: "set null" }),
   reportedAt: timestamp("reported_at").notNull().defaultNow(),
   // Stamped the first time status moves to IN_PROGRESS (see patchIncident in lib/incidents.ts)
   // -- lets SLA tracking measure time-to-acknowledge separately from time-to-resolve.
@@ -2172,10 +2178,18 @@ export const automationRules = pgTable("automation_rules", {
 export const apiKeys = pgTable("api_keys", {
   id: cuid(),
   organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
+  name: text("name").notNull(), // doubles as the "which application/integration is this" label
   hashedKey: text("hashed_key").notNull().unique(),
   keyPrefix: text("key_prefix").notNull(), // first chars shown in UI so a key can be identified without re-revealing it
   scopes: text("scopes").array().notNull().default([]),
+  // Optional single-project lock, on top of the existing org-wide scoping -- null (the
+  // pre-existing default) means the key can act on any project in its organization, same as
+  // before this column existed. Set means the key can ONLY read/write that one project via the
+  // public API (see isApiKeyAllowedForProject in lib/apiKeys.ts and its two call sites:
+  // /api/public/v1/incidents and /api/public/v1/projects/[id]/tasks). This is what lets an
+  // admin hand a specific external application a key that can only ever touch one project's
+  // data, rather than every project the organization owns.
+  projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastUsedAt: timestamp("last_used_at"),
