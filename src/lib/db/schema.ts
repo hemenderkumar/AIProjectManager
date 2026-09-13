@@ -915,6 +915,49 @@ export const statusRequests = pgTable("status_requests", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const satisfactionSurveyTriggerEnum = pgEnum("satisfaction_survey_trigger", [
+  "MILESTONE",
+  "PROJECT_CLOSE",
+  "MANUAL",
+]);
+
+export const satisfactionSurveyStatusEnum = pgEnum("satisfaction_survey_status", [
+  "PENDING",
+  "COMPLETED",
+  "EXPIRED",
+]);
+
+// Client-side sentiment, not vendor performance (that's the existing vendor scorecard) or
+// internal incident tracking -- nothing else in the app captures how the client actually
+// feels. Same no-login tokenized-link shape as statusRequests above (a client stakeholder
+// shouldn't need an Executa login just to answer two questions), reused deliberately rather
+// than repurposing statusRequests itself, since a satisfaction response isn't a status update
+// and mixing the two would make both harder to query and reason about independently.
+export const satisfactionSurveys = pgTable("satisfaction_surveys", {
+  id: cuid(),
+  token: text("token").notNull().unique(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  // Which moment prompted this -- a milestone hit, the project closing out, or a PM sending
+  // one ad hoc. milestoneId is only ever set when triggerType is MILESTONE.
+  triggerType: satisfactionSurveyTriggerEnum("trigger_type").notNull().default("MANUAL"),
+  milestoneId: text("milestone_id").references(() => milestones.id, { onDelete: "set null" }),
+  status: satisfactionSurveyStatusEnum("status").notNull().default("PENDING"),
+  respondentName: text("respondent_name"),
+  respondentEmail: text("respondent_email"),
+  // NPS is the standard 0-10 "how likely to recommend" scale; CSAT is a separate 1-5
+  // "how satisfied with this specific moment" scale -- kept as two distinct nullable columns
+  // rather than one generic "score" field since they measure different things and a
+  // respondent might answer one without the other.
+  npsScore: integer("nps_score"),
+  csatScore: integer("csat_score"),
+  comments: text("comments"),
+  sentBy: text("sent_by").notNull(), // snapshot of the sending user's name
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+  respondedAt: timestamp("responded_at"),
+});
+
 export const reports = pgTable("reports", {
   id: cuid(),
   projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),

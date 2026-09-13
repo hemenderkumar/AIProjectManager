@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints, ideaReviewers, users, incidents, budgetBaselines, budgetChangeRequests } from "./db/schema";
+import { projects, tasks, riskItems, statusUpdates, milestones, resources, projectResources, communicationLogs, costItems, invoices, timeEntries, brainstormEntries, solutionOptions, deliveryRoleMix, sprints, ideaReviewers, users, incidents, budgetBaselines, budgetChangeRequests, satisfactionSurveys } from "./db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
 import { computeAutoRag, scheduleVarianceDays, budgetVariancePercent, isOverdueTask, riskScore, ProjectForHealth } from "./kpi";
 import { listVisibleProjects } from "./tenancy";
@@ -136,7 +136,7 @@ export async function getProjectDetail(id: string) {
   const [project] = await db.select().from(projects).where(eq(projects.id, id));
   if (!project) return null;
 
-  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices, projectBrainstormEntries, projectSolutionOptions, projectDeliveryRoleMix, projectSprints, projectIdeaReviewers, projectIncidents, projectBudgetBaselines, projectBudgetChangeRequests] =
+  const [projectTasks, projectRisks, updates, comms, projectMilestones, allocations, projectCostItems, projectInvoices, projectBrainstormEntries, projectSolutionOptions, projectDeliveryRoleMix, projectSprints, projectIdeaReviewers, projectIncidents, projectBudgetBaselines, projectBudgetChangeRequests, projectSatisfactionSurveys] =
     await Promise.all([
       db.select().from(tasks).where(eq(tasks.projectId, id)),
       db.select().from(riskItems).where(eq(riskItems.projectId, id)),
@@ -181,6 +181,7 @@ export async function getProjectDetail(id: string) {
       db.select().from(incidents).where(eq(incidents.projectId, id)),
       db.select().from(budgetBaselines).where(eq(budgetBaselines.projectId, id)),
       db.select().from(budgetChangeRequests).where(eq(budgetChangeRequests.projectId, id)),
+      db.select().from(satisfactionSurveys).where(eq(satisfactionSurveys.projectId, id)),
     ]);
 
   const taskIds = projectTasks.map((t) => t.id);
@@ -223,6 +224,7 @@ export async function getProjectDetail(id: string) {
     invoices: projectInvoices.sort((a, b) => (b.invoiceDate?.getTime() ?? 0) - (a.invoiceDate?.getTime() ?? 0)),
     budgetBaselines: projectBudgetBaselines.sort((a, b) => b.versionNumber - a.versionNumber),
     budgetChangeRequests: projectBudgetChangeRequests.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime()),
+    satisfactionSurveys: projectSatisfactionSurveys.sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime()),
     timeEntries: projectTimeEntries.sort((a, b) => b.entryDate.getTime() - a.entryDate.getTime()),
     brainstormEntries: projectBrainstormEntries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
     solutionOptions: projectSolutionOptions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
