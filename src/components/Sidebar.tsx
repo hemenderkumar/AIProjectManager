@@ -24,6 +24,7 @@ import {
   Plug,
   CreditCard,
   LineChart,
+  LayoutGrid,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import type { ModuleKey } from "@/lib/modules";
@@ -102,6 +103,12 @@ export default function Sidebar({
 
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
         <NavLink href="/dashboard" icon={<LayoutDashboard size={17} />} pathname={pathname}>Dashboard</NavLink>
+        {/* Client-org users only (any role) -- a deliberately narrower, client-friendly rollup
+            of health/deliverables/invoices/satisfaction than the internal Dashboard. See the
+            comment on getClientPortalData in lib/clientPortal.ts. */}
+        {!isInternal && (
+          <NavLink href="/portal" icon={<LayoutGrid size={17} />} pathname={pathname}>Client Portal</NavLink>
+        )}
         <NavLink href="/how-it-works" icon={<Compass size={17} />} pathname={pathname}>How Executa Works</NavLink>
 
         <NavSection label="Project Lifecycle">
