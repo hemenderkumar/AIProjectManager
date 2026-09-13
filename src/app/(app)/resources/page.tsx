@@ -7,6 +7,7 @@ import RateCardSection from "@/components/RateCardSection";
 import SkillRoleMapSection from "@/components/SkillRoleMapSection";
 import SkillCapacityForecast from "@/components/SkillCapacityForecast";
 import CapacityVsDemandForecast from "@/components/CapacityVsDemandForecast";
+import HiringPipeline from "@/components/HiringPipeline";
 import ExportButtons from "@/components/ExportButtons";
 
 type Resource = {
@@ -389,6 +390,7 @@ export default function ResourcesPage() {
         <RateCardSection />
         <SkillRoleMapSection />
         <SkillCapacityForecast />
+        <HiringPipeline />
         <CapacityVsDemandForecast />
       </div>
     </div>

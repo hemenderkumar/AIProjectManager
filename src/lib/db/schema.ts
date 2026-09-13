@@ -421,6 +421,40 @@ export const skillRoleMap = pgTable(
   })
 );
 
+export const hiringRequisitionStatusEnum = pgEnum("hiring_requisition_status", [
+  "OPEN",
+  "INTERVIEWING",
+  "OFFER_EXTENDED",
+  "FILLED",
+  "CANCELLED",
+]);
+
+// A forward-looking staffing action, not just a report of a gap -- distinct from the Skill
+// Capacity Forecast (lib/forecast.ts), which only tells you a gap exists today. Opening a
+// requisition is "doing something about it": someone is actively being sourced for a skill,
+// so the headcount forecast can (in a future pass) net planned reqs out against the raw gap
+// instead of double-counting work already in motion. Deliberately not tied to a single
+// project -- capacity is a shared roster resource, same reasoning as the proportional
+// attribution comment on computeSkillForecastByProject in lib/forecast.ts. Internal-only
+// (same requireInternal gate as the Resources roster itself), since it names a hiring plan
+// for Executa's own team, not a client-visible record.
+export const hiringRequisitions = pgTable("hiring_requisitions", {
+  id: cuid(),
+  skill: text("skill").notNull(),
+  role: text("role"), // resolved role at creation time (e.g. from skillRoleMap) -- editable after
+  targetHeadcount: integer("target_headcount").notNull().default(1),
+  sourcingType: sourcingTypeEnum("sourcing_type"),
+  status: hiringRequisitionStatusEnum("status").notNull().default("OPEN"),
+  targetStartDate: timestamp("target_start_date"),
+  notes: text("notes"),
+  createdBy: text("created_by").notNull(), // snapshot of the creating user's name
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  // Set once a requisition moves to FILLED -- links the plan to the actual person who closed
+  // the gap, so "did this hire actually happen" stays answerable later.
+  filledByResourceId: text("filled_by_resource_id").references(() => resources.id, { onDelete: "set null" }),
+  filledAt: timestamp("filled_at"),
+});
+
 // Daily snapshot of the Feature 3 EAC forecast for one project, captured opportunistically
 // (see /api/forecast/eac's route -- it upserts one row per project per day whenever anyone
 // loads the Execution page) rather than on a cron, so this table self-populates from normal
