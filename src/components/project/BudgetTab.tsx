@@ -5,7 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import type { SessionUser } from "@/lib/auth";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateTime } from "@/lib/format";
-import { Lock, Plus, Check, X, History } from "lucide-react";
+import { Lock, Plus, Check, X, History, Download } from "lucide-react";
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-amber-50 text-amber-700",
@@ -97,6 +97,16 @@ export default function BudgetTab({ detail, user }: { detail: ProjectDetail; use
 
   return (
     <div className="max-w-3xl space-y-4">
+      <div className="flex justify-end">
+        <a
+          href={`/api/projects/${projectId}/accounting-export`}
+          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+          title="Downloads a generic ledger CSV -- import it into QuickBooks (Banking > Upload from file) or Xero (Import a statement) and map the columns once."
+        >
+          <Download size={13} /> Export to Accounting (CSV)
+        </a>
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <SummaryStat label="Active baseline" value={activeBaseline ? `$${activeBaseline.totalAmount.toLocaleString()}` : "None locked"} />
         <SummaryStat label="Baseline version" value={activeBaseline ? `v${activeBaseline.versionNumber}` : "—"} />
