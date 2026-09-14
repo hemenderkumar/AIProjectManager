@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { incidents, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { verifyApiKey, extractBearerToken, isApiKeyAllowedForProject, resolveApiKeyProjectId } from "@/lib/apiKeys";
+import { isValidAssigneeForOrg } from "@/lib/incidents";
 import { dispatchWebhook } from "@/lib/webhooks";
 
 // Same key-scoped visibility rule as /api/public/v1/projects (#322): a key created for a
@@ -68,6 +69,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // assigneeUserId links the incident to a real Executa user (drives the assignee picker,
+  // notifications, etc.) rather than just a free-text name. It must belong to the same
+  // organization as an org-scoped key -- an unrestricted (internal) key can assign to anyone.
+  // If the caller doesn't pass one, fall back to the key's own configured default assignee
+  // (see Settings > Integrations) -- this is what makes routing fully no-code: an admin sets
+  // "everything from this key goes to Jane" once in the UI, and a calling application that
+  // just POSTs a bare title still ends up correctly assigned.
+  const requestedAssigneeUserId: string | null = body.assigneeUserId || auth.defaultAssigneeUserId || null;
+  if (requestedAssigneeUserId && !(await isValidAssigneeForOrg(requestedAssigneeUserId, auth.organizationId))) {
+    return NextResponse.json({ error: "assigneeUserId is not a valid user for this API key's organization" }, { status: 400 });
+  }
+
   const severity = body.severity || "MEDIUM";
   const [created] = await db
     .insert(incidents)
@@ -82,6 +95,7 @@ export async function POST(req: NextRequest) {
       // still shows something more useful than blank -- e.g. "Datadog" instead of nothing.
       reportedBy: body.reportedBy || auth.name,
       assignee: body.assignee || null,
+      assigneeUserId: requestedAssigneeUserId,
       escalatedAt: severity === "CRITICAL" ? new Date() : null,
       createdViaApiKeyId: auth.keyId,
     })

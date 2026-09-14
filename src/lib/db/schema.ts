@@ -2190,6 +2190,12 @@ export const apiKeys = pgTable("api_keys", {
   // admin hand a specific external application a key that can only ever touch one project's
   // data, rather than every project the organization owns.
   projectId: text("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  // Configurable, no-code ticket routing: when set, an incident created via this key that
+  // doesn't specify its own assigneeUserId is auto-assigned to this person instead of landing
+  // unassigned. Lets an admin point an integration (e.g. a monitoring tool) at a specific
+  // owner entirely from the Settings > Integrations UI -- the calling application never has to
+  // know or pass a user id. Set-null: losing the user shouldn't break the key.
+  defaultAssigneeUserId: text("default_assignee_user_id").references(() => users.id, { onDelete: "set null" }),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastUsedAt: timestamp("last_used_at"),

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { incidents, incidentUpdates, projects, tasks } from "./db/schema";
+import { incidents, incidentUpdates, projects, tasks, users } from "./db/schema";
 import { eq, inArray, isNull, or, desc } from "drizzle-orm";
 import { canAccessProject, canAccessOptionalProject, isInternalStaff, listVisibleProjects } from "./tenancy";
 import { dispatchWebhook } from "./webhooks";
@@ -147,6 +147,19 @@ export async function patchIncident(user: SessionUser, id: string, body: Record<
   }
 
   return { incident: updated };
+}
+
+// Validates that `userId` is a legitimate assignment target for an org-scoped API key: the
+// user must actually exist and belong to that same organization -- mirrors the same-org
+// restriction the assignee dropdown already applies for a SUPER_USER session (support/page.tsx
+// only offers that org's own users). An unrestricted (org-less) key -- internal Executa staff,
+// same convention as elsewhere in apiKeys.ts -- may assign to anyone, matching ADMIN's
+// unrestricted view of that same dropdown.
+export async function isValidAssigneeForOrg(userId: string, organizationId: string | null): Promise<boolean> {
+  const [target] = await db.select({ organizationId: users.organizationId }).from(users).where(eq(users.id, userId));
+  if (!target) return false;
+  if (!organizationId) return true;
+  return target.organizationId === organizationId;
 }
 
 export async function listIncidentUpdates(user: SessionUser, incidentId: string) {

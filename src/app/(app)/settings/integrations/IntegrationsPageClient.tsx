@@ -3,9 +3,15 @@ import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
 import { Key, Webhook, Trash2, Copy, Check, Plus } from "lucide-react";
 
-type ApiKey = { id: string; name: string; keyPrefix: string; scopes: string[]; projectId: string | null; projectName: string | null; createdAt: string; lastUsedAt: string | null; revokedAt: string | null };
+type ApiKey = {
+  id: string; name: string; keyPrefix: string; scopes: string[];
+  projectId: string | null; projectName: string | null;
+  defaultAssigneeUserId: string | null; defaultAssigneeName: string | null;
+  createdAt: string; lastUsedAt: string | null; revokedAt: string | null;
+};
 type WebhookSub = { id: string; url: string; events: string[]; lastDeliveryAt: string | null; lastDeliveryStatus: number | null };
 type ProjectOption = { id: string; name: string };
+type UserOption = { id: string; name: string };
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 const WEBHOOK_EVENTS = [
@@ -27,10 +33,13 @@ export default function IntegrationsPageClient() {
   const [newKeyName, setNewKeyName] = useState("");
   const [newKeyScopes, setNewKeyScopes] = useState<string[]>(["read"]);
   const [newKeyProjectId, setNewKeyProjectId] = useState<string>("");
+  const [newKeyAssigneeId, setNewKeyAssigneeId] = useState<string>("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [orgUsers, setOrgUsers] = useState<UserOption[]>([]);
+  const [reassigningKeyId, setReassigningKeyId] = useState<string | null>(null);
 
   const [hooks, setHooks] = useState<WebhookSub[]>([]);
   const [newHookUrl, setNewHookUrl] = useState("");
@@ -45,7 +54,12 @@ export default function IntegrationsPageClient() {
   function loadProjects() {
     fetch("/api/projects").then((r) => (r.ok ? r.json() : [])).then((rows) => setProjects(Array.isArray(rows) ? rows.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name })) : []));
   }
-  useEffect(() => { loadKeys(); loadHooks(); loadProjects(); }, []);
+  function loadOrgUsers() {
+    // Best-effort: internal (org-less) staff don't have a "my organization" user list, so this
+    // 403s harmlessly for them -- the default-assignee picker just stays empty in that case.
+    fetch("/api/organization/users").then((r) => (r.ok ? r.json() : [])).then((rows) => setOrgUsers(Array.isArray(rows) ? rows.map((u: { id: string; name: string }) => ({ id: u.id, name: u.name })) : [])).catch(() => {});
+  }
+  useEffect(() => { loadKeys(); loadHooks(); loadProjects(); loadOrgUsers(); }, []);
 
   async function createKey() {
     if (!newKeyName.trim() || !newKeyScopes.length) return;
@@ -53,7 +67,7 @@ export default function IntegrationsPageClient() {
     const res = await fetch("/api/api-keys", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newKeyName, scopes: newKeyScopes, projectId: newKeyProjectId || null }),
+      body: JSON.stringify({ name: newKeyName, scopes: newKeyScopes, projectId: newKeyProjectId || null, defaultAssigneeUserId: newKeyAssigneeId || null }),
     });
     if (res.ok) {
       const created = await res.json();
@@ -61,6 +75,7 @@ export default function IntegrationsPageClient() {
       setNewKeyName("");
       setNewKeyScopes(["read"]);
       setNewKeyProjectId("");
+      setNewKeyAssigneeId("");
       loadKeys();
     } else {
       const body = await res.json().catch(() => ({}));
@@ -71,6 +86,22 @@ export default function IntegrationsPageClient() {
   async function revokeKey(id: string) {
     await fetch(`/api/api-keys/${id}`, { method: "DELETE" });
     loadKeys();
+  }
+
+  // Retargets an existing key's default assignee entirely from the UI -- no code, no
+  // regenerating the key, nothing for whoever owns the calling application to redo.
+  async function setDefaultAssignee(id: string, defaultAssigneeUserId: string) {
+    setReassigningKeyId(id);
+    try {
+      await fetch(`/api/api-keys/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultAssigneeUserId: defaultAssigneeUserId || null }),
+      });
+      loadKeys();
+    } finally {
+      setReassigningKeyId(null);
+    }
   }
 
   async function createHook() {
@@ -118,8 +149,8 @@ export default function IntegrationsPageClient() {
           )}
           <div className="space-y-2 mb-3">
             {keys.map((k) => (
-              <div key={k.id} className="flex items-center justify-between text-sm border border-slate-100 rounded-lg px-3 py-2">
-                <div className="flex flex-col gap-1">
+              <div key={k.id} className="flex items-center justify-between text-sm border border-slate-100 rounded-lg px-3 py-2 gap-3">
+                <div className="flex flex-col gap-1.5 min-w-0">
                   <span className="text-slate-700">{k.name} <span className="text-xs text-slate-400 font-mono">{k.keyPrefix}…</span></span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {k.scopes.map((s) => (
@@ -131,14 +162,30 @@ export default function IntegrationsPageClient() {
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-50 text-slate-400">all projects</span>
                     )}
                   </div>
+                  {orgUsers.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 shrink-0">New incidents auto-assign to:</span>
+                      <select
+                        className="text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-600 disabled:opacity-50"
+                        value={k.defaultAssigneeUserId ?? ""}
+                        disabled={reassigningKeyId === k.id}
+                        onChange={(e) => setDefaultAssignee(k.id, e.target.value)}
+                      >
+                        <option value="">Unassigned</option>
+                        {orgUsers.map((u) => (
+                          <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
-                <button onClick={() => revokeKey(k.id)} className="text-slate-400 hover:text-rose-600"><Trash2 size={14} /></button>
+                <button onClick={() => revokeKey(k.id)} className="shrink-0 text-slate-400 hover:text-rose-600"><Trash2 size={14} /></button>
               </div>
             ))}
           </div>
           <div className="space-y-2">
             <input className={inputCls} placeholder="Key name, e.g. Zapier integration" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-3">
                 {["read", "write"].map((s) => (
                   <label key={s} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
@@ -157,11 +204,22 @@ export default function IntegrationsPageClient() {
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
+              {orgUsers.length > 0 && (
+                <select className={inputCls + " w-auto"} value={newKeyAssigneeId} onChange={(e) => setNewKeyAssigneeId(e.target.value)}>
+                  <option value="">No default assignee</option>
+                  {orgUsers.map((u) => (
+                    <option key={u.id} value={u.id}>Auto-assign to {u.name}</option>
+                  ))}
+                </select>
+              )}
               <button onClick={createKey} className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700">
                 <Plus size={13} /> Create
               </button>
             </div>
             {keyError && <p className="text-xs text-rose-600">{keyError}</p>}
+            <p className="text-xs text-slate-400">
+              Setting a default assignee means a calling application that just posts a title gets automatically routed to that person — no code required on their end.
+            </p>
           </div>
         </div>
 
