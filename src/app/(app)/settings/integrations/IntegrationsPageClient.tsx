@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
-import { Key, Webhook, Trash2, Copy, Check, Plus } from "lucide-react";
+import { Key, Webhook, Trash2, Copy, Check, Plus, Mail } from "lucide-react";
 
 type ApiKey = {
   id: string; name: string; keyPrefix: string; scopes: string[];
@@ -12,6 +12,15 @@ type ApiKey = {
 type WebhookSub = { id: string; url: string; events: string[]; lastDeliveryAt: string | null; lastDeliveryStatus: number | null };
 type ProjectOption = { id: string; name: string };
 type UserOption = { id: string; name: string };
+type EmailRoute = {
+  id: string; inboundAddress: string;
+  projectId: string | null; projectName: string | null;
+  defaultSeverity: string;
+  defaultAssigneeUserId: string | null; defaultAssigneeName: string | null;
+  isActive: boolean; lastUsedAt: string | null;
+};
+
+const SEVERITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 const WEBHOOK_EVENTS = [
@@ -45,6 +54,14 @@ export default function IntegrationsPageClient() {
   const [newHookUrl, setNewHookUrl] = useState("");
   const [newHookEvents, setNewHookEvents] = useState<string[]>([]);
 
+  const [routes, setRoutes] = useState<EmailRoute[]>([]);
+  const [newRouteProjectId, setNewRouteProjectId] = useState("");
+  const [newRouteSeverity, setNewRouteSeverity] = useState("MEDIUM");
+  const [newRouteAssigneeId, setNewRouteAssigneeId] = useState("");
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [copiedRouteId, setCopiedRouteId] = useState<string | null>(null);
+  const [reassigningRouteId, setReassigningRouteId] = useState<string | null>(null);
+
   function loadKeys() {
     fetch("/api/api-keys").then((r) => (r.ok ? r.json() : [])).then((rows) => setKeys(Array.isArray(rows) ? rows.filter((k: ApiKey) => !k.revokedAt) : []));
   }
@@ -59,7 +76,10 @@ export default function IntegrationsPageClient() {
     // 403s harmlessly for them -- the default-assignee picker just stays empty in that case.
     fetch("/api/organization/users").then((r) => (r.ok ? r.json() : [])).then((rows) => setOrgUsers(Array.isArray(rows) ? rows.map((u: { id: string; name: string }) => ({ id: u.id, name: u.name })) : [])).catch(() => {});
   }
-  useEffect(() => { loadKeys(); loadHooks(); loadProjects(); loadOrgUsers(); }, []);
+  function loadRoutes() {
+    fetch("/api/email-routes").then((r) => (r.ok ? r.json() : [])).then((rows) => setRoutes(Array.isArray(rows) ? rows.filter((r: EmailRoute) => r.isActive) : []));
+  }
+  useEffect(() => { loadKeys(); loadHooks(); loadProjects(); loadOrgUsers(); loadRoutes(); }, []);
 
   async function createKey() {
     if (!newKeyName.trim() || !newKeyScopes.length) return;
@@ -121,6 +141,49 @@ export default function IntegrationsPageClient() {
   async function removeHook(id: string) {
     await fetch(`/api/webhooks/${id}`, { method: "DELETE" });
     loadHooks();
+  }
+
+  async function createRoute() {
+    setRouteError(null);
+    const res = await fetch("/api/email-routes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: newRouteProjectId || null, defaultSeverity: newRouteSeverity, defaultAssigneeUserId: newRouteAssigneeId || null }),
+    });
+    if (res.ok) {
+      setNewRouteProjectId("");
+      setNewRouteSeverity("MEDIUM");
+      setNewRouteAssigneeId("");
+      loadRoutes();
+    } else {
+      const body = await res.json().catch(() => ({}));
+      setRouteError(body.error || "Could not create email intake address");
+    }
+  }
+
+  async function deactivateRoute(id: string) {
+    await fetch(`/api/email-routes/${id}`, { method: "DELETE" });
+    loadRoutes();
+  }
+
+  async function setRouteAssignee(id: string, defaultAssigneeUserId: string) {
+    setReassigningRouteId(id);
+    try {
+      await fetch(`/api/email-routes/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultAssigneeUserId: defaultAssigneeUserId || null }),
+      });
+      loadRoutes();
+    } finally {
+      setReassigningRouteId(null);
+    }
+  }
+
+  function copyRouteAddress(route: EmailRoute) {
+    navigator.clipboard.writeText(route.inboundAddress);
+    setCopiedRouteId(route.id);
+    setTimeout(() => setCopiedRouteId(null), 1500);
   }
 
   return (
@@ -220,6 +283,82 @@ export default function IntegrationsPageClient() {
             <p className="text-xs text-slate-400">
               Setting a default assignee means a calling application that just posts a title gets automatically routed to that person — no code required on their end.
             </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Mail size={16} className="text-slate-400" />
+            <p className="text-sm font-semibold text-slate-900">Email intake</p>
+          </div>
+          <p className="text-xs text-slate-500 mb-3">
+            Report incidents with no code at all — anyone who emails one of these addresses gets an incident automatically. Requires Resend inbound email to be configured on this deployment.
+          </p>
+          <div className="space-y-2 mb-3">
+            {routes.map((r) => (
+              <div key={r.id} className="flex items-center justify-between text-sm border border-slate-100 rounded-lg px-3 py-2 gap-3">
+                <div className="flex flex-col gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <code className="text-xs text-slate-700 truncate">{r.inboundAddress}</code>
+                    <button onClick={() => copyRouteAddress(r)} className="shrink-0 text-slate-400 hover:text-accent-600">
+                      {copiedRouteId === r.id ? <Check size={12} /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">default: {r.defaultSeverity}</span>
+                    {r.projectName ? (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent-50 text-accent-700">{r.projectName}</span>
+                    ) : (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-50 text-slate-400">unlinked</span>
+                    )}
+                  </div>
+                  {orgUsers.length > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 shrink-0">Auto-assign to:</span>
+                      <select
+                        className="text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-600 disabled:opacity-50"
+                        value={r.defaultAssigneeUserId ?? ""}
+                        disabled={reassigningRouteId === r.id}
+                        onChange={(e) => setRouteAssignee(r.id, e.target.value)}
+                      >
+                        <option value="">Unassigned</option>
+                        {orgUsers.map((u) => (
+                          <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => deactivateRoute(r.id)} className="shrink-0 text-slate-400 hover:text-rose-600"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 flex-wrap">
+              <select className={inputCls + " w-auto"} value={newRouteProjectId} onChange={(e) => setNewRouteProjectId(e.target.value)}>
+                <option value="">No project (unlinked)</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <select className={inputCls + " w-auto"} value={newRouteSeverity} onChange={(e) => setNewRouteSeverity(e.target.value)}>
+                {SEVERITIES.map((s) => (
+                  <option key={s} value={s}>Default severity: {s}</option>
+                ))}
+              </select>
+              {orgUsers.length > 0 && (
+                <select className={inputCls + " w-auto"} value={newRouteAssigneeId} onChange={(e) => setNewRouteAssigneeId(e.target.value)}>
+                  <option value="">No default assignee</option>
+                  {orgUsers.map((u) => (
+                    <option key={u.id} value={u.id}>Auto-assign to {u.name}</option>
+                  ))}
+                </select>
+              )}
+              <button onClick={createRoute} className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-accent-600 text-white hover:bg-accent-700">
+                <Plus size={13} /> Generate address
+              </button>
+            </div>
+            {routeError && <p className="text-xs text-rose-600">{routeError}</p>}
           </div>
         </div>
 

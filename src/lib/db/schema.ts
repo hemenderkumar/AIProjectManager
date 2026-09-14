@@ -1251,6 +1251,10 @@ export const incidents = pgTable("incidents", {
   // later in this file, hence the lazy AnyPgColumn callback (same forward-reference pattern
   // already used elsewhere in this schema, e.g. milestones.sowId).
   createdViaApiKeyId: text("created_via_api_key_id").references((): AnyPgColumn => apiKeys.id, { onDelete: "set null" }),
+  // Same idea as createdViaApiKeyId, but for an incident filed by email (see
+  // /api/webhooks/inbound-email and lib/emailIntake.ts) -- emailIntakeRoutes is also declared
+  // later in this file, hence the same lazy AnyPgColumn forward-reference pattern.
+  createdViaEmailRouteId: text("created_via_email_route_id").references((): AnyPgColumn => emailIntakeRoutes.id, { onDelete: "set null" }),
   reportedAt: timestamp("reported_at").notNull().defaultNow(),
   // Stamped the first time status moves to IN_PROGRESS (see patchIncident in lib/incidents.ts)
   // -- lets SLA tracking measure time-to-acknowledge separately from time-to-resolve.
@@ -2200,6 +2204,31 @@ export const apiKeys = pgTable("api_keys", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastUsedAt: timestamp("last_used_at"),
   revokedAt: timestamp("revoked_at"),
+});
+
+// A no-code alternative front door to the public incident API (#434-439): an org gets a
+// dedicated inbound email address (e.g. via Resend's inbound-email feature), and any mail sent
+// there becomes an incident with zero integration code -- just "email us at this address."
+// Deliberately org-required (unlike apiKeys.organizationId, which can be null for an internal/
+// unrestricted key) -- an inbound email address only ever makes sense scoped to one customer.
+export const emailIntakeRoutes = pgTable("email_intake_routes", {
+  id: cuid(),
+  organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  // Optional single-project lock, same idea as apiKeys.projectId -- null means incidents from
+  // this address land unlinked (internal-only) unless a project is picked.
+  projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+  // The generated inbound address itself (see lib/emailIntake.ts generateInboundAddress) --
+  // globally unique since it's the only thing standing in for authentication here: whoever
+  // knows the address can file an incident, so it's random rather than a guessable pattern.
+  inboundAddress: text("inbound_address").notNull().unique(),
+  defaultSeverity: priorityEnum("default_severity").notNull().default("MEDIUM"),
+  // Same no-code routing pattern as apiKeys.defaultAssigneeUserId -- an admin points this
+  // address at a specific owner from the UI, the calling human never has to know a user id.
+  defaultAssigneeUserId: text("default_assignee_user_id").references(() => users.id, { onDelete: "set null" }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastUsedAt: timestamp("last_used_at"),
 });
 
 // Signing secret drives an X-Executa-Signature HMAC header on every delivery — same pattern
