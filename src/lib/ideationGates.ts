@@ -1,17 +1,23 @@
-// The Plan tab's 5 gated sub-tabs (Idea & Alignment -> Technical Feasibility ->
-// Architecture -> Scope & Charter -> Resourcing Decision) and how they map onto the
-// pre-existing, coarser `stage` column so every existing stage-based query (dashboard
+// The Plan tab's 6 gated sub-tabs (Idea & Alignment -> Technical Feasibility ->
+// Architecture -> Business Case -> Scope & Charter -> Resourcing Decision) and how they map
+// onto the pre-existing, coarser `stage` column so every existing stage-based query (dashboard
 // counts, EXECUTION_STAGES/IDEATION_STAGES report filters, AI prompts) keeps working
 // unchanged. `stage` is still a real, queryable column -- it's just no longer directly
-// PM-editable for these five sub-stages; see the PATCH handler in
-// api/projects/[id]/route.ts. CLOSING/CLOSED remain manually settable, since project
-// closeout is a separate lifecycle event this gated sequence doesn't model.
+// PM-editable for these sub-stages; see the PATCH handler in api/projects/[id]/route.ts.
+// CLOSING/CLOSED remain manually settable, since project closeout is a separate lifecycle
+// event this gated sequence doesn't model.
+//
+// Business Case sits between Architecture and Charter: it answers "should we do this and
+// why" (problem, business case narrative, SWOT, market analysis/prediction, revenue
+// projections, roadmap) before Charter answers "here's the authorized scope/cost/plan to
+// execute it." See BusinessCaseWorkspace.tsx.
 import type { projectStageEnum } from "./db/schema";
 
 export const SUB_STAGE_ORDER = [
   "IDEA_ALIGNMENT",
   "TECHNICAL_FEASIBILITY",
   "ARCHITECTURE_REVIEW",
+  "BUSINESS_CASE",
   "CHARTER",
   "RESOURCING_DECISION",
   "READY_FOR_EXECUTION",
@@ -23,6 +29,7 @@ export const SUB_STAGE_LABELS: Record<IdeationSubStage, string> = {
   IDEA_ALIGNMENT: "Idea & Alignment",
   TECHNICAL_FEASIBILITY: "Technical Feasibility",
   ARCHITECTURE_REVIEW: "Architecture",
+  BUSINESS_CASE: "Business Case",
   CHARTER: "Scope & Charter",
   RESOURCING_DECISION: "Resourcing Decision",
   READY_FOR_EXECUTION: "Ready for Execution",
@@ -32,6 +39,7 @@ export const STAGE_FOR_SUB_STAGE: Record<IdeationSubStage, (typeof projectStageE
   IDEA_ALIGNMENT: "INCEPTION",
   TECHNICAL_FEASIBILITY: "IDEATION",
   ARCHITECTURE_REVIEW: "IDEATION",
+  BUSINESS_CASE: "IDEATION",
   CHARTER: "CHARTER",
   RESOURCING_DECISION: "CHARTER",
   READY_FOR_EXECUTION: "EXECUTION",

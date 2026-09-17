@@ -58,6 +58,10 @@ export async function POST(
     update.architectureApprovedAt = now;
     update.architectureApprovedBy = `${user.name} (override)`;
   }
+  if (from === "BUSINESS_CASE" && !project.businessCaseApprovedAt) {
+    update.businessCaseApprovedAt = now;
+    update.businessCaseApprovedBy = `${user.name} (override)`;
+  }
   if (to === "READY_FOR_EXECUTION") {
     update.stageApprovedBy = `${user.name} (override)`;
     update.stageApprovedAt = now;

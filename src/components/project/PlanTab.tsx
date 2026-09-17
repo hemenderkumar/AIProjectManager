@@ -9,6 +9,7 @@ import OverviewTab from "./OverviewTab";
 import IdeationWorkspace from "./IdeationWorkspace";
 import FeasibilityWorkspace from "./FeasibilityWorkspace";
 import ArchitectureWorkspace from "./ArchitectureWorkspace";
+import BusinessCaseWorkspace from "./BusinessCaseWorkspace";
 import CharterTab from "./CharterTab";
 import ResourcingDecisionTab from "./ResourcingDecisionTab";
 
@@ -73,6 +74,7 @@ export default function PlanTab({
         {active === "IDEA_ALIGNMENT" && <IdeationWorkspace detail={detail} user={user} />}
         {active === "TECHNICAL_FEASIBILITY" && <FeasibilityWorkspace detail={detail} />}
         {active === "ARCHITECTURE_REVIEW" && <ArchitectureWorkspace detail={detail} />}
+        {active === "BUSINESS_CASE" && <BusinessCaseWorkspace detail={detail} />}
         {active === "CHARTER" && <CharterTab detail={detail} />}
         {active === "RESOURCING_DECISION" && <ResourcingDecisionTab detail={detail} onNavigate={onNavigate} />}
       </div>

@@ -37,7 +37,7 @@ export const ideationStatusEnum = pgEnum("ideation_status", [
   "READY_FOR_CHARTER",
 ]);
 
-// Gated Plan sequence: the Ideation + Charter tabs are merged into one "Plan" tab with 5
+// Gated Plan sequence: the Ideation + Charter tabs are merged into one "Plan" tab with 6
 // sub-tabs, each locked until the previous one's gate is satisfied. Replaces the old
 // free-form `stage` dropdown as the thing that actually drives progress — `stage` itself
 // becomes computed from this instead of being directly editable (see project reads/writes
@@ -48,6 +48,11 @@ export const ideationSubStageEnum = pgEnum("ideation_sub_stage", [
   "IDEA_ALIGNMENT",
   "TECHNICAL_FEASIBILITY",
   "ARCHITECTURE_REVIEW",
+  // Idea-evaluation deliverable inserted between Architecture and the PM-authorization
+  // Charter: problem framing, business case narrative, SWOT, market analysis/prediction,
+  // revenue projections, roadmap. Answers "should we do this and why" before Charter answers
+  // "here's the scope/cost/plan to execute it." See BusinessCaseWorkspace.tsx.
+  "BUSINESS_CASE",
   "CHARTER",
   "RESOURCING_DECISION",
   "READY_FOR_EXECUTION",
@@ -396,6 +401,24 @@ export const projects = pgTable("projects", {
   highLevelRequirements: text("high_level_requirements"),
   architectureDiagram: text("architecture_diagram"), // Mermaid diagram syntax
   internalSupportNeeds: text("internal_support_needs"),
+
+  // Business Case (Plan sub-tab, between Architecture and Charter) — the idea-evaluation
+  // deliverable: is this worth doing, and why. `businessCase` (the narrative, above under
+  // Charter) and `problemStatement` (under Ideation) are reused here as this document's own
+  // opening sections rather than duplicated, since they're the same concept; SWOT, market
+  // analysis/prediction, revenue projections, and roadmap are new. Never fabricated specific
+  // real competitor names or invented market-size figures unless the user supplied research —
+  // same discipline as sourcingRecommendation/staffingMarginRecommendation.
+  swotStrengths: text("swot_strengths"),
+  swotWeaknesses: text("swot_weaknesses"),
+  swotOpportunities: text("swot_opportunities"),
+  swotThreats: text("swot_threats"),
+  marketAnalysis: text("market_analysis"),
+  marketPrediction: text("market_prediction"),
+  revenueProjections: text("revenue_projections"),
+  businessRoadmap: text("business_roadmap"),
+  businessCaseApprovedBy: text("business_case_approved_by"),
+  businessCaseApprovedAt: timestamp("business_case_approved_at"),
 
   // Integrations (#263). Both opt-in and off by default; either can be cleared independently
   // of the other. slackWebhookUrl is a plain incoming-webhook URL (no OAuth flow -- the

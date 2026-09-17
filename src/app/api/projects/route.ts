@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { getAllProjectsWithMetrics } from "@/lib/portfolio";
 import { requireRole } from "@/lib/auth";
 import { checkPlanLimit } from "@/lib/billing";
+import { draftBusinessCase } from "@/lib/businessCaseDraft";
 
 export async function GET() {
   const _authUser = await requireRole("VIEWER");
@@ -83,5 +84,29 @@ export async function POST(req: NextRequest) {
   // don't need it (scope already covers them), but adding it is harmless either way.
   await db.insert(projectMembers).values({ projectId: created.id, userId: _authUser.id });
 
-  return NextResponse.json(created, { status: 201 });
+  // Auto-draft a first-pass Business Case the moment an idea is created with enough to reason
+  // about (a problem statement or proposed solution) -- so the Business Case sub-tab isn't
+  // empty the first time anyone opens it. Best-effort: awaited so the response already reflects
+  // it when it succeeds fast, but a failure or slow AI response never blocks project creation
+  // itself -- the tab's own "Regenerate" button covers that case, and future edits (feasibility,
+  // pricing) are expected to prompt a manual regenerate anyway for a richer draft.
+  let responseProject = created;
+  if (created.problemStatement?.trim() || created.proposedSolution?.trim()) {
+    try {
+      const { data } = await draftBusinessCase(created);
+      if (data) {
+        const [updated] = await db
+          .update(projects)
+          .set({ ...data, updatedAt: new Date() })
+          .where(eq(projects.id, created.id))
+          .returning();
+        if (updated) responseProject = updated;
+      }
+    } catch {
+      // Non-fatal — the project is already created; the Business Case tab's own Generate
+      // button is the fallback.
+    }
+  }
+
+  return NextResponse.json(responseProject, { status: 201 });
 }

@@ -52,11 +52,14 @@ export async function PATCH(
     "ideaCategory", "hasSoftwareComponent", "buildMaterialsList", "buildInfrastructureNeeds", "buildSourcingNotes",
     "laborCostEstimate", "quotedUnitPrice", "targetMarginPercent", "targetMonthlyVolume",
     "sourcingRecommendation", "staffingMarginRecommendation",
+    "swotStrengths", "swotWeaknesses", "swotOpportunities", "swotThreats",
+    "marketAnalysis", "marketPrediction", "revenueProjections", "businessRoadmap",
+    "businessCaseApprovedBy", "businessCaseApprovedAt",
   ];
 
   const dateFields = [
     "startDate", "targetEndDate", "actualEndDate", "charterApprovedAt", "stageApprovedAt",
-    "deliveryRecommendedAt", "technicalReviewedAt", "architectureApprovedAt",
+    "deliveryRecommendedAt", "technicalReviewedAt", "architectureApprovedAt", "businessCaseApprovedAt",
   ];
   const numericFields = [
     "budgetPlanned", "materialCostEstimate", "budgetActual", "percentComplete", "totalFundingRequired",
@@ -109,6 +112,8 @@ export async function PATCH(
     if (current.ideationSubStage === "TECHNICAL_FEASIBILITY" && update.technicalReviewStatus === "APPROVED") {
       update.ideationSubStage = "ARCHITECTURE_REVIEW";
     } else if (current.ideationSubStage === "ARCHITECTURE_REVIEW" && "architectureApprovedAt" in update && update.architectureApprovedAt) {
+      update.ideationSubStage = "BUSINESS_CASE";
+    } else if (current.ideationSubStage === "BUSINESS_CASE" && "businessCaseApprovedAt" in update && update.businessCaseApprovedAt) {
       update.ideationSubStage = "CHARTER";
       update.stage = STAGE_FOR_SUB_STAGE.CHARTER;
     } else if (current.ideationSubStage === "CHARTER" && "charterApprovedAt" in update && update.charterApprovedAt) {
@@ -220,6 +225,12 @@ export async function PATCH(
     await logAudit({
       actor: _authUser, action: "architecture.approved", entityType: "project", entityId: id,
       organizationId: updated.organizationId, detail: `Architecture approved by ${updated.architectureApprovedBy ?? _authUser.name} for "${updated.name}".`,
+    });
+  }
+  if ("businessCaseApprovedAt" in body && body.businessCaseApprovedAt) {
+    await logAudit({
+      actor: _authUser, action: "business_case.approved", entityType: "project", entityId: id,
+      organizationId: updated.organizationId, detail: `Business Case approved by ${updated.businessCaseApprovedBy ?? _authUser.name} for "${updated.name}".`,
     });
   }
   if ("slackWebhookUrl" in body) {
