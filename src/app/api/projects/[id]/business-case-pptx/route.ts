@@ -3,6 +3,10 @@ import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { isDownloadBlocked, getCurrentUser } from "@/lib/auth";
 import { generateBusinessCasePptx } from "@/lib/businessCaseExport";
+import { draftBusinessCase, type BusinessCaseFields } from "@/lib/businessCaseDraft";
+import { db } from "@/lib/db";
+import { projects } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // Same access-check shape as charter-pdf/charter-docx: distinguish "session expired" from
 // "wrong role" for the VIEWER tier specifically, since that's almost always what's actually
@@ -35,10 +39,41 @@ export async function GET(
 
   const detail = await getProjectDetail(id);
   if (!detail) return NextResponse.json({ error: "not found" }, { status: 404 });
-  const p = detail.project;
+  let p = detail.project;
   const implementationItems = detail.costItems
     .filter((c) => c.category === "IMPLEMENTATION")
     .map((c) => ({ name: c.name, amount: c.amount }));
+
+  // Self-heal before export: a deck downloaded straight off a project whose Business Case
+  // narrative fields were never drafted (or were drafted before a field like
+  // businessCaseExecutiveSummary/competitiveDifferentiation existed) should never come out with
+  // near-blank slides. Rather than depend on someone remembering to hit "Draft with AI" first,
+  // fill in whatever's still missing right here, automatically, every time the deck is exported.
+  // draftBusinessCase() always returns a full set, so we only take the pieces this project is
+  // actually missing -- anything the PM already wrote or hand-edited is left untouched, never
+  // overwritten by a fresh draft. Best-effort: if the AI call fails, export proceeds with
+  // whatever's already there rather than blocking the download.
+  const narrativeKeys: (keyof BusinessCaseFields)[] = [
+    "businessCaseExecutiveSummary", "businessCase",
+    "swotStrengths", "swotWeaknesses", "swotOpportunities", "swotThreats",
+    "marketAnalysis", "marketPrediction", "competitiveDifferentiation",
+    "revenueProjections", "businessRoadmap",
+  ];
+  const hasSomethingToDraftFrom = !!(p.problemStatement?.trim() || p.proposedSolution?.trim());
+  const missingKeys = narrativeKeys.filter((k) => !p[k]?.trim());
+  if (hasSomethingToDraftFrom && missingKeys.length > 0) {
+    try {
+      const { data } = await draftBusinessCase(p);
+      if (data) {
+        const fillIn: Partial<BusinessCaseFields> = {};
+        for (const k of missingKeys) fillIn[k] = data[k];
+        const [updated] = await db.update(projects).set({ ...fillIn, updatedAt: new Date() }).where(eq(projects.id, id)).returning();
+        if (updated) p = updated;
+      }
+    } catch {
+      // Best-effort only -- export continues with whatever the project already had.
+    }
+  }
 
   const buffer = await generateBusinessCasePptx({
     projectName: p.name,
