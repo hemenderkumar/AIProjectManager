@@ -1,5 +1,6 @@
 import type PptxGenJS from "pptxgenjs";
 import { BRAND_HEX, setupExecutaPptx, titleSlide, executaSlide } from "./brand";
+import { computeUpfrontInvestment, computeRoiSeries } from "./businessCaseRoi";
 
 type TableRow = PptxGenJS.TableRow;
 
@@ -68,7 +69,8 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   const agendaSlide = bodySlide(pptx, "Agenda");
   const agendaItems = [
     "The Opportunity", "Our Solution", "SWOT Analysis", "Market Analysis & Outlook",
-    "Approach & Technology", "Unit Economics", "Revenue Projections", "Roadmap", "The Ask",
+    "Approach & Technology", "Unit Economics", "Revenue Projections", "Benefits & ROI Projection",
+    "Roadmap", "The Ask",
   ];
   agendaItems.forEach((item, i) => {
     const col = i % 2;
@@ -76,7 +78,10 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     const x = 0.5 + col * 6.3;
     const y = 1.35 + row * 0.75;
     agendaSlide.addShape(pptx.ShapeType.ellipse, { x, y: y + 0.04, w: 0.34, h: 0.34, fill: { color: BRAND_HEX.indigo }, line: { color: BRAND_HEX.indigo, width: 0 } });
-    agendaSlide.addText(String(i + 1), { x, y: y + 0.04, w: 0.34, h: 0.34, fontSize: 12, bold: true, color: BRAND_HEX.white, align: "center", valign: "middle" });
+    agendaSlide.addText(String(i + 1), {
+      x, y: y + 0.04, w: 0.34, h: 0.34,
+      fontSize: i + 1 >= 10 ? 10 : 12, bold: true, color: BRAND_HEX.white, align: "center", valign: "middle", wrap: false,
+    });
     agendaSlide.addText(item, { x: x + 0.5, y, w: 5.4, h: 0.42, fontSize: 14, color: BRAND_HEX.slate, valign: "middle" });
   });
 
@@ -196,8 +201,64 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     );
   }
 
+  // 9b. Benefits & ROI Projection — a real line chart over 3 years (quarterly points), computed
+  // from the same quotedUnitPrice/targetMonthlyVolume/targetMarginPercent/funding-ask data as
+  // Unit Economics and The Ask below, not a text description. See lib/businessCaseRoi.ts for
+  // the ramp/margin model this is built from.
+  const upfrontInvestment = computeUpfrontInvestment(input.implementationItems, input.contingencyPercent, input.totalFundingRequired);
+  const roiSeries = computeRoiSeries(
+    {
+      quotedUnitPrice: input.quotedUnitPrice,
+      targetMonthlyVolume: input.targetMonthlyVolume,
+      targetMarginPercent: input.targetMarginPercent,
+      upfrontInvestment,
+    },
+    36
+  );
+  const roiSlide = bodySlide(pptx, "Benefits & ROI Projection", "08");
+  if (roiSeries) {
+    const quarters = roiSeries.filter((pt) => pt.month % 3 === 0);
+    roiSlide.addChart(
+      pptx.ChartType.line,
+      [{ name: "ROI (%)", labels: quarters.map((_, i) => `Q${i + 1}`), values: quarters.map((q) => q.roiPercent) }],
+      {
+        x: 0.6, y: 1.25, w: 12, h: 3.6,
+        chartColors: [BRAND_HEX.indigo], showLegend: false, lineSize: 2.5, lineDataSymbol: "circle", lineDataSymbolSize: 5,
+        catAxisLabelColor: BRAND_HEX.slate, valAxisLabelColor: BRAND_HEX.slate, valAxisLabelFormatCode: "0\"%\"",
+      }
+    );
+    const yearRows: [string, string][] = [12, 24, 36]
+      .filter((m) => m <= roiSeries.length)
+      .map((m) => {
+        const pt = roiSeries[m - 1];
+        return [`Year ${m / 12}`, `${money(pt.cumulativeNetBenefit)} net benefit  ·  ${pt.roiPercent}% ROI`];
+      });
+    const yearHeader = [
+      { text: "Milestone", options: { bold: true, color: BRAND_HEX.white, fill: { color: BRAND_HEX.navy }, fontSize: 12 } },
+      { text: "Cumulative net benefit & ROI", options: { bold: true, color: BRAND_HEX.white, fill: { color: BRAND_HEX.navy }, fontSize: 12 } },
+    ];
+    const yearBody: TableRow[] = yearRows.map(([label, value]) => [
+      { text: label, options: { fontSize: 12, color: BRAND_HEX.slate } },
+      { text: value, options: { fontSize: 12, color: BRAND_HEX.navy, bold: true } },
+    ]);
+    roiSlide.addTable([yearHeader, ...yearBody], {
+      x: 0.6, y: 5.1, w: 12, colW: [3, 9], fontSize: 12,
+      border: { type: "solid", color: BRAND_HEX.border, pt: 0.5 },
+      rowH: 0.45,
+    });
+    roiSlide.addText(
+      `Ramps linearly to target monthly volume over the first 6 months, then holds. Net benefit = monthly revenue at the ${input.targetMarginPercent}% target margin, against a ${money(upfrontInvestment as number)} upfront investment.`,
+      { x: 0.6, y: 6.75, w: 12, h: 0.5, fontSize: 10, color: BRAND_HEX.muted, italic: true }
+    );
+  } else {
+    roiSlide.addText(
+      "Set quoted unit price, target monthly volume, and target margin in Charter, plus a funding figure, to generate a benefits/ROI projection.",
+      { x: 0.5, y: 1.3, w: 12.3, h: 1, fontSize: 15, color: BRAND_HEX.slate }
+    );
+  }
+
   // 10. Roadmap — visual timeline of up to 5 sequenced steps
-  const roadmapSlide = bodySlide(pptx, "Roadmap", "08");
+  const roadmapSlide = bodySlide(pptx, "Roadmap", "09");
   const steps = splitSteps(input.businessRoadmap);
   if (steps.length) {
     const n = steps.length;
@@ -220,7 +281,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   }
 
   // 11. The Ask — implementation budget breakdown + contingency + total funding required
-  const askSlide = bodySlide(pptx, "The Ask", "09 · What We Need To Move Forward");
+  const askSlide = bodySlide(pptx, "The Ask", "10 · What We Need To Move Forward");
   const implTotal = input.implementationItems.reduce((s, i) => s + i.amount, 0);
   if (input.implementationItems.length || input.totalFundingRequired != null) {
     const askHeader = [

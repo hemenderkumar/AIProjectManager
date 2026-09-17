@@ -1,8 +1,28 @@
 "use client";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { CheckCircle2, XCircle, TrendingUp, AlertTriangle, Target, Compass } from "lucide-react";
+import { useState } from "react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ReferenceLine,
+  ResponsiveContainer,
+} from "recharts";
+import { CheckCircle2, XCircle, TrendingUp, AlertTriangle, Target, Compass, LineChart as LineChartIcon } from "lucide-react";
 import type { ProjectDetail } from "./ProjectTabs";
 import { formatDate } from "@/lib/format";
+import { computeUpfrontInvestment, computeRoiSeries } from "@/lib/businessCaseRoi";
+
+const DURATION_OPTIONS = [
+  { label: "1 yr", months: 12 },
+  { label: "2 yr", months: 24 },
+  { label: "3 yr", months: 36 },
+];
 
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 const EMPTY = "Not yet drafted.";
@@ -51,6 +71,7 @@ function Prose({ text }: { text: string | null | undefined }) {
 // toggle — this component never writes anything, it only renders.
 export default function BusinessCasePreview({ detail }: { detail: ProjectDetail }) {
   const p = detail.project;
+  const [roiDurationMonths, setRoiDurationMonths] = useState(36);
   const implementationItems = detail.costItems
     .filter((c) => c.category === "IMPLEMENTATION")
     .map((c) => ({ name: c.name, amount: c.amount }));
@@ -75,7 +96,21 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
   const steps = splitSteps(p.businessRoadmap);
   const implTotal = implementationItems.reduce((s, i) => s + i.amount, 0);
   const contingencyAmount = p.contingencyPercent != null ? Math.round(implTotal * (p.contingencyPercent / 100)) : 0;
-  const totalFunding = p.totalFundingRequired ?? (implTotal ? implTotal + contingencyAmount : null);
+  const totalFunding = computeUpfrontInvestment(implementationItems, p.contingencyPercent, p.totalFundingRequired);
+
+  const roiSeries = computeRoiSeries(
+    {
+      quotedUnitPrice: p.quotedUnitPrice,
+      targetMonthlyVolume: p.targetMonthlyVolume,
+      targetMarginPercent: p.targetMarginPercent,
+      upfrontInvestment: totalFunding,
+    },
+    roiDurationMonths
+  );
+  // Thin the x-axis down to roughly a label every quarter (or every month for a 1-year view) so
+  // 24-36 monthly points don't collide into unreadable text.
+  const roiTickInterval = roiSeries ? Math.max(0, Math.ceil(roiSeries.length / 12) - 1) : 0;
+  const roiBreakEvenMonth = roiSeries?.find((pt) => pt.cumulativeNetBenefit >= 0)?.month ?? null;
 
   const swotQuadrants = [
     { label: "Strengths", value: p.swotStrengths, icon: CheckCircle2, ring: "ring-emerald-100", bg: "bg-emerald-50", text: "text-emerald-700", iconColor: "text-emerald-600" },
@@ -219,27 +254,113 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
         </div>
       </section>
 
-      {/* Roadmap */}
+      {/* Roadmap: Benefits & ROI projection (a chart, not text) + the sequenced steps below it */}
       <section className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
         <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">08</p>
-        <h3 className="text-lg font-bold text-slate-900 mb-4">Roadmap</h3>
-        {steps.length ? (
-          <ol className="space-y-0">
-            {steps.map((step, i) => (
-              <li key={i} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                    {i + 1}
-                  </div>
-                  {i < steps.length - 1 && <div className="w-px flex-1 bg-slate-200 my-1" />}
-                </div>
-                <p className="text-sm text-slate-700 leading-relaxed pb-5 pt-0.5">{step}</p>
-              </li>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <LineChartIcon size={17} className="text-indigo-600" /> Benefits &amp; ROI Projection
+          </h3>
+          <div className="inline-flex rounded-lg border border-slate-200 p-0.5">
+            {DURATION_OPTIONS.map((opt) => (
+              <button
+                key={opt.months}
+                onClick={() => setRoiDurationMonths(opt.months)}
+                className={`text-xs px-2.5 py-1 rounded-md font-medium transition-colors ${
+                  roiDurationMonths === opt.months ? "bg-accent-600 text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {opt.label}
+              </button>
             ))}
-          </ol>
+          </div>
+        </div>
+        {roiSeries ? (
+          <>
+            <p className="text-xs text-slate-400 mb-3">
+              Cumulative net benefit and ROI over {roiDurationMonths / 12} year{roiDurationMonths > 12 ? "s" : ""}, ramping
+              linearly to the target monthly volume over the first 6 months, then holding — net benefit is monthly
+              revenue at the target margin, against the {money(totalFunding as number)} upfront investment.
+              {roiBreakEvenMonth != null
+                ? ` Breaks even around month ${roiBreakEvenMonth}.`
+                : " Doesn't break even within this window at the current assumptions."}
+            </p>
+            <div className="h-72 -ml-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={roiSeries} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEF2F7" />
+                  <XAxis
+                    dataKey="month"
+                    tickFormatter={(m) => `M${m}`}
+                    interval={roiTickInterval}
+                    tick={{ fontSize: 11, fill: "#64748B" }}
+                    axisLine={{ stroke: "#E2E8F0" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    yAxisId="benefit"
+                    tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                    tick={{ fontSize: 11, fill: "#64748B" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={52}
+                  />
+                  <YAxis
+                    yAxisId="roi"
+                    orientation="right"
+                    tickFormatter={(v) => `${v}%`}
+                    tick={{ fontSize: 11, fill: "#64748B" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={48}
+                  />
+                  <Tooltip
+                    formatter={(v: number, name: string) => (name === "ROI" ? [`${v}%`, name] : [money(v), name])}
+                    labelFormatter={(m) => `Month ${m}`}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <ReferenceLine yAxisId="benefit" y={0} stroke="#CBD5E1" />
+                  <Line
+                    yAxisId="benefit"
+                    type="monotone"
+                    dataKey="cumulativeNetBenefit"
+                    name="Cumulative net benefit"
+                    stroke="#4F46E5"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line yAxisId="roi" type="monotone" dataKey="roiPercent" name="ROI" stroke="#059669" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </>
         ) : (
-          <p className="text-sm text-slate-400 italic">{EMPTY}</p>
+          <p className="text-sm text-slate-400 italic mb-3">
+            Set quoted unit price, target monthly volume, and target margin in Charter, plus a funding figure
+            (implementation cost items or Total Funding Required), to generate a benefits/ROI projection.
+          </p>
         )}
+
+        <div className="mt-6 pt-6 border-t border-slate-100">
+          <p className="text-sm font-semibold text-indigo-600 mb-3">Implementation steps</p>
+          {steps.length ? (
+            <ol className="space-y-0">
+              {steps.map((step, i) => (
+                <li key={i} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </div>
+                    {i < steps.length - 1 && <div className="w-px flex-1 bg-slate-200 my-1" />}
+                  </div>
+                  <p className="text-sm text-slate-700 leading-relaxed pb-5 pt-0.5">{step}</p>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-sm text-slate-400 italic">{EMPTY}</p>
+          )}
+        </div>
       </section>
 
       {/* The Ask */}
