@@ -186,6 +186,22 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
 
       {mode === "preview" ? (
         <div className="space-y-4">
+          <div className="max-w-4xl border border-accent-100 bg-accent-50/40 rounded-xl p-4">
+            <p className="text-xs font-semibold text-accent-700 flex items-center gap-1 mb-1.5">
+              <Sparkles size={12} /> Refine this presentation with AI
+            </p>
+            <p className="text-xs text-slate-500 mb-2">
+              Describe a change in plain language — e.g. &quot;sharpen the threats to call out competitor
+              reaction&quot; or &quot;make the revenue projection more conservative.&quot; Review the proposed
+              diff before it&apos;s applied.
+            </p>
+            <AiEditChat
+              entityType="project"
+              entityId={p.id}
+              onApplied={handleBusinessCaseAiApplied}
+              placeholder='e.g. "tighten the SWOT weaknesses" or "add a roadmap step for a pilot batch"'
+            />
+          </div>
           <BusinessCasePreview detail={detail} />
           <div className="flex flex-wrap items-center gap-2 max-w-4xl">
             <button
