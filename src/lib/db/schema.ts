@@ -423,15 +423,18 @@ export const projects = pgTable("projects", {
   // Investor-pitch additions: a synthesized top-of-deck summary, quantified market sizing
   // (PM-entered — AI never invents these, same discipline as above), and explicit
   // competitive differentiation, so the deck actually argues the case rather than just
-  // describing the idea. marketSizeTam/Sam/Som are annual dollar figures.
+  // describing the idea. marketSizeTam/Sam/Som are annual dollar figures — real, not integer,
+  // to match every other dollar field on this table (quotedUnitPrice, totalFundingRequired,
+  // materialCostEstimate) and because TAM routinely exceeds the ~2.1B ceiling of a Postgres
+  // integer column.
   // businessCaseExecutiveSummary is deliberately its own column, distinct from
   // projects.executiveSummary above (that one is the Charter's own executive summary, a
   // different document with a different audience/purpose — reusing it would let editing one
   // silently overwrite the other).
   businessCaseExecutiveSummary: text("business_case_executive_summary"),
-  marketSizeTam: integer("market_size_tam"),
-  marketSizeSam: integer("market_size_sam"),
-  marketSizeSom: integer("market_size_som"),
+  marketSizeTam: real("market_size_tam"),
+  marketSizeSam: real("market_size_sam"),
+  marketSizeSom: real("market_size_som"),
   competitiveDifferentiation: text("competitive_differentiation"),
 
   // Integrations (#263). Both opt-in and off by default; either can be cleared independently
