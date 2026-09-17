@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
-import { Sparkles, Loader2, CheckCircle2, ShieldCheck, Download } from "lucide-react";
+import { Sparkles, Loader2, CheckCircle2, ShieldCheck, Download, Pencil, Presentation } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import AiEditChat from "./AiEditChat";
+import BusinessCasePreview from "./BusinessCasePreview";
 
 // Plan sub-tab, between Architecture and Scope & Charter — the idea-evaluation deliverable:
 // "should we do this and why," reviewed before Charter's "here's the authorized scope/cost/
@@ -38,6 +39,7 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
   const [aiError, setAiError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"edit" | "preview">("edit");
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -156,13 +158,49 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
   const approved = Boolean(p.businessCaseApprovedAt);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       {approved && (
         <p className="text-sm text-emerald-700 flex items-center gap-1.5">
           <CheckCircle2 size={15} /> Business Case approved by {p.businessCaseApprovedBy} — Scope &amp; Charter is unlocked below.
         </p>
       )}
 
+      <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm shadow-slate-200/60">
+        <button
+          onClick={() => setMode("edit")}
+          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+            mode === "edit" ? "bg-accent-600 text-white" : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <Pencil size={12} /> Edit
+        </button>
+        <button
+          onClick={() => setMode("preview")}
+          className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+            mode === "preview" ? "bg-accent-600 text-white" : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <Presentation size={12} /> Formal preview
+        </button>
+      </div>
+
+      {mode === "preview" ? (
+        <div className="space-y-4">
+          <BusinessCasePreview detail={detail} />
+          <div className="flex flex-wrap items-center gap-2 max-w-4xl">
+            <button
+              onClick={downloadPptx}
+              disabled={downloading}
+              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 font-medium"
+            >
+              {downloading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {downloading ? "Generating..." : "Download as PowerPoint"}
+            </button>
+          </div>
+          {downloadError && <p className="text-xs text-rose-600 max-w-4xl">{downloadError}</p>}
+        </div>
+      ) : (
+      <div className="space-y-6 max-w-3xl">
       <Card
         title="Draft the Business Case with AI"
         action={
@@ -298,6 +336,8 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
         </button>
         {saveError && <p className="mt-2 text-xs text-rose-600">{saveError}</p>}
       </Card>
+      </div>
+      )}
     </div>
   );
 }
