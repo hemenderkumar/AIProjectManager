@@ -171,26 +171,47 @@ export function coverMasthead(doc: PDFKit.PDFDocument, title: string, subtitle?:
 
 const MASTER_NAME = "EXECUTA_MASTER";
 
-/** Registers a Executa-branded slide master (thin top accent bar + footer wordmark + page number). Call once per presentation before adding slides. */
-export function registerExecutaMaster(pptx: PptxGenJS) {
+/**
+ * Registers a Executa-branded slide master: a top accent bar plus a real footer band (separator
+ * line, logo mark, wordmark, optional document label, page number) that reads as intentional
+ * chrome on every slide rather than a barely-visible corner mark. `docLabel`, when given, names
+ * the specific document (e.g. "Financial Forecast & Projections") so every slide identifies
+ * itself even out of context (printed loose, screenshotted, etc.) — omit it for exports that
+ * don't want that (the wordmark + page number alone still cover PDF/PPTX consistency). Call once
+ * per presentation before adding slides.
+ */
+export function registerExecutaMaster(pptx: PptxGenJS, docLabel?: string) {
   const logo = getLogoBuffer();
+  const footerY = 7.08;
+  const footerH = 0.3;
   const objects: NonNullable<Parameters<PptxGenJS["defineSlideMaster"]>[0]["objects"]> = [
-    { rect: { x: 0, y: 0, w: "100%", h: 0.08, fill: { color: BRAND_HEX.indigo } } },
+    { rect: { x: 0, y: 0, w: "100%", h: 0.1, fill: { color: BRAND_HEX.indigo } } },
+    { line: { x: 0.5, y: footerY - 0.1, w: 12.33, h: 0, line: { color: BRAND_HEX.border, width: 0.75 } } },
   ];
+  let wordmarkX = 0.5;
   if (logo) {
-    objects.push({ image: { x: 0.4, y: 7.08, w: 0.22, h: 0.22, data: `image/png;base64,${logo.toString("base64")}` } });
+    objects.push({ image: { x: 0.5, y: footerY, w: footerH, h: footerH, data: `image/png;base64,${logo.toString("base64")}` } });
+    wordmarkX = 0.5 + footerH + 0.12;
   }
   objects.push({
     text: {
       text: BRAND.name.toUpperCase(),
-      options: { x: logo ? 0.68 : 0.4, y: 7.15, w: 3, h: 0.3, fontSize: 8, color: BRAND_HEX.muted, charSpacing: 2 },
+      options: { x: wordmarkX, y: footerY, w: 2.2, h: footerH, fontSize: 10, bold: true, color: BRAND_HEX.slate, charSpacing: 1.5, valign: "middle" },
     },
   });
+  if (docLabel) {
+    objects.push({
+      text: {
+        text: docLabel,
+        options: { x: 4.5, y: footerY, w: 6.0, h: footerH, fontSize: 9, color: BRAND_HEX.muted, align: "center", valign: "middle" },
+      },
+    });
+  }
   pptx.defineSlideMaster({
     title: MASTER_NAME,
     background: { color: BRAND_HEX.white },
     objects,
-    slideNumber: { x: 12.6, y: 7.15, fontSize: 8, color: BRAND_HEX.muted },
+    slideNumber: { x: 12.5, y: footerY, fontSize: 9, color: BRAND_HEX.muted },
   });
   return MASTER_NAME;
 }
@@ -200,11 +221,11 @@ export function executaSlide(pptx: PptxGenJS) {
 }
 
 /** Standard wide layout every Executa presentation uses, for visual consistency across exports. */
-export function setupExecutaPptx(): PptxGenJS {
+export function setupExecutaPptx(docLabel?: string): PptxGenJS {
   const pptx = new PptxGenJS();
   pptx.defineLayout({ name: "EXECUTA_WIDE", width: 13.33, height: 7.5 });
   pptx.layout = "EXECUTA_WIDE";
-  registerExecutaMaster(pptx);
+  registerExecutaMaster(pptx, docLabel);
   return pptx;
 }
 

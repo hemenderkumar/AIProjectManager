@@ -9,6 +9,8 @@ export type BusinessCaseInput = {
   projectName: string;
   businessCaseExecutiveSummary: string | null;
   problemStatement: string | null;
+  proposedSolution: string | null;
+  expectedBenefits: string | null;
   businessCase: string | null;
   swotStrengths: string | null;
   swotWeaknesses: string | null;
@@ -25,6 +27,7 @@ export type BusinessCaseInput = {
   feasibilityScore: number | null;
   recommendedTechnology: string | null;
   technicalRecommendationRationale: string | null;
+  buildInfrastructureNeeds: string | null;
   quotedUnitPrice: number | null;
   materialCostEstimate: number | null;
   targetMarginPercent: number | null;
@@ -47,6 +50,19 @@ const NOT_DRAFTED = (fieldLabel: string) =>
   `Not yet drafted. Fill in "${fieldLabel}" on the Financial Forecast & Projections tab (or use Draft with AI) before sharing this deck.`;
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
+// Splits a free-text field into clean bullet lines for card layouts. Same tolerant shape as
+// every other free-text field in this app (a PM or the AI draft may write "- item", "* item",
+// "1. item", or one item per line with nothing in front) so this works generically for any
+// idea's expectedBenefits/proposedSolution, not just ones that happen to use "- " bullets.
+function splitBullets(text: string | null | undefined, max = 6): string[] {
+  if (!text?.trim()) return [];
+  return text
+    .split("\n")
+    .map((line) => line.replace(/^[\s]*[-*•]\s*/, "").replace(/^\d+[.)]\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, max);
+}
+
 function bodySlide(pptx: PptxGenJS, heading: string, kicker?: string) {
   const slide = executaSlide(pptx);
   if (kicker) {
@@ -59,18 +75,26 @@ function bodySlide(pptx: PptxGenJS, heading: string, kicker?: string) {
 
 // Investor-grade "Financial Forecast & Projections" deck: the idea-evaluation deliverable
 // ("should we fund this and why"), separate from the Charter's PM-authorization document.
+// Auto-built entirely from what the Idea/Ideation workflow already captured -- problemStatement
+// and proposedSolution/expectedBenefits from Idea & Alignment, feasibilityScore/recommendedTechnology/
+// buildInfrastructureNeeds from Feasibility & Architecture, quotedUnitPrice/targetMonthlyVolume/
+// implementationItems from Charter, and the AI-drafted narrative fields (see businessCaseDraft.ts,
+// self-healed on export by the API route if any are still missing) -- so this deck is never a
+// document someone has to separately author; it falls out of the idea's own workflow.
 // Structured like a real investor pitch deck (title, executive summary, agenda, opportunity,
-// solution, SWOT, market analysis + quantified TAM/SAM/SOM sizing, competitive
-// differentiation, approach, unit economics, revenue chart, benefits/ROI chart, roadmap
-// timeline, an Ask slide that leads with "invest $X -> Y% ROI", close) rather than one slide
-// per text field, so it's something a PM can actually take to an investor or funding
-// committee, not just a screen-for-screen dump of the tab. Every number on the Executive
-// Summary / Unit Economics / Revenue / ROI / Ask slides is computed here from the project's
-// own quotedUnitPrice/targetMonthlyVolume/cost-item data — never invented — same discipline as
+// solution, solution & benefits, SWOT, market analysis + quantified TAM/SAM/SOM sizing (now a
+// native bar chart), competitive differentiation, approach & infrastructure, unit economics
+// (with a cost/margin donut), revenue chart, benefits/ROI chart, roadmap timeline, an Ask slide
+// that leads with "invest $X -> Y% ROI" (with a use-of-funds donut when there's enough line
+// items to make one meaningful), close) rather than one slide per text field, so it's something
+// a PM can actually take to an investor or funding committee, not just a screen-for-screen dump
+// of the tab. Every number on the Executive Summary / Unit Economics / Revenue / ROI / Ask
+// slides is computed here from the project's own quotedUnitPrice/targetMonthlyVolume/cost-item
+// data — never invented — same discipline as
 // the AI draft endpoint that fills the narrative fields. Market sizing (TAM/SAM/SOM) is the one
 // exception worth calling out: those are PM-entered numbers, never AI-guessed.
 export async function generateBusinessCasePptx(input: BusinessCaseInput): Promise<Buffer> {
-  const pptx = setupExecutaPptx();
+  const pptx = setupExecutaPptx("Financial Forecast & Projections");
 
   // 1. Title
   titleSlide(pptx, "Financial Forecast & Projections", input.projectName, input.generatedAt);
@@ -114,7 +138,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   // 2. Agenda
   const agendaSlide = bodySlide(pptx, "Agenda");
   const agendaItems = [
-    "The Opportunity", "Our Solution", "SWOT Analysis", "Market Analysis & Outlook",
+    "The Opportunity", "Our Solution", "Solution & Benefits", "SWOT Analysis", "Market Analysis & Outlook",
     "Competitive Differentiation", "Approach & Technology", "Unit Economics", "Revenue Projections",
     "Benefits & ROI Projection", "Roadmap", "The Ask",
   ];
@@ -131,15 +155,19 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     agendaSlide.addText(item, { x: x + 0.5, y, w: 5.4, h: 0.42, fontSize: 14, color: BRAND_HEX.slate, valign: "middle" });
   });
 
-  // 3. The Opportunity (Problem) — with a feasibility stat callout if scored
+  // 3. The Opportunity (Problem) — pull-quote styling (accent bar, larger type) so the problem
+  // reads as a deliberate opening statement rather than a plain paragraph, with a feasibility
+  // stat callout alongside if the idea's been scored.
   const oppSlide = bodySlide(pptx, "The Opportunity", "01 · The Problem");
+  const oppTextW = input.feasibilityScore != null ? 8.0 : 11.8;
+  oppSlide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.35, w: 0.06, h: 3.5, fill: { color: BRAND_HEX.red }, line: { color: BRAND_HEX.red, width: 0 } });
   oppSlide.addText(input.problemStatement?.trim() || EMPTY, {
-    x: 0.5, y: 1.3, w: input.feasibilityScore != null ? 8.6 : 12.3, h: 5.2, fontSize: 16, color: BRAND_HEX.slate, valign: "top", wrap: true,
+    x: 0.85, y: 1.35, w: oppTextW, h: 3.5, fontSize: 18, color: BRAND_HEX.navy, valign: "top", wrap: true, lineSpacing: 26,
   });
   if (input.feasibilityScore != null) {
-    oppSlide.addShape(pptx.ShapeType.roundRect, { x: 9.4, y: 1.3, w: 3.4, h: 2.0, fill: { color: "EEF2FF" }, line: { color: "FFFFFF", width: 0 }, rectRadius: 0.08 });
-    oppSlide.addText(`${input.feasibilityScore}`, { x: 9.4, y: 1.5, w: 3.4, h: 1.0, fontSize: 40, bold: true, color: BRAND_HEX.indigo, align: "center" });
-    oppSlide.addText("/ 100 feasibility score", { x: 9.4, y: 2.55, w: 3.4, h: 0.5, fontSize: 11, color: BRAND_HEX.slate, align: "center" });
+    oppSlide.addShape(pptx.ShapeType.roundRect, { x: 9.4, y: 1.35, w: 3.4, h: 2.0, fill: { color: "EEF2FF" }, line: { color: "FFFFFF", width: 0 }, rectRadius: 0.08 });
+    oppSlide.addText(`${input.feasibilityScore}`, { x: 9.4, y: 1.55, w: 3.4, h: 1.0, fontSize: 40, bold: true, color: BRAND_HEX.indigo, align: "center" });
+    oppSlide.addText("/ 100 feasibility score", { x: 9.4, y: 2.6, w: 3.4, h: 0.5, fontSize: 11, color: BRAND_HEX.slate, align: "center" });
   }
 
   // 4. Our Solution / Business Case
@@ -148,8 +176,42 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     x: 0.5, y: 1.3, w: 12.3, h: 5.2, fontSize: 16, color: BRAND_HEX.slate, valign: "top", wrap: true,
   });
 
+  // 4b. Solution & Benefits — pulls straight from the Idea & Alignment stage (proposedSolution,
+  // expectedBenefits), fields the deck never used before. Answers "what does this actually help
+  // with" as a visual benefit-card grid rather than another paragraph, and works for any idea —
+  // not just this one — since it's driven entirely by whatever the PM captured up front.
+  const benefitsSlide = bodySlide(pptx, "Solution & Benefits", "03 · What This Solves");
+  const hasSolutionText = !!input.proposedSolution?.trim();
+  benefitsSlide.addText(hasSolutionText ? input.proposedSolution!.trim() : NOT_DRAFTED("Proposed solution (Idea & Alignment)"), {
+    x: 0.5, y: 1.25, w: 12.3, h: hasSolutionText ? 1.0 : 0.6,
+    fontSize: 14, italic: !hasSolutionText,
+    color: hasSolutionText ? BRAND_HEX.slate : BRAND_HEX.muted,
+    valign: "top", wrap: true,
+  });
+  const benefitCards = splitBullets(input.expectedBenefits);
+  if (benefitCards.length) {
+    const cols = 2;
+    const cardW = 6.0;
+    const cardH = benefitCards.length <= 4 ? 1.4 : 1.0;
+    const startY = 2.5;
+    benefitCards.forEach((benefit, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = 0.5 + col * (cardW + 0.3);
+      const y = startY + row * (cardH + 0.25);
+      benefitsSlide.addShape(pptx.ShapeType.roundRect, { x, y, w: cardW, h: cardH, fill: { color: "ECFDF5" }, line: { color: "FFFFFF", width: 0 }, rectRadius: 0.06 });
+      benefitsSlide.addShape(pptx.ShapeType.ellipse, { x: x + 0.2, y: y + 0.2, w: 0.34, h: 0.34, fill: { color: BRAND_HEX.green }, line: { color: BRAND_HEX.green, width: 0 } });
+      benefitsSlide.addText("✓", { x: x + 0.2, y: y + 0.2, w: 0.34, h: 0.34, fontSize: 14, bold: true, color: BRAND_HEX.white, align: "center", valign: "middle" });
+      benefitsSlide.addText(benefit, { x: x + 0.68, y: y + 0.12, w: cardW - 0.9, h: cardH - 0.24, fontSize: 12.5, color: "065F46", valign: "middle", wrap: true });
+    });
+  } else {
+    benefitsSlide.addText(NOT_DRAFTED("Expected benefits (Idea & Alignment)"), {
+      x: 0.5, y: 2.5, w: 12.3, h: 0.6, fontSize: 13, italic: true, color: BRAND_HEX.muted, valign: "top", wrap: true,
+    });
+  }
+
   // 5. SWOT — 2x2 grid, each quadrant its own tinted panel with a symbol marker
-  const swotSlide = bodySlide(pptx, "SWOT Analysis", "03");
+  const swotSlide = bodySlide(pptx, "SWOT Analysis", "04");
   const quadrants: { label: string; symbol: string; value: string | null; x: number; y: number; fill: string; text: string }[] = [
     { label: "Strengths", symbol: "+", value: input.swotStrengths, x: 0.5, y: 1.2, fill: "ECFDF5", text: "047857" },
     { label: "Weaknesses", symbol: "−", value: input.swotWeaknesses, x: 6.65, y: 1.2, fill: "FEF2F2", text: "B91C1C" },
@@ -166,7 +228,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
 
   // 6. Market Analysis & Outlook — two columns (analysis / prediction) so there's room below
   // for a quantified TAM/SAM/SOM market-sizing row when the PM has entered one.
-  const marketSlide = bodySlide(pptx, "Market Analysis & Outlook", "04");
+  const marketSlide = bodySlide(pptx, "Market Analysis & Outlook", "05");
   marketSlide.addText("Market analysis", { x: 0.5, y: 1.3, w: 6.0, h: 0.35, fontSize: 14, bold: true, color: BRAND_HEX.indigo });
   marketSlide.addText(input.marketAnalysis?.trim() || EMPTY, {
     x: 0.5, y: 1.7, w: 6.0, h: 3.3, fontSize: 12.5, color: BRAND_HEX.slate, valign: "top", wrap: true,
@@ -182,20 +244,33 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     { label: "SOM", sub: "Serviceable Obtainable Market", value: input.marketSizeSom ?? 0 },
   ].filter((m) => m.value > 0);
   if (marketSizingRows.length) {
-    const maxVal = Math.max(...marketSizingRows.map((m) => m.value));
-    marketSlide.addText("Market sizing", { x: 0.5, y: 5.25, w: 12.3, h: 0.35, fontSize: 13, bold: true, color: BRAND_HEX.indigo });
+    marketSlide.addText("Market sizing", { x: 0.5, y: 5.15, w: 12.3, h: 0.3, fontSize: 13, bold: true, color: BRAND_HEX.indigo });
     marketSizingRows.forEach((m, i) => {
       const x = 0.5 + i * 4.15;
-      marketSlide.addText(`${m.label}  ·  ${m.sub}`, { x, y: 5.65, w: 3.9, h: 0.3, fontSize: 10, color: BRAND_HEX.muted });
-      marketSlide.addText(`${money(m.value)}/yr`, { x, y: 5.9, w: 3.9, h: 0.5, fontSize: 20, bold: true, color: BRAND_HEX.navy });
-      marketSlide.addShape(pptx.ShapeType.rect, { x, y: 6.5, w: 3.9, h: 0.12, fill: { color: BRAND_HEX.border }, line: { color: BRAND_HEX.border, width: 0 } });
-      marketSlide.addShape(pptx.ShapeType.rect, { x, y: 6.5, w: Math.max(0.15, 3.9 * (m.value / maxVal)), h: 0.12, fill: { color: BRAND_HEX.indigo }, line: { color: BRAND_HEX.indigo, width: 0 } });
+      marketSlide.addText(`${m.label} · ${m.sub}: ${money(m.value)}/yr`, { x, y: 5.48, w: 3.9, h: 0.3, fontSize: 10, color: BRAND_HEX.slate, bold: true });
     });
+    // A real horizontal bar chart instead of hand-drawn rectangles — same TAM/SAM/SOM funnel
+    // relationship, now rendered as an actual chart object consistent with the rest of the deck.
+    // Data labels are deliberately off: the exact dollar figures are already printed in the
+    // "TAM/SAM/SOM · ..." text row directly above, and turning them on here just duplicates
+    // those numbers as tiny bar-end labels that wrap onto 2-3 lines and collide with the
+    // category axis at this chart's height (the TAM value in particular runs to 10 digits).
+    marketSlide.addChart(
+      pptx.ChartType.bar,
+      [{ name: "Annual market size ($)", labels: marketSizingRows.map((m) => m.label), values: marketSizingRows.map((m) => m.value) }],
+      {
+        x: 0.4, y: 5.85, w: 12.5, h: 0.95, barDir: "bar",
+        chartColors: [BRAND_HEX.indigo], showLegend: false, showValue: false,
+        catAxisLabelColor: BRAND_HEX.slate, catAxisLabelFontSize: 10,
+        valAxisHidden: true,
+        barGapWidthPct: 40,
+      }
+    );
   }
 
   // 6b. Competitive Differentiation — direct "why this wins" vs. the realistic alternative,
   // never real named competitors unless the PM supplied one (same discipline as SWOT/market).
-  const compSlide = bodySlide(pptx, "Competitive Differentiation", "05");
+  const compSlide = bodySlide(pptx, "Competitive Differentiation", "06");
   const hasCompDiff = !!input.competitiveDifferentiation?.trim();
   compSlide.addText(hasCompDiff ? input.competitiveDifferentiation!.trim() : NOT_DRAFTED("Competitive differentiation"), {
     x: 0.5, y: 1.3, w: 12.3, h: 5.5,
@@ -206,24 +281,32 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   });
 
   // 7. Approach & Technology
-  const approachSlide = bodySlide(pptx, "Approach & Technology", "06 · Why This Will Work");
-  approachSlide.addText("Recommended approach", { x: 0.5, y: 1.25, w: 12.3, h: 0.4, fontSize: 15, bold: true, color: BRAND_HEX.indigo });
+  const approachSlide = bodySlide(pptx, "Approach & Technology", "07 · Why This Will Work");
+  const hasInfraNeeds = !!input.buildInfrastructureNeeds?.trim();
+  approachSlide.addText("Recommended approach", { x: 0.5, y: 1.2, w: 12.3, h: 0.35, fontSize: 15, bold: true, color: BRAND_HEX.indigo });
   approachSlide.addText(input.recommendedTechnology?.trim() || EMPTY, {
-    x: 0.5, y: 1.65, w: 12.3, h: 1.4, fontSize: 14, color: BRAND_HEX.slate, valign: "top", wrap: true,
+    x: 0.5, y: 1.55, w: 12.3, h: 1.05, fontSize: 14, color: BRAND_HEX.slate, valign: "top", wrap: true,
   });
-  approachSlide.addText("Rationale", { x: 0.5, y: 3.15, w: 12.3, h: 0.4, fontSize: 15, bold: true, color: BRAND_HEX.indigo });
+  approachSlide.addText("Rationale", { x: 0.5, y: 2.7, w: 12.3, h: 0.35, fontSize: 15, bold: true, color: BRAND_HEX.indigo });
   approachSlide.addText(input.technicalRecommendationRationale?.trim() || EMPTY, {
-    x: 0.5, y: 3.55, w: 12.3, h: 3.3, fontSize: 13, color: BRAND_HEX.slate, valign: "top", wrap: true,
+    x: 0.5, y: 3.05, w: 12.3, h: hasInfraNeeds ? 2.5 : 3.75, fontSize: 13, color: BRAND_HEX.slate, valign: "top", wrap: true,
   });
+  if (hasInfraNeeds) {
+    approachSlide.addText("Infrastructure needs", { x: 0.5, y: 5.65, w: 12.3, h: 0.35, fontSize: 15, bold: true, color: BRAND_HEX.indigo });
+    approachSlide.addText(input.buildInfrastructureNeeds!.trim(), {
+      x: 0.5, y: 6.0, w: 12.3, h: 0.9, fontSize: 12, color: BRAND_HEX.slate, valign: "top", wrap: true,
+    });
+  }
 
-  // 8. Unit Economics — clean table
+  // 9. Unit Economics — clean table
   const priceKnown = input.quotedUnitPrice != null;
   const materialKnown = input.materialCostEstimate != null;
   const volumeKnown = input.targetMonthlyVolume != null;
   const monthlyRevenue = priceKnown && volumeKnown ? (input.quotedUnitPrice as number) * (input.targetMonthlyVolume as number) : null;
   const grossMarginPerUnit = priceKnown && materialKnown ? (input.quotedUnitPrice as number) - (input.materialCostEstimate as number) : null;
 
-  const unitEconSlide = bodySlide(pptx, "Unit Economics", "07");
+  const unitEconSlide = bodySlide(pptx, "Unit Economics", "08");
+  const hasCostSplit = priceKnown && materialKnown && grossMarginPerUnit != null && grossMarginPerUnit > 0;
   const unitRows: [string, string][] = [
     ["Quoted unit price", priceKnown ? money(input.quotedUnitPrice as number) : "Not set"],
     ["Material cost / unit", materialKnown ? money(input.materialCostEstimate as number) : "Not set"],
@@ -240,15 +323,31 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     { text: label, options: { fontSize: 12, color: BRAND_HEX.slate } },
     { text: value, options: { fontSize: 12, color: BRAND_HEX.navy, bold: true, align: "right" } },
   ]);
+  // Table narrows to make room for a cost/margin donut chart when both figures are known —
+  // full width otherwise so nothing looks like it's leaving empty space on purpose.
   unitEconSlide.addTable([header, ...body], {
-    x: 0.5, y: 1.3, w: 12.3, colW: [8, 4.3], fontSize: 12,
+    x: 0.5, y: 1.3, w: hasCostSplit ? 7.4 : 12.3, colW: hasCostSplit ? [4.9, 2.5] : [8, 4.3], fontSize: 12,
     border: { type: "solid", color: BRAND_HEX.border, pt: 0.5 },
     rowH: 0.55,
   });
+  if (hasCostSplit) {
+    unitEconSlide.addText("Where each dollar goes", { x: 8.15, y: 1.3, w: 4.65, h: 0.35, fontSize: 12, bold: true, color: BRAND_HEX.indigo });
+    unitEconSlide.addChart(
+      pptx.ChartType.doughnut,
+      [{ name: "Per unit ($)", labels: ["Material cost", "Gross margin"], values: [input.materialCostEstimate as number, grossMarginPerUnit as number] }],
+      {
+        x: 8.15, y: 1.7, w: 4.65, h: 3.3,
+        chartColors: [BRAND_HEX.muted, BRAND_HEX.indigo],
+        showLegend: true, legendPos: "b", legendColor: BRAND_HEX.slate, legendFontSize: 10,
+        showValue: true, dataLabelColor: BRAND_HEX.white, dataLabelFontSize: 10, dataLabelFormatCode: "$#,##0",
+        showPercent: false,
+      }
+    );
+  }
 
-  // 9. Revenue Projections — native chart (Conservative / Base / Stretch), computed from
+  // 10. Revenue Projections — native chart (Conservative / Base / Stretch), computed from
   // quotedUnitPrice x volume, never parsed out of free text.
-  const revSlide = bodySlide(pptx, "Revenue Projections", "08");
+  const revSlide = bodySlide(pptx, "Revenue Projections", "09");
   if (priceKnown && volumeKnown) {
     const price = input.quotedUnitPrice as number;
     const baseVolume = input.targetMonthlyVolume as number;
@@ -261,14 +360,14 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
       pptx.ChartType.bar,
       [{ name: "Monthly revenue ($)", labels: scenarios.map((s) => `${s.label}\n(${s.volume}/mo)`), values: scenarios.map((s) => Math.round(s.volume * price)) }],
       {
-        x: 0.6, y: 1.25, w: 12, h: 3.9, barDir: "col",
+        x: 0.6, y: 1.2, w: 12, h: 3.5, barDir: "col",
         chartColors: [BRAND_HEX.indigo], showLegend: false, showValue: true,
         dataLabelColor: BRAND_HEX.slate, catAxisLabelColor: BRAND_HEX.slate, valAxisLabelColor: BRAND_HEX.slate,
         dataLabelFormatCode: "$#,##0",
       }
     );
     revSlide.addText(input.revenueProjections?.trim() || EMPTY, {
-      x: 0.5, y: 5.3, w: 12.3, h: 1.9, fontSize: 11, color: BRAND_HEX.slate, valign: "top", wrap: true,
+      x: 0.5, y: 4.85, w: 12.3, h: 1.95, fontSize: 11, color: BRAND_HEX.slate, valign: "top", wrap: true,
     });
   } else {
     revSlide.addText(
@@ -284,14 +383,14 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   // already computed for the Executive Summary slide, so both agree exactly.
   const upfrontInvestment = upfrontInvestmentForSummary;
   const roiSeries = summaryRoiSeries;
-  const roiSlide = bodySlide(pptx, "Benefits & ROI Projection", "09");
+  const roiSlide = bodySlide(pptx, "Benefits & ROI Projection", "10");
   if (roiSeries) {
     const quarters = roiSeries.filter((pt) => pt.month % 3 === 0);
     roiSlide.addChart(
       pptx.ChartType.line,
       [{ name: "ROI (%)", labels: quarters.map((_, i) => `Q${i + 1}`), values: quarters.map((q) => q.roiPercent) }],
       {
-        x: 0.6, y: 1.25, w: 12, h: 3.6,
+        x: 0.6, y: 1.15, w: 12, h: 3.2,
         chartColors: [BRAND_HEX.indigo], showLegend: false, lineSize: 2.5, lineDataSymbol: "circle", lineDataSymbolSize: 5,
         catAxisLabelColor: BRAND_HEX.slate, valAxisLabelColor: BRAND_HEX.slate, valAxisLabelFormatCode: "0\"%\"",
       }
@@ -311,13 +410,13 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
       { text: value, options: { fontSize: 12, color: BRAND_HEX.navy, bold: true } },
     ]);
     roiSlide.addTable([yearHeader, ...yearBody], {
-      x: 0.6, y: 5.1, w: 12, colW: [3, 9], fontSize: 12,
+      x: 0.6, y: 4.5, w: 12, colW: [3, 9], fontSize: 12,
       border: { type: "solid", color: BRAND_HEX.border, pt: 0.5 },
-      rowH: 0.45,
+      rowH: 0.4,
     });
     roiSlide.addText(
       `Ramps linearly to target monthly volume over the first 6 months, then holds. Net benefit = monthly revenue at the ${input.targetMarginPercent}% target margin, against a ${money(upfrontInvestment as number)} upfront investment.`,
-      { x: 0.6, y: 6.75, w: 12, h: 0.5, fontSize: 10, color: BRAND_HEX.muted, italic: true }
+      { x: 0.6, y: 6.35, w: 12, h: 0.55, fontSize: 10, color: BRAND_HEX.muted, italic: true }
     );
   } else {
     roiSlide.addText(
@@ -326,8 +425,8 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     );
   }
 
-  // 10. Roadmap — visual timeline of up to 5 sequenced steps
-  const roadmapSlide = bodySlide(pptx, "Roadmap", "10");
+  // 11. Roadmap — visual timeline of up to 5 sequenced steps
+  const roadmapSlide = bodySlide(pptx, "Roadmap", "11");
   const steps = extractRoadmapSteps(input.businessRoadmap).slice(0, 5);
   if (steps.length) {
     const n = steps.length;
@@ -349,8 +448,8 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     roadmapSlide.addText(EMPTY, { x: 0.5, y: 1.3, w: 12.3, h: 5.5, fontSize: 15, color: BRAND_HEX.slate, valign: "top" });
   }
 
-  // 11. The Ask — implementation budget breakdown + contingency + total funding required
-  const askSlide = bodySlide(pptx, "The Ask", "11 · What We Need To Move Forward");
+  // 12. The Ask — implementation budget breakdown + contingency + total funding required
+  const askSlide = bodySlide(pptx, "The Ask", "12 · What We Need To Move Forward");
   const implTotal = input.implementationItems.reduce((s, i) => s + i.amount, 0);
   const askRoi3yr = roiSeries?.[roiSeries.length - 1] ?? null;
   const askBreakEvenMonth = roiSeries?.find((pt) => pt.cumulativeNetBenefit >= 0)?.month ?? null;
@@ -372,6 +471,10 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     askTableY = 2.65;
   }
   if (input.implementationItems.length || input.totalFundingRequired != null) {
+    // A donut breakdown of use-of-funds only earns its space when there are enough distinct
+    // line items to actually show a split -- one or two items next to a contingency line would
+    // just be a circle with one dominant slice, not a useful chart.
+    const showFundsChart = input.implementationItems.length >= 3;
     const askHeader = [
       { text: "Use of funds", options: { bold: true, color: BRAND_HEX.white, fill: { color: BRAND_HEX.navy }, fontSize: 12 } },
       { text: "Amount", options: { bold: true, color: BRAND_HEX.white, fill: { color: BRAND_HEX.navy }, fontSize: 12, align: "right" as const } },
@@ -395,10 +498,24 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
       },
     ]);
     askSlide.addTable([askHeader, ...askRows], {
-      x: 0.5, y: askTableY, w: 12.3, colW: [8, 4.3], fontSize: 11.5,
+      x: 0.5, y: askTableY, w: showFundsChart ? 7.4 : 12.3, colW: showFundsChart ? [5.4, 2] : [8, 4.3], fontSize: 11.5,
       border: { type: "solid", color: BRAND_HEX.border, pt: 0.5 },
       rowH: 0.5,
     });
+    if (showFundsChart) {
+      const chartColors = [BRAND_HEX.indigo, BRAND_HEX.indigoDark, BRAND_HEX.indigoLight, BRAND_HEX.muted, "818CF8"];
+      askSlide.addText("Use of funds", { x: 8.15, y: askTableY, w: 4.65, h: 0.35, fontSize: 12, bold: true, color: BRAND_HEX.indigo });
+      askSlide.addChart(
+        pptx.ChartType.doughnut,
+        [{ name: "Amount ($)", labels: input.implementationItems.map((i) => i.name), values: input.implementationItems.map((i) => i.amount) }],
+        {
+          x: 8.15, y: askTableY + 0.4, w: 4.65, h: 3.2,
+          chartColors,
+          showLegend: true, legendPos: "b", legendColor: BRAND_HEX.slate, legendFontSize: 8,
+          showPercent: true, dataLabelColor: BRAND_HEX.white, dataLabelFontSize: 9,
+        }
+      );
+    }
   } else {
     askSlide.addText("No implementation budget captured yet — add cost items in Charter's Cost Summary.", {
       x: 0.5, y: askTableY, w: 12.3, h: 1, fontSize: 14, color: BRAND_HEX.slate,
