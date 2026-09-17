@@ -70,6 +70,11 @@ export async function POST(req: NextRequest) {
       // "OPPORTUNITY" (the more common case, and freely editable afterward) means a freshly
       // created project doesn't look broken/unfinished the moment you open it.
       ideaType: body.ideaType === "OPPORTUNITY" || body.ideaType === "PROBLEM" ? body.ideaType : "OPPORTUNITY",
+      // What kind of thing this idea is -- optional at creation (defaults to unset, treated
+      // as software by the Feasibility/Architecture prompts until someone sets it in Idea &
+      // Alignment), never guessed at server-side.
+      ideaCategory: ["SOFTWARE", "HARDWARE_PHYSICAL", "SERVICE", "OTHER"].includes(body.ideaCategory) ? body.ideaCategory : null,
+      hasSoftwareComponent: Boolean(body.hasSoftwareComponent),
     })
     .returning();
 

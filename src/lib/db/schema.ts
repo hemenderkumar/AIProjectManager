@@ -163,6 +163,21 @@ export const costItemCategoryEnum = pgEnum("cost_item_category", [
   "MATERIAL",
   "IMPLEMENTATION",
   "ONGOING_SUPPORT",
+  "LABOR",
+]);
+
+// What kind of thing an idea actually is -- drives whether Feasibility/Architecture ask
+// software-shaped questions (tech stack, system architecture) or build-shaped ones
+// (materials, infrastructure, sourcing, a process-flow diagram). hasSoftwareComponent is a
+// separate flag rather than a 5th category, because plenty of real ideas are hybrid (a
+// physical product with a companion app) and forcing a single bucket would misfit those --
+// see the 3D-printed-shoe example. Nullable: existing projects predate this field and are
+// left unset rather than guessed at.
+export const ideaCategoryEnum = pgEnum("idea_category", [
+  "SOFTWARE",
+  "HARDWARE_PHYSICAL",
+  "SERVICE",
+  "OTHER",
 ]);
 
 export const invoiceStatusEnum = pgEnum("invoice_status", [
@@ -272,6 +287,10 @@ export const projects = pgTable("projects", {
   ideationAlignment: text("ideation_alignment"),
   ideaType: ideaTypeEnum("idea_type"),
   ideationStatus: ideationStatusEnum("ideation_status").notNull().default("EXPLORING"),
+  // What kind of thing this idea is (see ideaCategoryEnum above) -- set at Idea & Alignment,
+  // drives category-aware Feasibility/Architecture below.
+  ideaCategory: ideaCategoryEnum("idea_category"),
+  hasSoftwareComponent: boolean("has_software_component").notNull().default(false),
 
   // Drives which Plan sub-tab is unlocked — see ideationSubStageEnum above. `stage` is
   // derived from this (see stageForSubStage() in lib/portfolio.ts) rather than PM-editable.
@@ -289,6 +308,13 @@ export const projects = pgTable("projects", {
   // feasibility is confirmed. Distinct from recommendedTechnology below, which is the
   // proposed *future* state.
   currentTechLandscape: text("current_tech_landscape"),
+  // Populated instead of/alongside the tech-stack fields below when ideaCategory is
+  // HARDWARE_PHYSICAL (or OTHER, sourcing-relevant): a materials/components list,
+  // infrastructure needs, and typical sourcing categories -- never fabricated specific
+  // vendor names or prices, same discipline as the rest of this feasibility pass.
+  buildMaterialsList: text("build_materials_list"),
+  buildInfrastructureNeeds: text("build_infrastructure_needs"),
+  buildSourcingNotes: text("build_sourcing_notes"),
 
   // Architecture approval (Plan sub-tab 3) — separate from the Technical Feasibility
   // review above: feasibility confirms the direction is sound, this confirms the specific
@@ -334,6 +360,22 @@ export const projects = pgTable("projects", {
   contingencyPercent: real("contingency_percent").default(10),
   ongoingSupportMonthlyCost: real("ongoing_support_monthly_cost"),
   ongoingSupportPlan: text("ongoing_support_plan"),
+  // Labor cost mirrors materialCostEstimate/budgetPlanned/ongoingSupportMonthlyCost: a
+  // live-synced top-line total of that category's cost_items rows (category LABOR),
+  // never a separately-typed number. See CharterTab's syncCostTotals.
+  laborCostEstimate: real("labor_cost_estimate"),
+  // Unit economics (Charter Cost Summary): what this is quoted/sold at, the margin target
+  // it's being priced against, and the volume assumption the Staffing & Margin recommendation
+  // uses to convert a headcount plan into a cost-per-unit. All optional/PM-set -- there's no
+  // AI guess for what a business decides to charge or expects to sell.
+  quotedUnitPrice: real("quoted_unit_price"),
+  targetMarginPercent: real("target_margin_percent"),
+  targetMonthlyVolume: real("target_monthly_volume"),
+  // AI-generated, review-then-save (same pattern as technicalRecommendationRationale):
+  // insource vs. outsource per material/component, and a staffing plan priced via Rate
+  // Cards and checked against targetMarginPercent at targetMonthlyVolume.
+  sourcingRecommendation: text("sourcing_recommendation"),
+  staffingMarginRecommendation: text("staffing_margin_recommendation"),
 
   // Delivery model & pricing (Delivery & Pricing tab)
   pricingModel: pricingModelEnum("pricing_model"),

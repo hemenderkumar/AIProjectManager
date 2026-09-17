@@ -194,9 +194,49 @@ export default function IdeationWorkspace({ detail, user }: { detail: ProjectDet
   const isProblem = p.ideaType === "PROBLEM";
   const canInvite = user ? roleAtLeast(user.role, "PM") : false;
 
+  const [savingCategory, setSavingCategory] = useState(false);
+  async function updateCategory(patch: { ideaCategory?: string | null; hasSoftwareComponent?: boolean }) {
+    setSavingCategory(true);
+    await fetch(`/api/projects/${p.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    setSavingCategory(false);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="What kind of thing is this?">
+            <select
+              value={p.ideaCategory ?? ""}
+              onChange={(e) => updateCategory({ ideaCategory: e.target.value || null })}
+              disabled={savingCategory}
+              className={inputCls}
+            >
+              <option value="">Not set (treated as software for now)</option>
+              <option value="SOFTWARE">Software</option>
+              <option value="HARDWARE_PHYSICAL">Hardware / physical product</option>
+              <option value="SERVICE">Service</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </Field>
+          <div className="flex items-end pb-0.5">
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={p.hasSoftwareComponent ?? false}
+                disabled={savingCategory}
+                onChange={(e) => updateCategory({ hasSoftwareComponent: e.target.checked })}
+                className="rounded border-slate-300"
+              />
+              Also has a software component (e.g. an app alongside a physical product)
+            </label>
+          </div>
+        </div>
         <Field label="Problem statement">
           <textarea value={ideaForm.problemStatement} onChange={(e) => updateIdea("problemStatement", e.target.value)} className={inputCls} rows={2} />
         </Field>

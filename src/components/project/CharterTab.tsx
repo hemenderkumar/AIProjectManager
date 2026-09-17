@@ -10,7 +10,7 @@ import MermaidDiagram from "@/components/MermaidDiagram";
 import AiEditChat from "./AiEditChat";
 import { renderMermaidToImages } from "@/lib/mermaidToImage";
 
-type CostItemCategory = "MATERIAL" | "IMPLEMENTATION" | "ONGOING_SUPPORT";
+type CostItemCategory = "MATERIAL" | "IMPLEMENTATION" | "ONGOING_SUPPORT" | "LABOR";
 
 export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -40,6 +40,9 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
     contingencyPercent: p.contingencyPercent ?? 10,
     charterApprovedBy: p.charterApprovedBy ?? "",
     charterApprovedAt: formatDateInput(p.charterApprovedAt),
+    quotedUnitPrice: p.quotedUnitPrice ?? 0,
+    targetMarginPercent: p.targetMarginPercent ?? 0,
+    targetMonthlyVolume: p.targetMonthlyVolume ?? 0,
   });
 
   // Material/Implementation/Ongoing support are no longer single typed-in numbers -- each is
@@ -52,9 +55,21 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   const materialItems = detail.costItems.filter((c) => c.category === "MATERIAL");
   const implementationItems = detail.costItems.filter((c) => c.category === "IMPLEMENTATION");
   const ongoingItems = detail.costItems.filter((c) => c.category === "ONGOING_SUPPORT");
+  const laborItems = detail.costItems.filter((c) => c.category === "LABOR");
   const materialCostSubtotal = materialItems.reduce((s, c) => s + c.amount, 0);
   const implementationCostSubtotal = implementationItems.reduce((s, c) => s + c.amount, 0);
   const ongoingSupportSubtotal = ongoingItems.reduce((s, c) => s + c.amount, 0);
+  const laborCostSubtotal = laborItems.reduce((s, c) => s + c.amount, 0);
+
+  // Margin, for a unit/product idea: quoted price minus the direct per-unit costs (Material +
+  // Labor -- Implementation is treated as one-time setup capex, not a per-unit cost, so it's
+  // deliberately excluded here even though it's included in the overall project cost subtotal
+  // below). Null (not zero) when no price has been set yet, so the UI can say "not priced yet"
+  // instead of showing a misleading -100% margin.
+  const unitCostTotal = materialCostSubtotal + laborCostSubtotal;
+  const marginPercent = form.quotedUnitPrice > 0 ? ((form.quotedUnitPrice - unitCostTotal) / form.quotedUnitPrice) * 100 : null;
+  const marginAmount = form.quotedUnitPrice > 0 ? form.quotedUnitPrice - unitCostTotal : null;
+  const marginBelowTarget = marginPercent !== null && form.targetMarginPercent > 0 && marginPercent < form.targetMarginPercent;
 
   // Applied to both cost and effort so the buffer shows up wherever someone is sizing the
   // project, not just in the dollar total — a schedule built off "best case" hours alone is
@@ -71,10 +86,11 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
     const materialCostEstimate = items.filter((i) => i.category === "MATERIAL").reduce((s, i) => s + (i.amount || 0), 0);
     const budgetPlanned = items.filter((i) => i.category === "IMPLEMENTATION").reduce((s, i) => s + (i.amount || 0), 0);
     const ongoingSupportMonthlyCost = items.filter((i) => i.category === "ONGOING_SUPPORT").reduce((s, i) => s + (i.amount || 0), 0);
+    const laborCostEstimate = items.filter((i) => i.category === "LABOR").reduce((s, i) => s + (i.amount || 0), 0);
     await fetch(`/api/projects/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ materialCostEstimate, budgetPlanned, ongoingSupportMonthlyCost }),
+      body: JSON.stringify({ materialCostEstimate, budgetPlanned, ongoingSupportMonthlyCost, laborCostEstimate }),
     });
   }
 
@@ -100,6 +116,44 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
   async function deleteCostItem(itemId: string) {
     await fetch(`/api/projects/${p.id}/cost-items/${itemId}`, { method: "DELETE" });
     await syncCostTotals();
+    router.refresh();
+  }
+
+  const [recommendingSourcing, setRecommendingSourcing] = useState(false);
+  const [sourcingError, setSourcingError] = useState<string | null>(null);
+  async function getSourcingRecommendation() {
+    setRecommendingSourcing(true);
+    setSourcingError(null);
+    const res = await fetch("/api/ai/sourcing-recommendation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: p.id }),
+    });
+    setRecommendingSourcing(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSourcingError(data?.error ?? "Couldn't generate a sourcing recommendation.");
+      return;
+    }
+    router.refresh();
+  }
+
+  const [recommendingStaffing, setRecommendingStaffing] = useState(false);
+  const [staffingError, setStaffingError] = useState<string | null>(null);
+  async function getStaffingRecommendation() {
+    setRecommendingStaffing(true);
+    setStaffingError(null);
+    const res = await fetch("/api/ai/staffing-margin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: p.id }),
+    });
+    setRecommendingStaffing(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setStaffingError(data?.error ?? "Couldn't generate a staffing recommendation.");
+      return;
+    }
     router.refresh();
   }
 
@@ -389,11 +443,18 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
           breakdown for all three at once (it saves itself automatically as soon as it comes back).
         </p>
         <AiWaitIndicator active={generating} messages={["Reading the scope and technology...", "Estimating costs..."]} className="mb-2" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 mb-3">
           <CostBreakdownSection
             title="Material cost"
             items={materialItems}
             onAdd={() => addCostItem("MATERIAL")}
+            onUpdate={updateCostItem}
+            onDelete={deleteCostItem}
+          />
+          <CostBreakdownSection
+            title="Labor cost"
+            items={laborItems}
+            onAdd={() => addCostItem("LABOR")}
             onUpdate={updateCostItem}
             onDelete={deleteCostItem}
           />
@@ -440,6 +501,109 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
             value={totalEstimateHours > 0 ? `${Math.round(effortWithContingency).toLocaleString()} hrs` : "No tasks yet"}
           />
         </div>
+
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <p className="text-xs font-medium text-slate-600 mb-2">Unit economics &amp; margin</p>
+          <p className="text-xs text-slate-400 mb-3">
+            What this is priced at, per unit — margin is the quoted price minus Material + Labor cost above
+            (Implementation and Ongoing support are treated as setup/overhead, not a per-unit cost).
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <Field label="Quoted / target price ($ per unit)">
+              <input
+                type="number" min={0}
+                value={form.quotedUnitPrice}
+                onChange={(e) => update("quotedUnitPrice", Number(e.target.value))}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Target margin (%)">
+              <input
+                type="number" min={0} max={100}
+                value={form.targetMarginPercent}
+                onChange={(e) => update("targetMarginPercent", Number(e.target.value))}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Target monthly volume (units)">
+              <input
+                type="number" min={0}
+                value={form.targetMonthlyVolume}
+                onChange={(e) => update("targetMonthlyVolume", Number(e.target.value))}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <SummaryStat label="Material + Labor cost / unit" value={`$${unitCostTotal.toLocaleString()}`} />
+            <SummaryStat
+              label="Margin / unit"
+              value={marginAmount !== null ? `$${marginAmount.toLocaleString()}` : "Set a price"}
+            />
+            <SummaryStat
+              label="Margin %"
+              value={marginPercent !== null ? `${marginPercent.toFixed(1)}%` : "Set a price"}
+            />
+          </div>
+          {marginBelowTarget && (
+            <p className="text-xs text-rose-600 mt-2">
+              Margin ({marginPercent?.toFixed(1)}%) is below the {form.targetMarginPercent}% target at the current price and cost.
+            </p>
+          )}
+        </div>
+      </Card>
+
+      <Card
+        title="Sourcing Recommendation"
+        action={
+          <button
+            onClick={getSourcingRecommendation}
+            disabled={recommendingSourcing}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
+          >
+            {recommendingSourcing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {p.sourcingRecommendation ? "Re-run" : "Recommend with AI"}
+          </button>
+        }
+      >
+        <p className="text-xs text-slate-400 mb-2">
+          Insource vs. outsource per material/component — grounded in Feasibility&apos;s materials list and
+          target volume, at the category level (never a specific vendor or price).
+        </p>
+        <AiWaitIndicator active={recommendingSourcing} messages={["Weighing volume and capital cost...", "Working out make-vs-buy..."]} className="mb-2" />
+        {sourcingError && <p className="text-xs text-rose-600 mb-2">{sourcingError}</p>}
+        {p.sourcingRecommendation ? (
+          <p className="text-xs text-slate-600 whitespace-pre-wrap">{p.sourcingRecommendation}</p>
+        ) : (
+          <p className="text-xs text-slate-400">No recommendation yet.</p>
+        )}
+      </Card>
+
+      <Card
+        title="Staffing &amp; Margin"
+        action={
+          <button
+            onClick={getStaffingRecommendation}
+            disabled={recommendingStaffing}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
+          >
+            {recommendingStaffing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+            {p.staffingMarginRecommendation ? "Re-run" : "Recommend with AI"}
+          </button>
+        }
+      >
+        <p className="text-xs text-slate-400 mb-2">
+          Required roles/headcount for the target monthly volume, priced via Rate Cards, checked against the
+          target margin set above. Needs infrastructure needs (or a process/architecture description) and a
+          target monthly volume set first.
+        </p>
+        <AiWaitIndicator active={recommendingStaffing} messages={["Sizing the team...", "Pricing against Rate Cards...", "Checking against target margin..."]} className="mb-2" />
+        {staffingError && <p className="text-xs text-rose-600 mb-2">{staffingError}</p>}
+        {p.staffingMarginRecommendation ? (
+          <p className="text-xs text-slate-600 whitespace-pre-wrap">{p.staffingMarginRecommendation}</p>
+        ) : (
+          <p className="text-xs text-slate-400">No recommendation yet.</p>
+        )}
       </Card>
 
       <Card

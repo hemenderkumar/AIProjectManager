@@ -26,11 +26,17 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
   const router = useRouter();
   const p = detail.project;
 
+  const isBuildCategory = p.ideaCategory === "HARDWARE_PHYSICAL" || p.ideaCategory === "SERVICE" || p.ideaCategory === "OTHER";
+
   const [form, setForm] = useState({
     feasibilityScore: p.feasibilityScore ?? undefined,
     feasibilityNotes: p.feasibilityNotes ?? "",
     currentTechLandscape: p.currentTechLandscape ?? "",
+    buildMaterialsList: p.buildMaterialsList ?? "",
+    buildInfrastructureNeeds: p.buildInfrastructureNeeds ?? "",
+    buildSourcingNotes: p.buildSourcingNotes ?? "",
   });
+  const [dependentSubBuilds, setDependentSubBuilds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [assessing, setAssessing] = useState(false);
@@ -76,7 +82,15 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
       });
       const data = await res.json();
       if (res.ok) {
-        setForm((f) => ({ ...f, feasibilityScore: data.feasibilityScore, feasibilityNotes: data.technicalApproach }));
+        setForm((f) => ({
+          ...f,
+          feasibilityScore: data.feasibilityScore,
+          feasibilityNotes: data.technicalApproach,
+          buildMaterialsList: data.buildMaterials ?? f.buildMaterialsList,
+          buildInfrastructureNeeds: data.buildInfrastructure ?? f.buildInfrastructureNeeds,
+          buildSourcingNotes: data.buildSourcing ?? f.buildSourcingNotes,
+        }));
+        setDependentSubBuilds(Array.isArray(data.dependentSubBuilds) ? data.dependentSubBuilds : []);
       }
     } finally {
       setAssessing(false);
@@ -180,6 +194,59 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
           </div>
         </div>
       </Card>
+
+      {dependentSubBuilds.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+          <p className="text-xs font-semibold text-amber-800 mb-1">This idea depends on something that doesn&apos;t exist yet</p>
+          <ul className="text-xs text-amber-800 list-disc pl-4 space-y-0.5">
+            {dependentSubBuilds.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+          <p className="text-xs text-amber-700 mt-1.5">
+            Each of these has its own feasibility and build effort, separate from this idea — worth scoping on its own.
+          </p>
+        </div>
+      )}
+
+      {isBuildCategory && (
+        <Card title="Build Requirements">
+          <p className="text-xs text-slate-400 mb-2">
+            What this physically takes to build — materials, infrastructure, and typical sourcing categories
+            (never specific vendors or prices, since none were given). Filled in by &quot;Assess with AI&quot; above,
+            or edit directly.
+          </p>
+          <div className="space-y-3">
+            <Field label="Materials / components">
+              <textarea
+                value={form.buildMaterialsList}
+                onChange={(e) => update("buildMaterialsList", e.target.value)}
+                className={inputCls}
+                rows={2}
+                placeholder="e.g. flexible TPU for the upper, rigid resin/nylon for the sole or guides"
+              />
+            </Field>
+            <Field label="Infrastructure needs">
+              <textarea
+                value={form.buildInfrastructureNeeds}
+                onChange={(e) => update("buildInfrastructureNeeds", e.target.value)}
+                className={inputCls}
+                rows={2}
+                placeholder="e.g. a print farm sized to throughput, post-processing/QA station"
+              />
+            </Field>
+            <Field label="Sourcing categories">
+              <textarea
+                value={form.buildSourcingNotes}
+                onChange={(e) => update("buildSourcingNotes", e.target.value)}
+                className={inputCls}
+                rows={2}
+                placeholder="e.g. industrial equipment suppliers, contract manufacturers for non-core parts"
+              />
+            </Field>
+          </div>
+        </Card>
+      )}
 
       <Card
         title="Current technology landscape"

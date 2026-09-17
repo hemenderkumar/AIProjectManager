@@ -38,7 +38,40 @@ export async function POST(req: NextRequest) {
         .join("\n")
     : "(no solution options logged — recommend directly from the problem/solution below)";
 
-  const system = `You are an enterprise architect asked for a technical recommendation BEFORE a project
+  // A physical/build idea doesn't have a "system architecture" in the software sense — the
+  // useful equivalent is a process-flow diagram (how it actually gets made, step by step),
+  // and "architecture" here means the production/build approach, not a tech stack.
+  const isBuildCategory = p.ideaCategory === "HARDWARE_PHYSICAL" || p.ideaCategory === "SERVICE" || p.ideaCategory === "OTHER";
+
+  const system = isBuildCategory
+    ? `You are advising on the build/production approach for a physical or non-software idea (category:
+${p.ideaCategory}) BEFORE a project charter is drafted. Given the problem/opportunity and any build
+requirements already captured (materials, infrastructure, sourcing), recommend ONE concrete build/production
+approach — not a vague category. Ground it only in the information given; do not invent unrelated
+requirements, specific vendors, or costs.
+
+Then produce a simple Mermaid diagram (flowchart TD syntax) showing the PROCESS FLOW — the sequence of
+steps from input to finished output (e.g. source materials -> fabricate/assemble -> quality check -> package
+-> ship), not a software system diagram. Keep it to 5-10 nodes with short labels and simple arrows (A --> B).
+Use only valid Mermaid "flowchart TD" syntax with alphanumeric node ids and labels in square brackets, e.g.:
+flowchart TD
+  A[Source materials] --> B[Fabricate]
+  B --> C[Quality check]
+Do not include markdown code fences, just the raw Mermaid syntax starting with "flowchart TD". The diagram
+must depict the SAME steps described in highLevelArchitecture below — don't introduce new ones only in one
+place.
+
+Also write the two things a reviewer needs to sign off on this approach: a description of the major
+production steps and how they fit together (highLevelArchitecture), and why this is the sound approach —
+trade-offs, what it optimizes for, what it gives up (architectureProsCons).
+
+Respond as JSON: { "recommendedTechnology": string (short label for the build approach, e.g. "In-house FDM
+print farm, TPU uppers + bonded soles"), "rationale": string (3-5 sentences: why this fits, referencing the
+build requirements/feasibility given), "architectureDiagram": string (raw Mermaid flowchart TD syntax, no
+code fences, depicting the PROCESS FLOW), "highLevelArchitecture": string (2-4 sentences describing the
+major production steps and how they fit together), "architectureProsCons": string (3-6 bullet points, one
+per line starting with "- ", on trade-offs and what this approach optimizes for vs. gives up) }`
+    : `You are an enterprise architect asked for a technical recommendation BEFORE a project
 charter is drafted. Given the problem/opportunity, any compared solution options, and feasibility notes,
 recommend ONE concrete, specific technical direction — an actual technology/architecture choice, not a
 vague category. Ground it only in the information given; do not invent unrelated requirements.
@@ -65,7 +98,19 @@ string (2-4 sentences describing the major components/layers and how they fit to
 string (3-6 bullet points, one per line starting with "- ", on trade-offs and what this choice optimizes for
 vs. gives up) }`;
 
-  const user = `Project: ${p.name}
+  const user = isBuildCategory
+    ? `Project: ${p.name}
+Idea category: ${p.ideaCategory}
+Has a software component: ${p.hasSoftwareComponent ? "yes" : "no"}
+Problem statement: ${p.problemStatement || "(none)"}
+Proposed solution: ${p.proposedSolution || "(none)"}
+Expected benefits: ${p.expectedBenefits || "(none)"}
+Feasibility score (0-100): ${p.feasibilityScore ?? "(not assessed)"}
+Feasibility notes: ${p.feasibilityNotes || "(none)"}
+Materials/components: ${p.buildMaterialsList || "(not yet captured)"}
+Infrastructure needs: ${p.buildInfrastructureNeeds || "(not yet captured)"}
+Sourcing categories: ${p.buildSourcingNotes || "(not yet captured)"}`
+    : `Project: ${p.name}
 Problem statement: ${p.problemStatement || "(none)"}
 Proposed solution: ${p.proposedSolution || "(none)"}
 Expected benefits: ${p.expectedBenefits || "(none)"}
