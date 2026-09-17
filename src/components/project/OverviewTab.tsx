@@ -28,10 +28,11 @@ type SimilarProjectsResult = {
   note?: string;
 };
 
-// Project metadata + housekeeping — everything that ISN'T part of the gated Plan sequence
-// (that's the 5 sub-tabs above this, in PlanTab.tsx). Stage itself is no longer editable
-// here: it's derived from ideationSubStage as each Plan gate is satisfied, shown below as a
-// read-only badge instead of a dropdown.
+// Project metadata + housekeeping — everything that ISN'T part of the gated Project Initiation
+// sequence (that's the 6 stage tabs in ProjectTabs.tsx). Only rendered on the "Idea & Alignment"
+// tab, the entry point, rather than repeated above every stage — see the comment there. Stage
+// itself is no longer editable here: it's derived from ideationSubStage as each gate is
+// satisfied, shown below as a read-only badge instead of a dropdown.
 export default function OverviewTab({ detail, user }: { detail: ProjectDetail; user: SessionUser | null }) {
   const router = useRouter();
   const p = detail.project;
