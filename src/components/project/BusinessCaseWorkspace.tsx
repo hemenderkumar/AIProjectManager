@@ -6,6 +6,7 @@ import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import { Sparkles, Loader2, CheckCircle2, ShieldCheck, Download } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+import AiEditChat from "./AiEditChat";
 
 // Plan sub-tab, between Architecture and Scope & Charter — the idea-evaluation deliverable:
 // "should we do this and why," reviewed before Charter's "here's the authorized scope/cost/
@@ -134,6 +135,24 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
     }
   }
 
+  // The AI-edit-chat below patches the project directly via /api/projects/[id] — merge whichever
+  // of its changed keys happen to overlap this form's local state (all the Business Case fields
+  // do) so they update immediately without waiting on a full page reload, then refresh so the
+  // approval banner and anything else derived server-side picks it up too. Mirrors
+  // handleCharterAiApplied in CharterTab.tsx.
+  function handleBusinessCaseAiApplied(changes: Record<string, unknown>) {
+    setForm((f) => {
+      const next = { ...f };
+      for (const key of Object.keys(changes)) {
+        if (key in next) {
+          (next as Record<string, unknown>)[key] = changes[key];
+        }
+      }
+      return next;
+    });
+    router.refresh();
+  }
+
   const approved = Boolean(p.businessCaseApprovedAt);
 
   return (
@@ -164,6 +183,20 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
           already captured — never invents real competitor names or market statistics. Review and edit everything
           below before approving.
         </p>
+      </Card>
+
+      <Card title="Refine with AI">
+        <p className="text-xs text-slate-400 mb-2">
+          Describe a change in plain language — e.g. &quot;sharpen the threats to call out competitor
+          reaction&quot; or &quot;make the revenue projection more conservative.&quot; Review the proposed
+          diff before it&apos;s applied.
+        </p>
+        <AiEditChat
+          entityType="project"
+          entityId={p.id}
+          onApplied={handleBusinessCaseAiApplied}
+          placeholder='e.g. "tighten the SWOT weaknesses" or "add a roadmap step for a pilot batch"'
+        />
       </Card>
 
       <Card title="Problem we're solving">
