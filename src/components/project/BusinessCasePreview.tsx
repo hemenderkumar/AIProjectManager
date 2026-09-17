@@ -13,7 +13,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
-import { CheckCircle2, XCircle, TrendingUp, AlertTriangle, Target, Compass, LineChart as LineChartIcon } from "lucide-react";
+import { CheckCircle2, XCircle, TrendingUp, AlertTriangle, Target, Compass, LineChart as LineChartIcon, Swords, ArrowRight } from "lucide-react";
 import type { ProjectDetail } from "./ProjectTabs";
 import { formatDate } from "@/lib/format";
 import { computeUpfrontInvestment, computeRoiSeries } from "@/lib/businessCaseRoi";
@@ -105,6 +105,24 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
   const roiTickInterval = roiSeries ? Math.max(0, Math.ceil(roiSeries.length / 12) - 1) : 0;
   const roiBreakEvenMonth = roiSeries?.find((pt) => pt.cumulativeNetBenefit >= 0)?.month ?? null;
 
+  // The Ask is a fixed claim ("invest $X, get Y% ROI"), so it always shows the full 3-year
+  // payoff regardless of whatever duration the reader has toggled on the chart above.
+  const askRoiSeries = computeRoiSeries(
+    { quotedUnitPrice: p.quotedUnitPrice, targetMonthlyVolume: p.targetMonthlyVolume, targetMarginPercent: p.targetMarginPercent, upfrontInvestment: totalFunding },
+    36
+  );
+  const askRoi3yr = askRoiSeries?.[askRoiSeries.length - 1] ?? null;
+  const askBreakEvenMonth = askRoiSeries?.find((pt) => pt.cumulativeNetBenefit >= 0)?.month ?? null;
+
+  // Market sizing (TAM/SAM/SOM) is PM-entered, never AI-invented — 0 means "not entered" (same
+  // convention as quotedUnitPrice elsewhere), so only render figures that are actually set.
+  const marketSizing = [
+    { label: "TAM", sub: "Total Addressable Market", value: p.marketSizeTam },
+    { label: "SAM", sub: "Serviceable Available Market", value: p.marketSizeSam },
+    { label: "SOM", sub: "Serviceable Obtainable Market", value: p.marketSizeSom },
+  ].filter((m) => m.value != null && m.value > 0) as { label: string; sub: string; value: number }[];
+  const marketSizingMax = marketSizing.length ? Math.max(...marketSizing.map((m) => m.value)) : 0;
+
   const swotQuadrants = [
     { label: "Strengths", value: p.swotStrengths, icon: CheckCircle2, ring: "ring-emerald-100", bg: "bg-emerald-50", text: "text-emerald-700", iconColor: "text-emerald-600" },
     { label: "Weaknesses", value: p.swotWeaknesses, icon: XCircle, ring: "ring-rose-100", bg: "bg-rose-50", text: "text-rose-700", iconColor: "text-rose-600" },
@@ -116,10 +134,20 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
     <div className="space-y-6 max-w-4xl">
       {/* Cover */}
       <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-900 to-indigo-700 text-white p-8 shadow-lg shadow-indigo-900/20">
-        <p className="text-xs font-semibold tracking-widest text-indigo-200 uppercase mb-2">Business Case</p>
+        <p className="text-xs font-semibold tracking-widest text-indigo-200 uppercase mb-2">Financial Forecast &amp; Projections</p>
         <h2 className="text-2xl sm:text-3xl font-bold mb-1">{p.name}</h2>
         <p className="text-sm text-indigo-200">{formatDate(new Date())}</p>
       </div>
+
+      {/* Executive Summary — the top-of-deck synthesis, deliberately un-numbered and visually
+          distinct from the sections below since it's meant to stand on its own even if a reader
+          never gets past it. */}
+      {p.businessCaseExecutiveSummary?.trim() && (
+        <section className="rounded-xl border-l-4 border-indigo-600 bg-indigo-50/60 px-6 py-5">
+          <p className="text-xs font-semibold tracking-widest text-indigo-600 uppercase mb-2">Executive Summary</p>
+          <p className="text-[15px] text-slate-800 leading-relaxed whitespace-pre-wrap">{p.businessCaseExecutiveSummary.trim()}</p>
+        </section>
+      )}
 
       {/* The Opportunity */}
       <section className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
@@ -176,12 +204,42 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
             <Prose text={p.marketPrediction} />
           </div>
         </div>
+        {marketSizing.length > 0 && (
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <p className="text-sm font-semibold text-indigo-600 mb-3">Market sizing</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {marketSizing.map((m) => (
+                <div key={m.label} className="rounded-lg bg-slate-50 p-3">
+                  <p className="text-[11px] font-semibold text-slate-500 mb-0.5">
+                    {m.label} <span className="font-normal text-slate-400">&middot; {m.sub}</span>
+                  </p>
+                  <p className="text-xl font-bold text-slate-900 mb-1.5">{money(m.value)}<span className="text-xs font-normal text-slate-400">/yr</span></p>
+                  <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-indigo-500"
+                      style={{ width: `${Math.max(4, Math.round((m.value / marketSizingMax) * 100))}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Competitive Differentiation */}
+      <section className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
+        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">05</p>
+        <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <Swords size={17} className="text-indigo-600" /> Competitive Differentiation
+        </h3>
+        <Prose text={p.competitiveDifferentiation} />
       </section>
 
       {/* Approach & Technology */}
       {(p.recommendedTechnology?.trim() || p.technicalRecommendationRationale?.trim()) && (
         <section className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
-          <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">05 &middot; Why This Will Work</p>
+          <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">06 &middot; Why This Will Work</p>
           <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Compass size={17} className="text-indigo-600" /> Approach &amp; Technology
           </h3>
@@ -200,7 +258,7 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
 
       {/* Unit Economics */}
       <section className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
-        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">06</p>
+        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">07</p>
         <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
           <Target size={17} className="text-indigo-600" /> Unit Economics
         </h3>
@@ -223,7 +281,7 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
 
       {/* Revenue Projections */}
       <section className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
-        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">07</p>
+        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">08</p>
         <h3 className="text-lg font-bold text-slate-900 mb-4">Revenue Projections</h3>
         {revenueChartData.length ? (
           <div className="h-64 -ml-2">
@@ -249,7 +307,7 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
 
       {/* Roadmap: Benefits & ROI projection (a chart, not text) + the sequenced steps below it */}
       <section className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
-        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">08</p>
+        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">09</p>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <LineChartIcon size={17} className="text-indigo-600" /> Benefits &amp; ROI Projection
@@ -358,8 +416,18 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
 
       {/* The Ask */}
       <section className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-6">
-        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">09 &middot; What We Need To Move Forward</p>
+        <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase mb-1">10 &middot; What We Need To Move Forward</p>
         <h3 className="text-lg font-bold text-slate-900 mb-4">The Ask</h3>
+        {totalFunding != null && askRoi3yr && (
+          <div className="mb-5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-5 py-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="text-lg sm:text-xl font-bold">Invest {money(totalFunding)}</span>
+            <ArrowRight size={18} className="text-indigo-200 shrink-0" />
+            <span className="text-lg sm:text-xl font-bold">{askRoi3yr.roiPercent}% ROI within 3 years</span>
+            <span className="text-xs text-indigo-200 w-full sm:w-auto sm:ml-1">
+              {askBreakEvenMonth != null ? `Breaks even around month ${askBreakEvenMonth}.` : "Doesn't break even within 3 years at current assumptions."}
+            </span>
+          </div>
+        )}
         {implementationItems.length || totalFunding != null ? (
           <table className="w-full text-sm">
             <thead>

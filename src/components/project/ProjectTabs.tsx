@@ -42,7 +42,7 @@ const TABS = [
   "Idea & Alignment",
   "Technical Feasibility",
   "Architecture",
-  "Business Case",
+  "Financial Forecast & Projections",
   "Scope & Charter",
   "Resourcing Decision",
   "Tasks",
@@ -69,7 +69,7 @@ const STAGE_LABEL_TO_KEY: Partial<Record<(typeof TABS)[number], IdeationSubStage
   "Idea & Alignment": "IDEA_ALIGNMENT",
   "Technical Feasibility": "TECHNICAL_FEASIBILITY",
   "Architecture": "ARCHITECTURE_REVIEW",
-  "Business Case": "BUSINESS_CASE",
+  "Financial Forecast & Projections": "BUSINESS_CASE",
   "Scope & Charter": "CHARTER",
   "Resourcing Decision": "RESOURCING_DECISION",
 };
@@ -83,7 +83,7 @@ const TAB_GROUPS: { label: string; icon: React.ReactNode; tabs: (typeof TABS)[nu
   {
     label: "Project Initiation",
     icon: <Compass size={14} />,
-    tabs: ["Idea & Alignment", "Technical Feasibility", "Architecture", "Business Case", "Scope & Charter", "Resourcing Decision", "Milestones"],
+    tabs: ["Idea & Alignment", "Technical Feasibility", "Architecture", "Financial Forecast & Projections", "Scope & Charter", "Resourcing Decision", "Milestones"],
   },
   { label: "Execute", icon: <Rocket size={14} />, tabs: ["Tasks", "Resources", "Status Tracking", "Risks", "Communications"] },
   { label: "Commercial", icon: <Receipt size={14} />, tabs: ["SOW", "Deliverables", "Delivery & Pricing", "Invoices", "Budget"] },
@@ -188,7 +188,7 @@ export default function ProjectTabs({
       {active === "Idea & Alignment" && <IdeationWorkspace detail={detail} user={user ?? null} />}
       {active === "Technical Feasibility" && <FeasibilityWorkspace detail={detail} />}
       {active === "Architecture" && <ArchitectureWorkspace detail={detail} />}
-      {active === "Business Case" && <BusinessCaseWorkspace detail={detail} />}
+      {active === "Financial Forecast & Projections" && <BusinessCaseWorkspace detail={detail} />}
       {active === "Scope & Charter" && <CharterTab detail={detail} />}
       {active === "Resourcing Decision" && (
         <ResourcingDecisionTab detail={detail} onNavigate={(tab) => setActive(tab)} />

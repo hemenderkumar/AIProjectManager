@@ -402,10 +402,11 @@ export const projects = pgTable("projects", {
   architectureDiagram: text("architecture_diagram"), // Mermaid diagram syntax
   internalSupportNeeds: text("internal_support_needs"),
 
-  // Business Case (Plan sub-tab, between Architecture and Charter) — the idea-evaluation
-  // deliverable: is this worth doing, and why. `businessCase` (the narrative, above under
-  // Charter) and `problemStatement` (under Ideation) are reused here as this document's own
-  // opening sections rather than duplicated, since they're the same concept; SWOT, market
+  // Business Case (Plan sub-tab, between Architecture and Charter, displayed to users as
+  // "Financial Forecast & Projections") — the investor/funding-committee-facing deliverable:
+  // is this worth doing, and why. `businessCase` (the narrative, above under Charter) and
+  // `problemStatement` (under Ideation) are reused here as this document's own opening
+  // sections rather than duplicated, since they're the same concept; SWOT, market
   // analysis/prediction, revenue projections, and roadmap are new. Never fabricated specific
   // real competitor names or invented market-size figures unless the user supplied research —
   // same discipline as sourcingRecommendation/staffingMarginRecommendation.
@@ -419,6 +420,19 @@ export const projects = pgTable("projects", {
   businessRoadmap: text("business_roadmap"),
   businessCaseApprovedBy: text("business_case_approved_by"),
   businessCaseApprovedAt: timestamp("business_case_approved_at"),
+  // Investor-pitch additions: a synthesized top-of-deck summary, quantified market sizing
+  // (PM-entered — AI never invents these, same discipline as above), and explicit
+  // competitive differentiation, so the deck actually argues the case rather than just
+  // describing the idea. marketSizeTam/Sam/Som are annual dollar figures.
+  // businessCaseExecutiveSummary is deliberately its own column, distinct from
+  // projects.executiveSummary above (that one is the Charter's own executive summary, a
+  // different document with a different audience/purpose — reusing it would let editing one
+  // silently overwrite the other).
+  businessCaseExecutiveSummary: text("business_case_executive_summary"),
+  marketSizeTam: integer("market_size_tam"),
+  marketSizeSam: integer("market_size_sam"),
+  marketSizeSom: integer("market_size_som"),
+  competitiveDifferentiation: text("competitive_differentiation"),
 
   // Integrations (#263). Both opt-in and off by default; either can be cleared independently
   // of the other. slackWebhookUrl is a plain incoming-webhook URL (no OAuth flow -- the

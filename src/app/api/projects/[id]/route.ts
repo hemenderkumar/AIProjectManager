@@ -55,6 +55,7 @@ export async function PATCH(
     "swotStrengths", "swotWeaknesses", "swotOpportunities", "swotThreats",
     "marketAnalysis", "marketPrediction", "revenueProjections", "businessRoadmap",
     "businessCaseApprovedBy", "businessCaseApprovedAt",
+    "businessCaseExecutiveSummary", "marketSizeTam", "marketSizeSam", "marketSizeSom", "competitiveDifferentiation",
   ];
 
   const dateFields = [
@@ -65,6 +66,7 @@ export async function PATCH(
     "budgetPlanned", "materialCostEstimate", "budgetActual", "percentComplete", "totalFundingRequired",
     "feasibilityScore", "ongoingSupportMonthlyCost", "contingencyPercent", "fixedBidPrice",
     "laborCostEstimate", "quotedUnitPrice", "targetMarginPercent", "targetMonthlyVolume",
+    "marketSizeTam", "marketSizeSam", "marketSizeSom",
   ];
 
   const update: Record<string, unknown> = { updatedAt: new Date() };

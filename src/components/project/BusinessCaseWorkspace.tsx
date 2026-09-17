@@ -10,10 +10,12 @@ import AiEditChat from "./AiEditChat";
 import BusinessCasePreview from "./BusinessCasePreview";
 
 // Plan sub-tab, between Architecture and Scope & Charter — the idea-evaluation deliverable:
-// "should we do this and why," reviewed before Charter's "here's the authorized scope/cost/
-// plan to execute it." Problem We're Solving is read-only here (owned by Idea & Alignment) —
-// everything else (Business Case narrative, SWOT, Market Analysis & Prediction, Revenue
-// Projections, Roadmap) is edited here and downloadable as a Business Case PowerPoint deck.
+// "should we fund this and why" -- displayed to users as "Financial Forecast & Projections" --
+// reviewed before Charter's "here's the authorized scope/cost/plan to execute it." Problem
+// We're Solving is read-only here (owned by Idea & Alignment) — everything else (Executive
+// Summary, Business Case narrative, SWOT, Market Analysis & Prediction, Market Sizing,
+// Competitive Differentiation, Revenue Projections, Roadmap) is edited here and downloadable
+// as an investor-grade PowerPoint deck.
 // Gate: businessCaseApprovedAt set (see the generic PATCH route's gate-transition logic in
 // api/projects/[id]/route.ts) — same PM+ approval bar as Architecture and Charter.
 export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetail }) {
@@ -21,6 +23,7 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
   const p = detail.project;
 
   const [form, setForm] = useState({
+    businessCaseExecutiveSummary: p.businessCaseExecutiveSummary ?? "",
     businessCase: p.businessCase ?? "",
     swotStrengths: p.swotStrengths ?? "",
     swotWeaknesses: p.swotWeaknesses ?? "",
@@ -28,6 +31,10 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
     swotThreats: p.swotThreats ?? "",
     marketAnalysis: p.marketAnalysis ?? "",
     marketPrediction: p.marketPrediction ?? "",
+    marketSizeTam: p.marketSizeTam ?? 0,
+    marketSizeSam: p.marketSizeSam ?? 0,
+    marketSizeSom: p.marketSizeSom ?? 0,
+    competitiveDifferentiation: p.competitiveDifferentiation ?? "",
     revenueProjections: p.revenueProjections ?? "",
     businessRoadmap: p.businessRoadmap ?? "",
     businessCaseApprovedBy: p.businessCaseApprovedBy ?? "",
@@ -80,6 +87,7 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
       const proj = data.project ?? {};
       setForm((f) => ({
         ...f,
+        businessCaseExecutiveSummary: proj.businessCaseExecutiveSummary ?? f.businessCaseExecutiveSummary,
         businessCase: proj.businessCase ?? f.businessCase,
         swotStrengths: proj.swotStrengths ?? f.swotStrengths,
         swotWeaknesses: proj.swotWeaknesses ?? f.swotWeaknesses,
@@ -87,6 +95,7 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
         swotThreats: proj.swotThreats ?? f.swotThreats,
         marketAnalysis: proj.marketAnalysis ?? f.marketAnalysis,
         marketPrediction: proj.marketPrediction ?? f.marketPrediction,
+        competitiveDifferentiation: proj.competitiveDifferentiation ?? f.competitiveDifferentiation,
         revenueProjections: proj.revenueProjections ?? f.revenueProjections,
         businessRoadmap: proj.businessRoadmap ?? f.businessRoadmap,
         // A fresh draft clears any prior approval server-side — reflect that here too.
@@ -230,7 +239,7 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
           </button>
         }
       >
-        <AiWaitIndicator active={generating} messages={["Reading the problem and feasibility notes...", "Reasoning about SWOT and market dynamics...", "Drafting revenue scenarios and a roadmap..."]} className="mb-2" />
+        <AiWaitIndicator active={generating} messages={["Reading the problem and feasibility notes...", "Reasoning about SWOT and market dynamics...", "Sizing up competitive differentiation...", "Drafting revenue scenarios, a roadmap, and the executive summary..."]} className="mb-2" />
         {aiError && <p className="text-xs text-rose-600 mb-2">{aiError}</p>}
         <p className="text-xs text-slate-400">
           Grounds the business case in the problem, proposed solution, feasibility notes, and any pricing/volume
@@ -251,6 +260,22 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
           onApplied={handleBusinessCaseAiApplied}
           placeholder='e.g. "tighten the SWOT weaknesses" or "add a roadmap step for a pilot batch"'
         />
+      </Card>
+
+      <Card title="Executive summary">
+        <p className="text-xs text-slate-400 mb-2">
+          The top-of-deck synthesis — opportunity, ask, and expected payoff in a few sentences. Written so it
+          stands on its own even if a reader never gets past it.
+        </p>
+        <Field label="Summary">
+          <textarea
+            value={form.businessCaseExecutiveSummary}
+            onChange={(e) => update("businessCaseExecutiveSummary", e.target.value)}
+            className={inputCls}
+            rows={3}
+            placeholder="The opportunity, the ask, and the expected return — in a few sentences"
+          />
+        </Field>
       </Card>
 
       <Card title="Problem we're solving">
@@ -296,6 +321,36 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
             <textarea value={form.marketPrediction} onChange={(e) => update("marketPrediction", e.target.value)} className={inputCls} rows={3} />
           </Field>
         </div>
+      </Card>
+
+      <Card title="Market Sizing">
+        <p className="text-xs text-slate-400 mb-2">
+          Your own research, entered by hand — Executa never invents market-size figures. Leave a field at 0
+          to hide it from the deck.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="TAM — Total Addressable Market ($/yr)">
+            <input type="number" min={0} value={form.marketSizeTam} onChange={(e) => update("marketSizeTam", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="SAM — Serviceable Available Market ($/yr)">
+            <input type="number" min={0} value={form.marketSizeSam} onChange={(e) => update("marketSizeSam", Number(e.target.value))} className={inputCls} />
+          </Field>
+          <Field label="SOM — Serviceable Obtainable Market ($/yr)">
+            <input type="number" min={0} value={form.marketSizeSom} onChange={(e) => update("marketSizeSom", Number(e.target.value))} className={inputCls} />
+          </Field>
+        </div>
+      </Card>
+
+      <Card title="Competitive Differentiation">
+        <Field label="Why this wins vs. the status quo or realistic alternatives">
+          <textarea
+            value={form.competitiveDifferentiation}
+            onChange={(e) => update("competitiveDifferentiation", e.target.value)}
+            className={inputCls}
+            rows={4}
+            placeholder="- What people/teams do today instead, and why this approach beats it"
+          />
+        </Field>
       </Card>
 
       <Card title="Revenue Projections">

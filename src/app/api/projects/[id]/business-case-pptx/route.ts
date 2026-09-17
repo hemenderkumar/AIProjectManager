@@ -42,6 +42,7 @@ export async function GET(
 
   const buffer = await generateBusinessCasePptx({
     projectName: p.name,
+    businessCaseExecutiveSummary: p.businessCaseExecutiveSummary,
     problemStatement: p.problemStatement,
     businessCase: p.businessCase,
     swotStrengths: p.swotStrengths,
@@ -50,6 +51,10 @@ export async function GET(
     swotThreats: p.swotThreats,
     marketAnalysis: p.marketAnalysis,
     marketPrediction: p.marketPrediction,
+    marketSizeTam: p.marketSizeTam,
+    marketSizeSam: p.marketSizeSam,
+    marketSizeSom: p.marketSizeSom,
+    competitiveDifferentiation: p.competitiveDifferentiation,
     revenueProjections: p.revenueProjections,
     businessRoadmap: p.businessRoadmap,
     feasibilityScore: p.feasibilityScore,
