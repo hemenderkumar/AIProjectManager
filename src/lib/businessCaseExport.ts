@@ -36,6 +36,15 @@ export type BusinessCaseInput = {
 };
 
 const EMPTY = "—";
+// Used only where a missing value is a single data point inside an otherwise-full slide (e.g.
+// one empty SWOT quadrant) -- EMPTY's bare dash is fine there. For slides where the AI-drafted
+// field IS the entire slide body (Executive Summary, Competitive Differentiation), falling back
+// to EMPTY leaves a near-blank page that looks like a rendering bug rather than an unfinished
+// draft. NOT_DRAFTED makes that unambiguous to the PM reviewing the export before it goes to an
+// investor, without ever putting "not yet drafted" language in front of the investor themselves
+// (the PM catches it here, in their own export, before sending it on).
+const NOT_DRAFTED = (fieldLabel: string) =>
+  `Not yet drafted. Fill in "${fieldLabel}" on the Financial Forecast & Projections tab (or use Draft with AI) before sharing this deck.`;
 const money = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
 function bodySlide(pptx: PptxGenJS, heading: string, kicker?: string) {
@@ -82,8 +91,13 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   const summaryRoi3yr = summaryRoiSeries?.[summaryRoiSeries.length - 1] ?? null;
   const execSlide = bodySlide(pptx, "Executive Summary");
   execSlide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.25, w: 0.06, h: 3.0, fill: { color: BRAND_HEX.indigo }, line: { color: BRAND_HEX.indigo, width: 0 } });
-  execSlide.addText(input.businessCaseExecutiveSummary?.trim() || EMPTY, {
-    x: 0.85, y: 1.25, w: 11.9, h: 3.0, fontSize: 17, color: BRAND_HEX.navy, valign: "top", wrap: true, lineSpacing: 24,
+  const hasExecSummary = !!input.businessCaseExecutiveSummary?.trim();
+  execSlide.addText(hasExecSummary ? input.businessCaseExecutiveSummary!.trim() : NOT_DRAFTED("Executive summary"), {
+    x: 0.85, y: 1.25, w: 11.9, h: 3.0,
+    fontSize: hasExecSummary ? 17 : 13,
+    italic: !hasExecSummary,
+    color: hasExecSummary ? BRAND_HEX.navy : BRAND_HEX.muted,
+    valign: "top", wrap: true, lineSpacing: 24,
   });
   const summaryStats: [string, string][] = [
     ["Feasibility score", input.feasibilityScore != null ? `${input.feasibilityScore}/100` : "Not scored"],
@@ -182,8 +196,13 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   // 6b. Competitive Differentiation — direct "why this wins" vs. the realistic alternative,
   // never real named competitors unless the PM supplied one (same discipline as SWOT/market).
   const compSlide = bodySlide(pptx, "Competitive Differentiation", "05");
-  compSlide.addText(input.competitiveDifferentiation?.trim() || EMPTY, {
-    x: 0.5, y: 1.3, w: 12.3, h: 5.5, fontSize: 15, color: BRAND_HEX.slate, valign: "top", wrap: true,
+  const hasCompDiff = !!input.competitiveDifferentiation?.trim();
+  compSlide.addText(hasCompDiff ? input.competitiveDifferentiation!.trim() : NOT_DRAFTED("Competitive differentiation"), {
+    x: 0.5, y: 1.3, w: 12.3, h: 5.5,
+    fontSize: hasCompDiff ? 15 : 13,
+    italic: !hasCompDiff,
+    color: hasCompDiff ? BRAND_HEX.slate : BRAND_HEX.muted,
+    valign: "top", wrap: true,
   });
 
   // 7. Approach & Technology
