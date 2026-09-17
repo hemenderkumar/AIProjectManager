@@ -17,6 +17,7 @@ import { CheckCircle2, XCircle, TrendingUp, AlertTriangle, Target, Compass, Line
 import type { ProjectDetail } from "./ProjectTabs";
 import { formatDate } from "@/lib/format";
 import { computeUpfrontInvestment, computeRoiSeries } from "@/lib/businessCaseRoi";
+import { extractRoadmapSteps } from "@/lib/businessCaseRoadmap";
 
 const DURATION_OPTIONS = [
   { label: "1 yr", months: 12 },
@@ -32,14 +33,6 @@ function splitLines(text: string | null | undefined): string[] {
   return text
     .split("\n")
     .map((l) => l.replace(/^\s*[-*]\s*/, "").trim())
-    .filter(Boolean);
-}
-
-function splitSteps(text: string | null | undefined): string[] {
-  if (!text?.trim()) return [];
-  return text
-    .split("\n")
-    .map((l) => l.replace(/^\s*\d+[.)]\s*/, "").trim())
     .filter(Boolean);
 }
 
@@ -93,7 +86,7 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
         })
       : [];
 
-  const steps = splitSteps(p.businessRoadmap);
+  const steps = extractRoadmapSteps(p.businessRoadmap);
   const implTotal = implementationItems.reduce((s, i) => s + i.amount, 0);
   const contingencyAmount = p.contingencyPercent != null ? Math.round(implTotal * (p.contingencyPercent / 100)) : 0;
   const totalFunding = computeUpfrontInvestment(implementationItems, p.contingencyPercent, p.totalFundingRequired);

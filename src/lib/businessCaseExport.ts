@@ -1,6 +1,7 @@
 import type PptxGenJS from "pptxgenjs";
 import { BRAND_HEX, setupExecutaPptx, titleSlide, executaSlide } from "./brand";
 import { computeUpfrontInvestment, computeRoiSeries } from "./businessCaseRoi";
+import { extractRoadmapSteps } from "./businessCaseRoadmap";
 
 type TableRow = PptxGenJS.TableRow;
 
@@ -40,15 +41,6 @@ function bodySlide(pptx: PptxGenJS, heading: string, kicker?: string) {
   slide.addText(heading, { x: 0.5, y: kicker ? 0.55 : 0.35, w: 12.3, h: 0.6, fontSize: 24, bold: true, color: BRAND_HEX.navy });
   slide.addShape(pptx.ShapeType.line, { x: 0.5, y: kicker ? 1.15 : 1.0, w: 12.3, h: 0, line: { color: BRAND_HEX.border, width: 1 } });
   return slide;
-}
-
-function splitSteps(text: string | null): string[] {
-  if (!text?.trim()) return [];
-  return text
-    .split("\n")
-    .map((l) => l.replace(/^\s*\d+[.)]\s*/, "").trim())
-    .filter(Boolean)
-    .slice(0, 5);
 }
 
 // Investor-grade Business Case deck: the idea-evaluation deliverable ("should we do this and
@@ -259,7 +251,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
 
   // 10. Roadmap — visual timeline of up to 5 sequenced steps
   const roadmapSlide = bodySlide(pptx, "Roadmap", "09");
-  const steps = splitSteps(input.businessRoadmap);
+  const steps = extractRoadmapSteps(input.businessRoadmap).slice(0, 5);
   if (steps.length) {
     const n = steps.length;
     const trackY = 3.4;
