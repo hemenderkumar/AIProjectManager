@@ -56,7 +56,7 @@ export async function GET(
   const narrativeKeys: (keyof BusinessCaseFields)[] = [
     "businessCaseExecutiveSummary", "businessCase",
     "swotStrengths", "swotWeaknesses", "swotOpportunities", "swotThreats",
-    "marketAnalysis", "marketPrediction", "competitiveDifferentiation",
+    "marketAnalysis", "marketPrediction", "marketSizeByRegion", "competitiveDifferentiation",
     "revenueProjections", "businessRoadmap",
   ];
   const hasSomethingToDraftFrom = !!(p.problemStatement?.trim() || p.proposedSolution?.trim());
@@ -91,6 +91,7 @@ export async function GET(
     marketSizeTam: p.marketSizeTam,
     marketSizeSam: p.marketSizeSam,
     marketSizeSom: p.marketSizeSom,
+    marketSizeByRegion: p.marketSizeByRegion,
     competitiveDifferentiation: p.competitiveDifferentiation,
     revenueProjections: p.revenueProjections,
     businessRoadmap: p.businessRoadmap,
@@ -98,6 +99,9 @@ export async function GET(
     recommendedTechnology: p.recommendedTechnology,
     technicalRecommendationRationale: p.technicalRecommendationRationale,
     buildInfrastructureNeeds: p.buildInfrastructureNeeds,
+    buildMaterialsList: p.buildMaterialsList,
+    buildSourcingNotes: p.buildSourcingNotes,
+    sourcingRecommendation: p.sourcingRecommendation,
     quotedUnitPrice: p.quotedUnitPrice,
     materialCostEstimate: p.materialCostEstimate,
     targetMarginPercent: p.targetMarginPercent,

@@ -9,6 +9,7 @@ type BusinessCaseDraftResponse = {
   swotThreats: string[];
   marketAnalysis: string;
   marketPrediction: string;
+  marketSizeByRegion: string | null;
   competitiveDifferentiation: string[];
   revenueProjections: string;
   roadmap: string;
@@ -31,6 +32,9 @@ export type BusinessCaseDraftInput = {
   targetMonthlyVolume?: number | null;
   materialCostEstimate?: number | null;
   budgetPlanned?: number | null;
+  // Only field here that anchors an AI-drafted piece to a PM-entered number: the regional
+  // split below is a directional breakdown OF this figure, never invented independently of it.
+  marketSizeTam?: number | null;
 };
 
 export type BusinessCaseFields = {
@@ -42,6 +46,7 @@ export type BusinessCaseFields = {
   swotThreats: string;
   marketAnalysis: string;
   marketPrediction: string;
+  marketSizeByRegion: string;
   competitiveDifferentiation: string;
   revenueProjections: string;
   businessRoadmap: string;
@@ -56,7 +61,11 @@ const bullets = (items: string[]) => items.map((i) => `- ${i}`).join("\n");
 // competitor names, market-size statistics, or a revenue figure that isn't arithmetically
 // derived from quotedUnitPrice x targetMonthlyVolume. Quantified market sizing (TAM/SAM/SOM)
 // is deliberately NOT drafted here -- those are PM-entered numbers grounded in the team's own
-// research (see marketSizeTam/Sam/Som on the project), never an AI guess.
+// research (see marketSizeTam/Sam/Som on the project), never an AI guess. The one intentional
+// exception is marketSizeByRegion: once a PM has entered a TAM, this drafts a directional
+// Global/USA/regional SPLIT of that already-given number -- never a new total invented from
+// nothing -- explicitly framed as an estimate for the PM to review, same as every other
+// AI-drafted field here.
 export async function draftBusinessCase(p: BusinessCaseDraftInput): Promise<{ data: BusinessCaseFields | null; error?: string }> {
   const system = `You are drafting the BUSINESS CASE for a new idea/product -- the investor/funding-committee-
 facing document that answers "should we fund this and why," reviewed BEFORE the formal Project Charter (which
@@ -85,6 +94,13 @@ Respond as JSON:
   "swotThreats": string[] (2-4 items, external factors that could hurt this idea),
   "marketAnalysis": string (2-4 sentences: who the buyer is, what alternatives they use today, why now),
   "marketPrediction": string (2-3 sentences: how this space is likely to evolve over the next 1-3 years, framed as reasoning not fact),
+  "marketSizeByRegion": string|null (ONLY if a TAM figure is given below -- a directional split of
+    that EXACT total across 3-5 regions plausible for this product/category (e.g. "North America",
+    "Europe", "Asia-Pacific", "Rest of World" -- pick whatever regions actually make sense for this
+    idea, don't force a fixed list). One line per region: "<Region>: $<amount> — <1-sentence
+    rationale for that share>". The dollar amounts should roughly sum to the given TAM (this is a
+    split of a real number, not a new invented total). If no TAM is given below, return null --
+    do not estimate a total market size here, only ever split one that's already provided),
   "competitiveDifferentiation": string[] (2-4 items, direct "why this wins vs. the realistic alternative" points
     -- the status quo, a generic in-house workaround, or the category of existing options implied by the
     problem/solution given. Do NOT name real companies or products unless one is explicitly given below;
@@ -110,7 +126,8 @@ Quoted unit price: ${p.quotedUnitPrice != null ? `$${p.quotedUnitPrice}` : "(not
 Target margin: ${p.targetMarginPercent != null ? `${p.targetMarginPercent}%` : "(not set)"}
 Target monthly volume: ${p.targetMonthlyVolume != null ? `${p.targetMonthlyVolume} units/month` : "(not set)"}
 Material cost estimate: ${p.materialCostEstimate != null ? `$${p.materialCostEstimate}` : "(not set)"}
-Implementation budget: ${p.budgetPlanned != null ? `$${p.budgetPlanned}` : "(not set)"}`;
+Implementation budget: ${p.budgetPlanned != null ? `$${p.budgetPlanned}` : "(not set)"}
+Total addressable market (TAM), PM-entered: ${p.marketSizeTam != null ? `$${p.marketSizeTam}/yr` : "(not set — return marketSizeByRegion as null)"}`;
 
   const { data, error } = await askClaudeJSON<BusinessCaseDraftResponse>(system, user, 2500);
   if (error || !data) return { data: null, error: error || "No response from the AI model" };
@@ -125,6 +142,7 @@ Implementation budget: ${p.budgetPlanned != null ? `$${p.budgetPlanned}` : "(not
       swotThreats: bullets(data.swotThreats || []),
       marketAnalysis: data.marketAnalysis,
       marketPrediction: data.marketPrediction,
+      marketSizeByRegion: data.marketSizeByRegion || "",
       competitiveDifferentiation: bullets(data.competitiveDifferentiation || []),
       revenueProjections: data.revenueProjections,
       businessRoadmap: data.roadmap,

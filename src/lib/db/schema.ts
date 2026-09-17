@@ -435,6 +435,14 @@ export const projects = pgTable("projects", {
   marketSizeTam: real("market_size_tam"),
   marketSizeSam: real("market_size_sam"),
   marketSizeSom: real("market_size_som"),
+  // Directional split of the TAM above across Global/USA/other regions — unlike TAM/SAM/SOM
+  // themselves, this one IS AI-draftable (see businessCaseDraft.ts): it's a reasoned estimate
+  // of how a given total breaks down geographically, not a claim of researched fact, so it
+  // carries an explicit "estimate — review before sharing" framing everywhere it's shown
+  // (edit form, preview, deck) rather than being presented as PM-verified like TAM/SAM/SOM.
+  // Free text, one "Region: $Amount — rationale" line per region, same tolerant shape as
+  // sourcingRecommendation below so it works for any idea's own relevant regions.
+  marketSizeByRegion: text("market_size_by_region"),
   competitiveDifferentiation: text("competitive_differentiation"),
 
   // Integrations (#263). Both opt-in and off by default; either can be cleared independently

@@ -123,6 +123,19 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
   ].filter((m) => m.value != null && m.value > 0) as { label: string; sub: string; value: number }[];
   const marketSizingMax = marketSizing.length ? Math.max(...marketSizing.map((m) => m.value)) : 0;
 
+  // Regional split of TAM — unlike marketSizing above, this one IS AI-drafted (see
+  // businessCaseDraft.ts), so it's rendered with an explicit "estimate" label rather than
+  // presented as PM-verified fact. Same "Region: $Amount — rationale" line shape as
+  // businessCaseExport.ts's chart, parsed the same tolerant way.
+  const regionalSplit = splitLines(p.marketSizeByRegion)
+    .map((line) => {
+      const m = line.match(/^(.+?):\s*\$?([\d,]+(?:\.\d+)?)/);
+      if (!m) return null;
+      return { region: m[1].trim(), value: Number(m[2].replace(/,/g, "")) };
+    })
+    .filter((x): x is { region: string; value: number } => !!x && x.value > 0);
+  const regionalSplitMax = regionalSplit.length ? Math.max(...regionalSplit.map((r) => r.value)) : 0;
+
   const swotQuadrants = [
     { label: "Strengths", value: p.swotStrengths, icon: CheckCircle2, ring: "ring-emerald-100", bg: "bg-emerald-50", text: "text-emerald-700", iconColor: "text-emerald-600" },
     { label: "Weaknesses", value: p.swotWeaknesses, icon: XCircle, ring: "ring-rose-100", bg: "bg-rose-50", text: "text-rose-700", iconColor: "text-rose-600" },
@@ -220,6 +233,23 @@ export default function BusinessCasePreview({ detail }: { detail: ProjectDetail 
                       style={{ width: `${Math.max(4, Math.round((m.value / marketSizingMax) * 100))}%` }}
                     />
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {regionalSplit.length > 0 && (
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <p className="text-sm font-semibold text-indigo-600 mb-0.5">Regional split</p>
+            <p className="text-[11px] text-slate-400 mb-3">AI-estimated directional split of the TAM above — review before sharing.</p>
+            <div className="space-y-2">
+              {regionalSplit.map((r) => (
+                <div key={r.region} className="flex items-center gap-3">
+                  <span className="text-xs text-slate-600 w-40 shrink-0 truncate">{r.region}</span>
+                  <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div className="h-full rounded-full bg-indigo-400" style={{ width: `${Math.max(4, Math.round((r.value / regionalSplitMax) * 100))}%` }} />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700 w-24 text-right shrink-0">{money(r.value)}</span>
                 </div>
               ))}
             </div>

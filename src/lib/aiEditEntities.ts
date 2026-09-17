@@ -155,6 +155,7 @@ export const ENTITY_CONFIG: Record<
       { key: "marketSizeTam", label: "Market size: TAM ($)", kind: "number" },
       { key: "marketSizeSam", label: "Market size: SAM ($)", kind: "number" },
       { key: "marketSizeSom", label: "Market size: SOM ($)", kind: "number" },
+      { key: "marketSizeByRegion", label: "Market sizing by region (AI estimate)", kind: "text" },
       { key: "competitiveDifferentiation", label: "Competitive differentiation", kind: "text" },
       { key: "revenueProjections", label: "Revenue projections", kind: "text" },
       { key: "businessRoadmap", label: "Business roadmap", kind: "text" },

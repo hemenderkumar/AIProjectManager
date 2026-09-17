@@ -21,6 +21,7 @@ export type BusinessCaseInput = {
   marketSizeTam: number | null;
   marketSizeSam: number | null;
   marketSizeSom: number | null;
+  marketSizeByRegion: string | null;
   competitiveDifferentiation: string | null;
   revenueProjections: string | null;
   businessRoadmap: string | null;
@@ -28,6 +29,9 @@ export type BusinessCaseInput = {
   recommendedTechnology: string | null;
   technicalRecommendationRationale: string | null;
   buildInfrastructureNeeds: string | null;
+  buildMaterialsList: string | null;
+  buildSourcingNotes: string | null;
+  sourcingRecommendation: string | null;
   quotedUnitPrice: number | null;
   materialCostEstimate: number | null;
   targetMarginPercent: number | null;
@@ -61,6 +65,43 @@ function splitBullets(text: string | null | undefined, max = 6): string[] {
     .map((line) => line.replace(/^[\s]*[-*•]\s*/, "").replace(/^\d+[.)]\s*/, "").trim())
     .filter(Boolean)
     .slice(0, max);
+}
+
+// Parses the Charter "Sourcing Recommendation" AI output (see api/ai/sourcing-recommendation) back
+// into structured per-material items for card rendering. That route always writes
+// `${overallRationale}\n\n${material}: Insource|Outsource — rationale` (one line per item) so this
+// is a fixed shape, not a tolerant free-text parser like splitBullets -- falls back to showing the
+// raw text untouched if a PM hand-edited it into something that no longer matches.
+function parseSourcingRecommendation(text: string | null | undefined): { overall: string; items: { material: string; call: "Insource" | "Outsource"; rationale: string }[] } | null {
+  if (!text?.trim()) return null;
+  const [overallRaw, ...rest] = text.trim().split("\n\n");
+  const itemLines = (rest.join("\n\n") || text).split("\n").map((l) => l.trim()).filter(Boolean);
+  const items: { material: string; call: "Insource" | "Outsource"; rationale: string }[] = [];
+  for (const line of itemLines) {
+    const m = line.match(/^(.+?):\s*(Insource|Outsource)\s*—\s*(.+)$/i);
+    if (m) items.push({ material: m[1].trim(), call: m[2] as "Insource" | "Outsource", rationale: m[3].trim() });
+  }
+  if (!items.length) return null;
+  return { overall: overallRaw.trim(), items };
+}
+
+// Parses the AI-drafted "Region: $Amount — rationale" lines (see businessCaseDraft.ts's
+// marketSizeByRegion) into chart-ready {region, value} pairs. Tolerant of a PM having hand-edited
+// the text afterward (rationale is optional, trailing punctuation ignored) — any line that
+// doesn't match a leading "Label: $Number" shape is simply skipped rather than breaking the chart.
+function parseRegionalSplit(text: string | null | undefined): { region: string; value: number }[] {
+  if (!text?.trim()) return [];
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(.+?):\s*\$?([\d,]+(?:\.\d+)?)/);
+      if (!m) return null;
+      const value = Number(m[2].replace(/,/g, ""));
+      return value > 0 ? { region: m[1].trim(), value } : null;
+    })
+    .filter((x): x is { region: string; value: number } => x !== null);
 }
 
 function bodySlide(pptx: PptxGenJS, heading: string, kicker?: string) {
@@ -139,8 +180,8 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   const agendaSlide = bodySlide(pptx, "Agenda");
   const agendaItems = [
     "The Opportunity", "Our Solution", "Solution & Benefits", "SWOT Analysis", "Market Analysis & Outlook",
-    "Competitive Differentiation", "Approach & Technology", "Unit Economics", "Revenue Projections",
-    "Benefits & ROI Projection", "Roadmap", "The Ask",
+    "Regional Market Sizing", "Competitive Differentiation", "Approach & Technology", "Sourcing & Materials",
+    "Unit Economics", "Revenue Projections", "Benefits & ROI Projection", "Roadmap", "The Ask",
   ];
   agendaItems.forEach((item, i) => {
     const col = i % 2;
@@ -268,9 +309,48 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     );
   }
 
-  // 6b. Competitive Differentiation — direct "why this wins" vs. the realistic alternative,
+  // 6b. Regional Market Sizing — unlike the TAM/SAM/SOM slide above, this one IS AI-drafted (a
+  // directional Global/USA/regional split OF the PM-entered TAM, never an independently invented
+  // total — see businessCaseDraft.ts) and is labeled as an estimate everywhere it appears, same
+  // discipline as NOT_DRAFTED elsewhere in this deck.
+  const regionalSlide = bodySlide(pptx, "Regional Market Sizing", "06 · Global vs. Regional Opportunity");
+  const regionalRows = parseRegionalSplit(input.marketSizeByRegion);
+  if (regionalRows.length) {
+    regionalSlide.addText("AI-estimated directional split of the TAM entered above — reviewed and edited before use, not researched fact.", {
+      x: 0.5, y: 1.2, w: 12.3, h: 0.4, fontSize: 11, italic: true, color: BRAND_HEX.muted,
+    });
+    regionalRows.forEach((r, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = 0.5 + col * 6.3;
+      const y = 1.8 + row * 0.4;
+      regionalSlide.addText(`${r.region}: ${money(r.value)}/yr`, { x, y, w: 6.0, h: 0.32, fontSize: 12, bold: true, color: BRAND_HEX.slate });
+    });
+    const chartY = 1.8 + Math.ceil(regionalRows.length / 2) * 0.4 + 0.3;
+    regionalSlide.addChart(
+      pptx.ChartType.bar,
+      [{ name: "Regional market size ($)", labels: regionalRows.map((r) => r.region), values: regionalRows.map((r) => r.value) }],
+      {
+        x: 0.4, y: chartY, w: 12.5, h: Math.min(3.5, 6.85 - chartY), barDir: "bar",
+        chartColors: [BRAND_HEX.indigoLight], showLegend: false, showValue: false,
+        catAxisLabelColor: BRAND_HEX.slate, catAxisLabelFontSize: 10,
+        valAxisHidden: true, barGapWidthPct: 30,
+      }
+    );
+  } else if (input.marketSizeTam) {
+    regionalSlide.addText(NOT_DRAFTED("Market sizing by region"), {
+      x: 0.5, y: 1.3, w: 12.3, h: 1.0, fontSize: 13, italic: true, color: BRAND_HEX.muted, valign: "top", wrap: true,
+    });
+  } else {
+    regionalSlide.addText(
+      "Set a TAM figure in Market Sizing (above) first, then use Generate/Regenerate with AI to draft a directional regional split.",
+      { x: 0.5, y: 1.3, w: 12.3, h: 1.0, fontSize: 13, italic: true, color: BRAND_HEX.muted, valign: "top", wrap: true }
+    );
+  }
+
+  // 6c. Competitive Differentiation — direct "why this wins" vs. the realistic alternative,
   // never real named competitors unless the PM supplied one (same discipline as SWOT/market).
-  const compSlide = bodySlide(pptx, "Competitive Differentiation", "06");
+  const compSlide = bodySlide(pptx, "Competitive Differentiation", "07");
   const hasCompDiff = !!input.competitiveDifferentiation?.trim();
   compSlide.addText(hasCompDiff ? input.competitiveDifferentiation!.trim() : NOT_DRAFTED("Competitive differentiation"), {
     x: 0.5, y: 1.3, w: 12.3, h: 5.5,
@@ -281,7 +361,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   });
 
   // 7. Approach & Technology
-  const approachSlide = bodySlide(pptx, "Approach & Technology", "07 · Why This Will Work");
+  const approachSlide = bodySlide(pptx, "Approach & Technology", "08 · Why This Will Work");
   const hasInfraNeeds = !!input.buildInfrastructureNeeds?.trim();
   approachSlide.addText("Recommended approach", { x: 0.5, y: 1.2, w: 12.3, h: 0.35, fontSize: 15, bold: true, color: BRAND_HEX.indigo });
   approachSlide.addText(input.recommendedTechnology?.trim() || EMPTY, {
@@ -298,6 +378,52 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     });
   }
 
+  // 8b. Sourcing & Materials — pulls from Feasibility's build-materials capture and Charter's
+  // AI-drafted insource/outsource-per-material call, fields the deck never used before. Answers
+  // "what does this take to source and how" for any HARDWARE_PHYSICAL/OTHER idea generically —
+  // not a one-off for this particular product.
+  const sourcingSlide = bodySlide(pptx, "Sourcing & Materials", "09 · Where It Comes From");
+  sourcingSlide.addText("Materials & components", { x: 0.5, y: 1.2, w: 6.0, h: 0.32, fontSize: 13, bold: true, color: BRAND_HEX.indigo });
+  sourcingSlide.addText(input.buildMaterialsList?.trim() || EMPTY, {
+    x: 0.5, y: 1.55, w: 6.0, h: 2.0, fontSize: 11.5, color: BRAND_HEX.slate, valign: "top", wrap: true,
+  });
+  sourcingSlide.addText("Potential sourcing partners", { x: 0.5, y: 3.75, w: 6.0, h: 0.32, fontSize: 13, bold: true, color: BRAND_HEX.indigo });
+  sourcingSlide.addText(input.buildSourcingNotes?.trim() || EMPTY, {
+    x: 0.5, y: 4.1, w: 6.0, h: 2.6, fontSize: 11.5, color: BRAND_HEX.slate, valign: "top", wrap: true,
+  });
+  sourcingSlide.addShape(pptx.ShapeType.line, { x: 6.65, y: 1.2, w: 0, h: 5.5, line: { color: BRAND_HEX.border, width: 1 } });
+  sourcingSlide.addText("Make vs. buy recommendation", { x: 6.8, y: 1.2, w: 6.0, h: 0.32, fontSize: 13, bold: true, color: BRAND_HEX.indigo });
+  const sourcing = parseSourcingRecommendation(input.sourcingRecommendation);
+  if (sourcing) {
+    sourcingSlide.addText(sourcing.overall, {
+      x: 6.8, y: 1.55, w: 6.0, h: 0.95, fontSize: 10.5, italic: true, color: BRAND_HEX.slate, valign: "top", wrap: true,
+    });
+    const itemsStartY = 2.6;
+    sourcing.items.slice(0, 6).forEach((item, i) => {
+      const y = itemsStartY + i * 0.68;
+      const insource = item.call === "Insource";
+      sourcingSlide.addShape(pptx.ShapeType.roundRect, {
+        x: 6.8, y, w: 0.62, h: 0.24, rectRadius: 0.04,
+        fill: { color: insource ? "ECFDF5" : "EEF2FF" }, line: { color: "FFFFFF", width: 0 },
+      });
+      sourcingSlide.addText(insource ? "IN" : "OUT", {
+        x: 6.8, y, w: 0.62, h: 0.24, fontSize: 9, bold: true, align: "center", valign: "middle",
+        color: insource ? "047857" : BRAND_HEX.indigoDark,
+      });
+      sourcingSlide.addText(
+        [
+          { text: item.material, options: { bold: true, color: BRAND_HEX.navy } },
+          { text: `  ${item.rationale}`, options: { color: BRAND_HEX.slate } },
+        ],
+        { x: 7.55, y: y - 0.03, w: 5.25, h: 0.6, fontSize: 10, valign: "top", wrap: true }
+      );
+    });
+  } else {
+    sourcingSlide.addText(NOT_DRAFTED("Sourcing Recommendation (Charter)"), {
+      x: 6.8, y: 1.55, w: 6.0, h: 1.0, fontSize: 12, italic: true, color: BRAND_HEX.muted, valign: "top", wrap: true,
+    });
+  }
+
   // 9. Unit Economics — clean table
   const priceKnown = input.quotedUnitPrice != null;
   const materialKnown = input.materialCostEstimate != null;
@@ -305,7 +431,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   const monthlyRevenue = priceKnown && volumeKnown ? (input.quotedUnitPrice as number) * (input.targetMonthlyVolume as number) : null;
   const grossMarginPerUnit = priceKnown && materialKnown ? (input.quotedUnitPrice as number) - (input.materialCostEstimate as number) : null;
 
-  const unitEconSlide = bodySlide(pptx, "Unit Economics", "08");
+  const unitEconSlide = bodySlide(pptx, "Unit Economics", "10");
   const hasCostSplit = priceKnown && materialKnown && grossMarginPerUnit != null && grossMarginPerUnit > 0;
   const unitRows: [string, string][] = [
     ["Quoted unit price", priceKnown ? money(input.quotedUnitPrice as number) : "Not set"],
@@ -347,7 +473,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
 
   // 10. Revenue Projections — native chart (Conservative / Base / Stretch), computed from
   // quotedUnitPrice x volume, never parsed out of free text.
-  const revSlide = bodySlide(pptx, "Revenue Projections", "09");
+  const revSlide = bodySlide(pptx, "Revenue Projections", "11");
   if (priceKnown && volumeKnown) {
     const price = input.quotedUnitPrice as number;
     const baseVolume = input.targetMonthlyVolume as number;
@@ -383,7 +509,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   // already computed for the Executive Summary slide, so both agree exactly.
   const upfrontInvestment = upfrontInvestmentForSummary;
   const roiSeries = summaryRoiSeries;
-  const roiSlide = bodySlide(pptx, "Benefits & ROI Projection", "10");
+  const roiSlide = bodySlide(pptx, "Benefits & ROI Projection", "12");
   if (roiSeries) {
     const quarters = roiSeries.filter((pt) => pt.month % 3 === 0);
     roiSlide.addChart(
@@ -426,7 +552,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   }
 
   // 11. Roadmap — visual timeline of up to 5 sequenced steps
-  const roadmapSlide = bodySlide(pptx, "Roadmap", "11");
+  const roadmapSlide = bodySlide(pptx, "Roadmap", "13");
   const steps = extractRoadmapSteps(input.businessRoadmap).slice(0, 5);
   if (steps.length) {
     const n = steps.length;
@@ -449,7 +575,7 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
   }
 
   // 12. The Ask — implementation budget breakdown + contingency + total funding required
-  const askSlide = bodySlide(pptx, "The Ask", "12 · What We Need To Move Forward");
+  const askSlide = bodySlide(pptx, "The Ask", "14 · What We Need To Move Forward");
   const implTotal = input.implementationItems.reduce((s, i) => s + i.amount, 0);
   const askRoi3yr = roiSeries?.[roiSeries.length - 1] ?? null;
   const askBreakEvenMonth = roiSeries?.find((pt) => pt.cumulativeNetBenefit >= 0)?.month ?? null;

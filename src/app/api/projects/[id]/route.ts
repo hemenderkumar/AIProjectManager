@@ -55,7 +55,8 @@ export async function PATCH(
     "swotStrengths", "swotWeaknesses", "swotOpportunities", "swotThreats",
     "marketAnalysis", "marketPrediction", "revenueProjections", "businessRoadmap",
     "businessCaseApprovedBy", "businessCaseApprovedAt",
-    "businessCaseExecutiveSummary", "marketSizeTam", "marketSizeSam", "marketSizeSom", "competitiveDifferentiation",
+    "businessCaseExecutiveSummary", "marketSizeTam", "marketSizeSam", "marketSizeSom", "marketSizeByRegion",
+    "competitiveDifferentiation",
   ];
 
   const dateFields = [

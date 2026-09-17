@@ -34,6 +34,7 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
     marketSizeTam: p.marketSizeTam ?? 0,
     marketSizeSam: p.marketSizeSam ?? 0,
     marketSizeSom: p.marketSizeSom ?? 0,
+    marketSizeByRegion: p.marketSizeByRegion ?? "",
     competitiveDifferentiation: p.competitiveDifferentiation ?? "",
     revenueProjections: p.revenueProjections ?? "",
     businessRoadmap: p.businessRoadmap ?? "",
@@ -95,6 +96,9 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
         swotThreats: proj.swotThreats ?? f.swotThreats,
         marketAnalysis: proj.marketAnalysis ?? f.marketAnalysis,
         marketPrediction: proj.marketPrediction ?? f.marketPrediction,
+        // Only overwrite if the AI actually returned a split (it returns null/"" when no TAM is
+        // set yet) -- otherwise leave whatever the PM already has, same as every other field here.
+        marketSizeByRegion: proj.marketSizeByRegion || f.marketSizeByRegion,
         competitiveDifferentiation: proj.competitiveDifferentiation ?? f.competitiveDifferentiation,
         revenueProjections: proj.revenueProjections ?? f.revenueProjections,
         businessRoadmap: proj.businessRoadmap ?? f.businessRoadmap,
@@ -338,6 +342,21 @@ export default function BusinessCaseWorkspace({ detail }: { detail: ProjectDetai
           <Field label="SOM — Serviceable Obtainable Market ($/yr)">
             <input type="number" min={0} value={form.marketSizeSom} onChange={(e) => update("marketSizeSom", Number(e.target.value))} className={inputCls} />
           </Field>
+        </div>
+        <div className="mt-4">
+          <Field label="Regional split — Global / USA / other regions (AI estimate — review before sharing)">
+            <textarea
+              value={form.marketSizeByRegion}
+              onChange={(e) => update("marketSizeByRegion", e.target.value)}
+              className={inputCls}
+              rows={4}
+              placeholder={"Set a TAM above, then use Generate/Regenerate with AI —\nit will draft a directional split like:\nNorth America: $1,800,000,000 — largest existing customization spend\nEurope: $900,000,000 — ..."}
+            />
+          </Field>
+          <p className="text-xs text-slate-400 mt-1">
+            Unlike TAM/SAM/SOM, this one IS AI-drafted (from whatever TAM you&apos;ve entered above) — it&apos;s
+            a starting estimate, not researched fact. Edit it before it goes to an investor.
+          </p>
         </div>
       </Card>
 
