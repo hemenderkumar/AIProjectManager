@@ -783,6 +783,48 @@ export const sprintRetrospectives = pgTable(
   })
 );
 
+// One planning record per sprint -- captures the commitment made at Sprint Planning
+// (plannedPoints, entered once when the sprint is planned) plus free-text notes, so it can
+// later be compared against the velocity chart's "completed" points for that sprint (a basic
+// commitment-reliability signal). Same "single evolving record" shape as the retro above.
+export const sprintPlannings = pgTable(
+  "sprint_plannings",
+  {
+    id: cuid(),
+    sprintId: text("sprint_id")
+      .notNull()
+      .references(() => sprints.id, { onDelete: "cascade" }),
+    plannedPoints: real("planned_points"),
+    notes: text("notes"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("sprint_planning_uq").on(t.sprintId),
+  })
+);
+
+// One review record per sprint -- what was demoed and what stakeholders said, the two things
+// a Sprint Review actually produces. Same shape again: single evolving record per sprint.
+export const sprintReviews = pgTable(
+  "sprint_reviews",
+  {
+    id: cuid(),
+    sprintId: text("sprint_id")
+      .notNull()
+      .references(() => sprints.id, { onDelete: "cascade" }),
+    demoNotes: text("demo_notes"),
+    stakeholderFeedback: text("stakeholder_feedback"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("sprint_review_uq").on(t.sprintId),
+  })
+);
+
 export const statusUpdates = pgTable("status_updates", {
   id: cuid(),
   projectId: text("project_id")

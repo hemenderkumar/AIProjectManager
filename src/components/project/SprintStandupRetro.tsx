@@ -23,12 +23,32 @@ type Retro = {
   updatedAt: string;
 } | null;
 
+type Planning = {
+  id: string;
+  plannedPoints: number | null;
+  notes: string | null;
+  updatedBy: string | null;
+  updatedAt: string;
+} | null;
+
+type Review = {
+  id: string;
+  demoNotes: string | null;
+  stakeholderFeedback: string | null;
+  updatedBy: string | null;
+  updatedAt: string;
+} | null;
+
 const inputCls = "w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent-500";
 const textareaCls = "w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 min-h-[60px]";
 
-// Scrum Daily Standup log + Sprint Retrospective for one sprint -- self-fetching (own
-// GET/POST calls) so SprintBoard.tsx doesn't have to carry this state, same pattern as other
-// self-contained project-tab widgets. Re-fetches whenever the selected sprintId changes.
+// All four Scrum ceremony artifacts for one sprint -- Sprint Planning, Daily Standup log,
+// Sprint Review, and Sprint Retrospective -- self-fetching (own GET/POST/PATCH calls) so
+// SprintBoard.tsx doesn't have to carry this state, same pattern as other self-contained
+// project-tab widgets. Re-fetches whenever the selected sprintId changes (see the key={sprintId}
+// remount on the call site, which is also why loading starts true rather than being reset here).
+// Backlog Refinement is intentionally not represented -- there's no natural single-record shape
+// for an ongoing grooming activity the way there is for these four point-in-time ceremonies.
 export default function SprintStandupRetro({
   projectId,
   sprintId,
@@ -40,25 +60,34 @@ export default function SprintStandupRetro({
 }) {
   const [entries, setEntries] = useState<StandupEntry[]>([]);
   const [retro, setRetro] = useState<Retro>(null);
+  const [planning, setPlanning] = useState<Planning>(null);
+  const [review, setReview] = useState<Review>(null);
   const [loading, setLoading] = useState(true);
   const [showStandupForm, setShowStandupForm] = useState(false);
   const [showRetro, setShowRetro] = useState(false);
+  const [showPlanning, setShowPlanning] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const [draft, setDraft] = useState({ resourceId: "", yesterday: "", today: "", blockers: "" });
   const [retroDraft, setRetroDraft] = useState({ wentWell: "", toImprove: "", actionItems: "" });
+  const [planningDraft, setPlanningDraft] = useState({ plannedPoints: "", notes: "" });
+  const [reviewDraft, setReviewDraft] = useState({ demoNotes: "", stakeholderFeedback: "" });
   const [saving, setSaving] = useState(false);
 
-  // No explicit setLoading(true) here -- the parent remounts this component (key={sprintId})
-  // whenever the selected sprint changes, so the initial useState(true) already covers the
-  // "just switched sprints" case without a synchronous setState call in the effect body.
   function load() {
     Promise.all([
       fetch(`/api/projects/${projectId}/sprints/${sprintId}/standups`).then((r) => (r.ok ? r.json() : [])),
       fetch(`/api/projects/${projectId}/sprints/${sprintId}/retro`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/projects/${projectId}/sprints/${sprintId}/planning`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/projects/${projectId}/sprints/${sprintId}/review`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([standups, r]) => {
+      .then(([standups, r, p, rv]) => {
         setEntries(Array.isArray(standups) ? standups : []);
         setRetro(r);
         setRetroDraft({ wentWell: r?.wentWell ?? "", toImprove: r?.toImprove ?? "", actionItems: r?.actionItems ?? "" });
+        setPlanning(p);
+        setPlanningDraft({ plannedPoints: p?.plannedPoints != null ? String(p.plannedPoints) : "", notes: p?.notes ?? "" });
+        setReview(rv);
+        setReviewDraft({ demoNotes: rv?.demoNotes ?? "", stakeholderFeedback: rv?.stakeholderFeedback ?? "" });
       })
       .finally(() => setLoading(false));
   }
@@ -97,10 +126,82 @@ export default function SprintStandupRetro({
     }
   }
 
+  async function savePlanning() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/sprints/${sprintId}/planning`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(planningDraft),
+      });
+      if (res.ok) setPlanning(await res.json());
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveReview() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/sprints/${sprintId}/review`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reviewDraft),
+      });
+      if (res.ok) setReview(await res.json());
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) return null;
 
   return (
     <div className="mt-4 space-y-4">
+      <div>
+        <button
+          onClick={() => setShowPlanning((s) => !s)}
+          className="text-xs font-semibold text-slate-700 hover:text-accent-600"
+        >
+          {showPlanning ? "▾" : "▸"} Sprint Planning {planning && "(saved)"}
+        </button>
+        {showPlanning && (
+          <div className="mt-2 p-3 bg-slate-50 rounded-lg space-y-2">
+            <div>
+              <p className="text-xs text-slate-400 mb-1">Committed story points</p>
+              <input
+                type="number"
+                min={0}
+                value={planningDraft.plannedPoints}
+                onChange={(e) => setPlanningDraft((d) => ({ ...d, plannedPoints: e.target.value }))}
+                className={`${inputCls} max-w-[140px]`}
+                placeholder="e.g. 24"
+              />
+              <p className="text-xs text-slate-400 mt-1">Compare against the Velocity chart below once the sprint completes.</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 mb-1">Planning notes</p>
+              <textarea
+                value={planningDraft.notes}
+                onChange={(e) => setPlanningDraft((d) => ({ ...d, notes: e.target.value }))}
+                className={textareaCls}
+                placeholder="Capacity assumptions, dependencies called out during planning, etc."
+              />
+            </div>
+            <button
+              onClick={savePlanning}
+              disabled={saving}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-accent-600 text-white hover:bg-accent-700 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save planning"}
+            </button>
+            {planning?.updatedBy && (
+              <p className="text-xs text-slate-400">Last updated by {planning.updatedBy} on {formatDate(planning.updatedAt)}</p>
+            )}
+          </div>
+        )}
+      </div>
+
       <div>
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
@@ -169,6 +270,45 @@ export default function SprintStandupRetro({
                 {e.blockers && <p className="text-rose-600"><span className="text-slate-400">Blockers:</span> {e.blockers}</p>}
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <button
+          onClick={() => setShowReview((s) => !s)}
+          className="text-xs font-semibold text-slate-700 hover:text-accent-600"
+        >
+          {showReview ? "▾" : "▸"} Sprint Review {review && "(saved)"}
+        </button>
+        {showReview && (
+          <div className="mt-2 p-3 bg-slate-50 rounded-lg space-y-2">
+            <div>
+              <p className="text-xs text-slate-400 mb-1">What was demoed</p>
+              <textarea
+                value={reviewDraft.demoNotes}
+                onChange={(e) => setReviewDraft((d) => ({ ...d, demoNotes: e.target.value }))}
+                className={textareaCls}
+              />
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 mb-1">Stakeholder feedback</p>
+              <textarea
+                value={reviewDraft.stakeholderFeedback}
+                onChange={(e) => setReviewDraft((d) => ({ ...d, stakeholderFeedback: e.target.value }))}
+                className={textareaCls}
+              />
+            </div>
+            <button
+              onClick={saveReview}
+              disabled={saving}
+              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-accent-600 text-white hover:bg-accent-700 disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save review"}
+            </button>
+            {review?.updatedBy && (
+              <p className="text-xs text-slate-400">Last updated by {review.updatedBy} on {formatDate(review.updatedAt)}</p>
+            )}
           </div>
         )}
       </div>
