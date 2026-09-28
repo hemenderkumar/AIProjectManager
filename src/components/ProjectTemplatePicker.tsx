@@ -2,10 +2,17 @@
 import { useEffect, useState } from "react";
 import { LayoutTemplate, Rocket, Sparkles, Loader2, X, RotateCcw, ArrowLeft } from "lucide-react";
 
-type TaskSkeletonItem = { title: string; phase: string | null; priority: string; estimateHours: number | null };
+type TaskSkeletonItem = { title: string; phase: string | null; priority: string; estimateHours: number | null; storyPoints?: number | null };
 type Snapshot = {
   charter: { description: string | null; problemStatement: string | null; proposedSolution: string | null; expectedBenefits: string | null; program: string | null };
+  executionMethodology?: "WATERFALL" | "SCRUM" | "HYBRID";
   taskSkeleton: TaskSkeletonItem[];
+};
+
+const METHODOLOGY_LABELS: Record<string, string> = {
+  WATERFALL: "Waterfall",
+  SCRUM: "Scrum",
+  HYBRID: "Hybrid",
 };
 type Template = {
   id: string;
@@ -117,7 +124,9 @@ export default function ProjectTemplatePicker({ onCreated, onBack }: { onCreated
                   <p className="text-sm font-semibold text-slate-900">{t.name}</p>
                   {t.description && <p className="text-xs text-slate-500 mt-0.5">{t.description}</p>}
                   <p className="text-xs text-slate-400 mt-1">
-                    {(activeSnapshot?.taskSkeleton?.length ?? 0)} task{(activeSnapshot?.taskSkeleton?.length ?? 0) === 1 ? "" : "s"} · saved by {t.createdBy ?? "someone"}
+                    {(activeSnapshot?.taskSkeleton?.length ?? 0)} task{(activeSnapshot?.taskSkeleton?.length ?? 0) === 1 ? "" : "s"}
+                    {activeSnapshot?.executionMethodology && ` · ${METHODOLOGY_LABELS[activeSnapshot.executionMethodology] ?? activeSnapshot.executionMethodology}`}
+                    {" "}· saved by {t.createdBy ?? "someone"}
                     {isTweaked && <span className="text-accent-600 font-medium"> · tweaked with AI</span>}
                   </p>
                 </div>

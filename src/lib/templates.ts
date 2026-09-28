@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { projectTemplates, projects, tasks, projectMembers } from "./db/schema";
+import { projectTemplates, projects, tasks, projectMembers, sprints } from "./db/schema";
 import { eq, or, isNull, and } from "drizzle-orm";
 import { canAccessProject } from "./tenancy";
 import type { SessionUser } from "./auth";
@@ -7,6 +7,12 @@ import type { SessionUser } from "./auth";
 // A template snapshot is a point-in-time copy: charter-relevant fields plus a task/phase
 // skeleton. Kept as one jsonb blob rather than child tables — see the column comment on
 // projectTemplates.snapshot in schema.ts.
+//
+// executionMethodology/sprints/storyPoints are optional so older snapshots (created before
+// this addition) still validate and instantiate exactly as before -- a template with no
+// sprints and no methodology just leaves the created project on its default (WATERFALL).
+// sprintIndex on a taskSkeleton entry is an index into the snapshot's own `sprints` array
+// (not a real sprint id, since the sprint doesn't exist until instantiation creates it).
 export type TemplateSnapshot = {
   charter: {
     description: string | null;
@@ -15,11 +21,15 @@ export type TemplateSnapshot = {
     expectedBenefits: string | null;
     program: string | null;
   };
+  executionMethodology?: "WATERFALL" | "SCRUM" | "HYBRID";
+  sprints?: Array<{ name: string; goal?: string | null }>;
   taskSkeleton: Array<{
     title: string;
     phase: string | null;
     priority: string;
     estimateHours: number | null;
+    storyPoints?: number | null;
+    sprintIndex?: number | null;
   }>;
 };
 
@@ -48,11 +58,13 @@ export async function createTemplateFromProject(user: SessionUser, projectId: st
       expectedBenefits: project.expectedBenefits,
       program: project.program,
     },
+    executionMethodology: project.executionMethodology,
     taskSkeleton: projectTasks.map((t) => ({
       title: t.title,
       phase: t.phase,
       priority: t.priority,
       estimateHours: t.estimateHours,
+      storyPoints: t.storyPoints,
     })),
   };
 
@@ -87,10 +99,30 @@ export async function createProjectFromSnapshot(user: SessionUser, snapshot: Tem
       stage: "INCEPTION",
       priority: "MEDIUM",
       ideaType: "OPPORTUNITY",
+      ...(snapshot.executionMethodology ? { executionMethodology: snapshot.executionMethodology } : {}),
     })
     .returning();
 
   await db.insert(projectMembers).values({ projectId: created.id, userId: user.id });
+
+  // Create the template's sprints first (if any) so taskSkeleton entries can reference them
+  // by array index -- sprintIndex is an index into snapshot.sprints, not a real sprint id,
+  // since the sprint doesn't exist until this point.
+  let createdSprintIds: string[] = [];
+  if (snapshot.sprints?.length) {
+    const insertedSprints = await db
+      .insert(sprints)
+      .values(
+        snapshot.sprints.map((s) => ({
+          projectId: created.id,
+          name: s.name,
+          goal: s.goal ?? null,
+          status: "PLANNED" as const,
+        }))
+      )
+      .returning({ id: sprints.id });
+    createdSprintIds = insertedSprints.map((s) => s.id);
+  }
 
   if (snapshot.taskSkeleton?.length) {
     await db.insert(tasks).values(
@@ -100,6 +132,8 @@ export async function createProjectFromSnapshot(user: SessionUser, snapshot: Tem
         phase: t.phase,
         priority: (["LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(t.priority) ? t.priority : "MEDIUM") as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
         estimateHours: t.estimateHours ?? 0,
+        storyPoints: t.storyPoints ?? null,
+        sprintId: t.sprintIndex != null ? createdSprintIds[t.sprintIndex] ?? null : null,
       }))
     );
   }
