@@ -26,6 +26,7 @@ import {
   CreditCard,
   LineChart,
   LayoutGrid,
+  Gauge,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import type { ModuleKey } from "@/lib/modules";
@@ -141,6 +142,9 @@ export default function Sidebar({
           )}
           {isInternal && (
             <NavLink href="/forecast" icon={<LineChart size={17} />} pathname={pathname}>Forecasting</NavLink>
+          )}
+          {isInternal && (
+            <NavLink href="/pmo-scorecard" icon={<Gauge size={17} />} pathname={pathname}>PMO Scorecard</NavLink>
           )}
           {user?.role === "SUPER_USER" && (
             <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>

@@ -157,6 +157,19 @@ export const reportTypeEnum = pgEnum("report_type", [
   "STEERING_COMMITTEE",
 ]);
 
+// The 4 standard PMO governance models (Gartner/PMI framing, also the categories in the "How
+// to Setup a PMO" reference this feature was modeled from): each one trades PM autonomy for
+// central control. This is a single org-wide dial, not per-project or per-client -- it
+// describes how *our own delivery organization* runs its own Ideation gates (see
+// lib/pmoGovernance.ts for what each level actually requires), not something client
+// organizations configure for themselves.
+export const pmoGovernanceModelEnum = pgEnum("pmo_governance_model", [
+  "SUPPORTIVE", // lightest touch: the assigned PM/team can self-approve every gate
+  "CONTROLLING", // PMO sets and checks standards: gate approvals need PM tier or above
+  "DIRECTIVE", // PMO directly manages projects: gate approvals need SUPER_USER (company owner) or above
+  "ENTERPRISE", // fully centralized, portfolio-wide governance: gate approvals need ADMIN
+]);
+
 export const reportCadenceEnum = pgEnum("report_cadence", [
   "WEEKLY",
   "BIWEEKLY",
@@ -1465,6 +1478,11 @@ export const settings = pgTable("settings", {
   // Free trial length applied to every newly created organization -- see the column comment
   // on organizations.trialEndsAt. Admin-editable from Admin > Automation settings.
   trialDays: integer("trial_days").notNull().default(14),
+  // Which PMO governance model our own delivery organization runs under -- see
+  // pmoGovernanceModelEnum above and lib/pmoGovernance.ts. Defaults to SUPPORTIVE (today's
+  // existing behavior: any CONTRIBUTOR-tier project member can approve their own Ideation
+  // gates), so this is purely additive until an admin deliberately tightens it.
+  pmoGovernanceModel: pmoGovernanceModelEnum("pmo_governance_model").notNull().default("SUPPORTIVE"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

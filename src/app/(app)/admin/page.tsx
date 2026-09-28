@@ -18,7 +18,20 @@ type Organization = {
   subscriptionStatus: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
   billingCompedByAdmin: boolean;
 };
-type Settings = { weeklyReportCadence: string; steeringCadence: string; avatarVoiceGender: string; trialDays: number };
+type Settings = {
+  weeklyReportCadence: string;
+  steeringCadence: string;
+  avatarVoiceGender: string;
+  trialDays: number;
+  pmoGovernanceModel: "SUPPORTIVE" | "CONTROLLING" | "DIRECTIVE" | "ENTERPRISE";
+};
+
+const PMO_GOVERNANCE_DESCRIPTIONS: Record<string, string> = {
+  SUPPORTIVE: "Lightest touch — any Contributor or above can approve their own Architecture/Business Case/Charter gates.",
+  CONTROLLING: "PMO sets standards — gate approvals require PM tier or above.",
+  DIRECTIVE: "PMO directly manages projects — gate approvals require a company owner (Super User) or above.",
+  ENTERPRISE: "Fully centralized governance — gate approvals require an Executa administrator.",
+};
 type Registration = {
   id: string;
   type: "INDIVIDUAL" | "COMPANY_OWNER";
@@ -843,6 +856,29 @@ export default function AdminPage() {
             <p className="text-xs text-slate-400 mt-3">
               Cadences run via a scheduled job (Vercel Cron) configured in vercel.json — see README for setup.
             </p>
+          </div>
+        )}
+
+        {settings && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 mt-5">
+            <p className="text-sm font-semibold text-slate-900 mb-1">PMO governance model</p>
+            <p className="text-xs text-slate-400 mb-4">
+              Controls how strict Ideation gate approvals (Architecture, Business Case, Charter) are across every
+              project — a single org-wide dial, not a per-client setting.
+            </p>
+            <div className="max-w-sm">
+              <select
+                value={settings.pmoGovernanceModel}
+                onChange={(e) => updateSettings({ pmoGovernanceModel: e.target.value as Settings["pmoGovernanceModel"] })}
+                className={inputCls}
+              >
+                <option value="SUPPORTIVE">Supportive</option>
+                <option value="CONTROLLING">Controlling</option>
+                <option value="DIRECTIVE">Directive</option>
+                <option value="ENTERPRISE">Enterprise</option>
+              </select>
+            </div>
+            <p className="text-xs text-slate-400 mt-3">{PMO_GOVERNANCE_DESCRIPTIONS[settings.pmoGovernanceModel]}</p>
           </div>
         )}
 

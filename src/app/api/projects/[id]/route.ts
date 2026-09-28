@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { roleAtLeast } from "@/lib/auth";
 import { STAGE_FOR_SUB_STAGE } from "@/lib/ideationGates";
 import { dispatchWebhooks } from "@/lib/webhooks";
+import { getPmoGovernanceModel, minApproverRoleFor, PMO_GOVERNANCE_LABELS } from "@/lib/pmoGovernance";
 
 export async function GET(
   _req: NextRequest,
@@ -69,6 +70,31 @@ export async function PATCH(
     "laborCostEstimate", "quotedUnitPrice", "targetMarginPercent", "targetMonthlyVolume",
     "marketSizeTam", "marketSizeSam", "marketSizeSom",
   ];
+
+  // PMO governance gate: architecture/business-case/charter approvals are otherwise gated by
+  // nothing but requireProjectAccess("CONTRIBUTOR") above -- fine under the default SUPPORTIVE
+  // model (self-approval), but a CONTROLLING/DIRECTIVE/ENTERPRISE org needs a higher role to
+  // actually flip one of these on. Checked here, before the general field loop, against
+  // whatever truthy value was submitted for these three fields specifically -- clearing an
+  // approval (setting it back to empty) doesn't need this check, only granting one does.
+  const gateFieldToGate: Record<string, "ARCHITECTURE" | "BUSINESS_CASE" | "CHARTER"> = {
+    architectureApprovedAt: "ARCHITECTURE",
+    businessCaseApprovedAt: "BUSINESS_CASE",
+    charterApprovedAt: "CHARTER",
+  };
+  const attemptedGateField = Object.keys(gateFieldToGate).find((f) => f in body && body[f]);
+  if (attemptedGateField) {
+    const model = await getPmoGovernanceModel();
+    const minRole = minApproverRoleFor(model, gateFieldToGate[attemptedGateField]);
+    if (!roleAtLeast(_authUser.role, minRole)) {
+      return NextResponse.json(
+        {
+          error: `Your organization's PMO governance model is "${PMO_GOVERNANCE_LABELS[model]}" -- approving this gate requires ${minRole} tier or above.`,
+        },
+        { status: 403 }
+      );
+    }
+  }
 
   const update: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {

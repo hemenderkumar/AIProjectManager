@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
+import { PMO_GOVERNANCE_MODELS, invalidatePmoGovernanceCache } from "@/lib/pmoGovernance";
 
 export async function GET() {
   const user = await requireRole("VIEWER");
@@ -24,12 +25,19 @@ export async function PATCH(req: NextRequest) {
   if (body.steeringCadence) update.steeringCadence = body.steeringCadence;
   if (body.avatarVoiceGender) update.avatarVoiceGender = body.avatarVoiceGender;
   if (typeof body.trialDays === "number" && body.trialDays >= 0) update.trialDays = Math.floor(body.trialDays);
+  if (body.pmoGovernanceModel && PMO_GOVERNANCE_MODELS.includes(body.pmoGovernanceModel)) {
+    update.pmoGovernanceModel = body.pmoGovernanceModel;
+  }
 
   const [existing] = await db.select().from(settings).where(eq(settings.id, "default"));
+  let result;
   if (!existing) {
     const [created] = await db.insert(settings).values({ id: "default", ...update }).returning();
-    return NextResponse.json(created);
+    result = created;
+  } else {
+    const [updated] = await db.update(settings).set(update).where(eq(settings.id, "default")).returning();
+    result = updated;
   }
-  const [updated] = await db.update(settings).set(update).where(eq(settings.id, "default")).returning();
-  return NextResponse.json(updated);
+  if ("pmoGovernanceModel" in update) invalidatePmoGovernanceCache();
+  return NextResponse.json(result);
 }
