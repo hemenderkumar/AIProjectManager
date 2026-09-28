@@ -35,6 +35,16 @@ export async function PATCH(
     update.completedAt = new Date();
   }
 
+  // Cycle-time start point -- set once, the first time a task enters IN_PROGRESS, mirroring
+  // the completedAt auto-set above. Only fires if the task doesn't already have a startedAt
+  // (so a later TODO -> IN_PROGRESS -> TODO -> IN_PROGRESS bounce doesn't reset the clock).
+  if (body.status === "IN_PROGRESS") {
+    const [existing] = await db.select({ startedAt: tasks.startedAt }).from(tasks).where(eq(tasks.id, taskId));
+    if (existing && !existing.startedAt) {
+      update.startedAt = new Date();
+    }
+  }
+
   const [updated] = await db.update(tasks).set(update).where(eq(tasks.id, taskId)).returning();
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
 

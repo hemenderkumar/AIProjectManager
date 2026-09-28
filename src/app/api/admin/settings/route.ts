@@ -4,6 +4,7 @@ import { settings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
 import { PMO_GOVERNANCE_MODELS, invalidatePmoGovernanceCache } from "@/lib/pmoGovernance";
+import { TERMINOLOGY_MODES, invalidateTerminologyModeCache } from "@/lib/prince2";
 
 export async function GET() {
   const user = await requireRole("VIEWER");
@@ -28,6 +29,9 @@ export async function PATCH(req: NextRequest) {
   if (body.pmoGovernanceModel && PMO_GOVERNANCE_MODELS.includes(body.pmoGovernanceModel)) {
     update.pmoGovernanceModel = body.pmoGovernanceModel;
   }
+  if (body.terminologyMode && TERMINOLOGY_MODES.includes(body.terminologyMode)) {
+    update.terminologyMode = body.terminologyMode;
+  }
 
   const [existing] = await db.select().from(settings).where(eq(settings.id, "default"));
   let result;
@@ -39,5 +43,6 @@ export async function PATCH(req: NextRequest) {
     result = updated;
   }
   if ("pmoGovernanceModel" in update) invalidatePmoGovernanceCache();
+  if ("terminologyMode" in update) invalidateTerminologyModeCache();
   return NextResponse.json(result);
 }

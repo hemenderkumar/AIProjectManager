@@ -24,6 +24,7 @@ type Settings = {
   avatarVoiceGender: string;
   trialDays: number;
   pmoGovernanceModel: "SUPPORTIVE" | "CONTROLLING" | "DIRECTIVE" | "ENTERPRISE";
+  terminologyMode: "STANDARD" | "PRINCE2";
 };
 
 const PMO_GOVERNANCE_DESCRIPTIONS: Record<string, string> = {
@@ -31,6 +32,12 @@ const PMO_GOVERNANCE_DESCRIPTIONS: Record<string, string> = {
   CONTROLLING: "PMO sets standards — gate approvals require PM tier or above.",
   DIRECTIVE: "PMO directly manages projects — gate approvals require a company owner (Super User) or above.",
   ENTERPRISE: "Fully centralized governance — gate approvals require an Executa administrator.",
+};
+
+const TERMINOLOGY_MODE_DESCRIPTIONS: Record<string, string> = {
+  STANDARD: "Plain-English labels throughout (Charter, Business Case, gate approval, steering committee).",
+  PRINCE2:
+    "Relabels the same artifacts as their PRINCE2 equivalents (Project Initiation Documentation, Business Case, Stage Boundary, Project Board) and unlocks two PRINCE2-named report types (Highlight Report, End Stage Report) on the Reports page. No new gates or process — a vocabulary layer over what already exists.",
 };
 type Registration = {
   id: string;
@@ -879,6 +886,26 @@ export default function AdminPage() {
               </select>
             </div>
             <p className="text-xs text-slate-400 mt-3">{PMO_GOVERNANCE_DESCRIPTIONS[settings.pmoGovernanceModel]}</p>
+          </div>
+        )}
+
+        {settings && (
+          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5 mt-5">
+            <p className="text-sm font-semibold text-slate-900 mb-1">Terminology mode</p>
+            <p className="text-xs text-slate-400 mb-4">
+              How project artifacts are labeled across the app — standard plain-English, or PRINCE2 vocabulary.
+            </p>
+            <div className="max-w-sm">
+              <select
+                value={settings.terminologyMode}
+                onChange={(e) => updateSettings({ terminologyMode: e.target.value as Settings["terminologyMode"] })}
+                className={inputCls}
+              >
+                <option value="STANDARD">Standard</option>
+                <option value="PRINCE2">PRINCE2</option>
+              </select>
+            </div>
+            <p className="text-xs text-slate-400 mt-3">{TERMINOLOGY_MODE_DESCRIPTIONS[settings.terminologyMode]}</p>
           </div>
         )}
 

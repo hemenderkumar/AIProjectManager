@@ -155,6 +155,24 @@ export const registrationStatusEnum = pgEnum("registration_status", [
 export const reportTypeEnum = pgEnum("report_type", [
   "WEEKLY_STATUS",
   "STEERING_COMMITTEE",
+  // PRINCE2-style reports (see lib/prince2.ts) -- only generatable when settings.terminologyMode
+  // is "PRINCE2". Reuse the exact same generation infra (AI-drafted from the portfolio
+  // summary, saved to `reports`, emailed to leadership) as the two report types above; only
+  // the system prompt and section headings differ.
+  "PRINCE2_HIGHLIGHT",
+  "PRINCE2_END_STAGE",
+]);
+
+// Whether the app's existing artifacts (Charter, Business Case, gate approvals, steering
+// committee reports) are labeled with their plain-English names or their PRINCE2 equivalents
+// (Project Initiation Documentation, Business Case, Stage Boundary, Project Board Highlight
+// Report). This does NOT add PRINCE2 process (no new gates, no new approval logic) -- it's a
+// display-layer relabeling plus two additional PRINCE2-named report types, reusing everything
+// that already exists. See lib/prince2.ts for the label map. Single org-wide dial, same
+// pattern as pmoGovernanceModel below.
+export const terminologyModeEnum = pgEnum("terminology_mode", [
+  "STANDARD",
+  "PRINCE2",
 ]);
 
 // The 4 standard PMO governance models (Gartner/PMI framing, also the categories in the "How
@@ -402,6 +420,12 @@ export const projects = pgTable("projects", {
   deliveryRecommendedAt: timestamp("delivery_recommended_at"),
   executionMethodology: executionMethodologyEnum("execution_methodology").notNull().default("WATERFALL"),
 
+  // Kanban WIP limits per sprint-board status column (e.g. {"IN_PROGRESS": 5, "BLOCKED": 2}).
+  // Keyed by the same taskStatusEnum values as the board columns; a status absent from the
+  // object (or the whole object being null) means "no limit set" for that column. Optional --
+  // most projects won't set these, so the board works identically to before until someone does.
+  wipLimits: jsonb("wip_limits").$type<Record<string, number> | null>(),
+
   // Technical recommendation & Enterprise Architect review (Ideation, before Charter)
   recommendedTechnology: text("recommended_technology"),
   technicalRecommendationRationale: text("technical_recommendation_rationale"),
@@ -614,6 +638,12 @@ export const tasks = pgTable("tasks", {
   startDate: timestamp("start_date"),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
+  // Set once, the first time status transitions to IN_PROGRESS (mirrors the completedAt
+  // auto-set-on-DONE pattern in the task PATCH route). Used as the cycle-time start point --
+  // there's no full status-history table, so this is the one extra timestamp that makes
+  // "time spent actively working the task" measurable without one. Never cleared once set,
+  // even if the task later moves back to TODO/BLOCKED, so cycle time reflects first pickup.
+  startedAt: timestamp("started_at"),
   estimateHours: real("estimate_hours").default(0),
   actualHours: real("actual_hours").default(0),
   requiredSkills: text("required_skills").array(),
@@ -714,6 +744,44 @@ export const sprints = pgTable("sprints", {
   status: sprintStatusEnum("status").notNull().default("PLANNED"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// Daily Scrum log -- one entry per resource per day per sprint. Lightweight by design: three
+// free-text fields (the classic three Daily Scrum questions), no workflow/approval, just a
+// running log visible on the Sprint board for whichever sprint is selected.
+export const standupEntries = pgTable("standup_entries", {
+  id: cuid(),
+  sprintId: text("sprint_id")
+    .notNull()
+    .references(() => sprints.id, { onDelete: "cascade" }),
+  resourceId: text("resource_id").references(() => resources.id, { onDelete: "set null" }),
+  date: timestamp("date").notNull().defaultNow(),
+  yesterday: text("yesterday"),
+  today: text("today"),
+  blockers: text("blockers"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// One retrospective per sprint (enforced by the unique index below) -- three free-text fields
+// (went well / to improve / action items) plus who last edited it, same "single evolving
+// record, not a workflow" shape as the standup log above.
+export const sprintRetrospectives = pgTable(
+  "sprint_retrospectives",
+  {
+    id: cuid(),
+    sprintId: text("sprint_id")
+      .notNull()
+      .references(() => sprints.id, { onDelete: "cascade" }),
+    wentWell: text("went_well"),
+    toImprove: text("to_improve"),
+    actionItems: text("action_items"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uq: uniqueIndex("sprint_retro_uq").on(t.sprintId),
+  })
+);
 
 export const statusUpdates = pgTable("status_updates", {
   id: cuid(),
@@ -1483,6 +1551,9 @@ export const settings = pgTable("settings", {
   // existing behavior: any CONTRIBUTOR-tier project member can approve their own Ideation
   // gates), so this is purely additive until an admin deliberately tightens it.
   pmoGovernanceModel: pmoGovernanceModelEnum("pmo_governance_model").notNull().default("SUPPORTIVE"),
+  // Display-layer PRINCE2 relabeling + two extra report types -- see terminologyModeEnum
+  // above and lib/prince2.ts. Defaults to STANDARD (today's plain-English labels).
+  terminologyMode: terminologyModeEnum("terminology_mode").notNull().default("STANDARD"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

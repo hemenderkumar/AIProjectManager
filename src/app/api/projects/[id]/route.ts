@@ -58,6 +58,7 @@ export async function PATCH(
     "businessCaseApprovedBy", "businessCaseApprovedAt",
     "businessCaseExecutiveSummary", "marketSizeTam", "marketSizeSam", "marketSizeSom", "marketSizeByRegion",
     "competitiveDifferentiation",
+    "wipLimits",
   ];
 
   const dateFields = [

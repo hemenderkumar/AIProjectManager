@@ -5,8 +5,10 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDate, formatDateInput } from "@/lib/format";
 import { Plus, Trash2 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from "recharts";
 import { ExecutionSourceBadge } from "@/components/badges";
+import { computeWipUsage, computeCycleAndLeadTime, computeCumulativeFlow } from "@/lib/flowMetrics";
+import SprintStandupRetro from "./SprintStandupRetro";
 
 type Resource = { id: string; name: string };
 
@@ -79,6 +81,29 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
     });
     router.refresh();
   }
+
+  // Kanban WIP limit per status column, stored on the project (not per-sprint -- the board's
+  // columns are shared across sprints/backlog). Undefined/blank means "no limit set".
+  const wipLimits = (detail.project as unknown as { wipLimits?: Record<string, number> | null }).wipLimits ?? null;
+  async function setWipLimit(status: string, value: number | null) {
+    const next = { ...(wipLimits ?? {}) };
+    if (value == null || Number.isNaN(value) || value <= 0) {
+      delete next[status];
+    } else {
+      next[status] = value;
+    }
+    await fetch(`/api/projects/${detail.project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wipLimits: next }),
+    });
+    router.refresh();
+  }
+  const wipUsage = useMemo(() => computeWipUsage(sprintTasks, wipLimits), [sprintTasks, wipLimits]);
+  const wipByStatus = useMemo(() => Object.fromEntries(wipUsage.map((w) => [w.status, w])), [wipUsage]);
+
+  const flowStats = useMemo(() => computeCycleAndLeadTime(allTasks), [allTasks]);
+  const cfdData = useMemo(() => computeCumulativeFlow(allTasks, 30), [allTasks]);
 
   const velocityData = useMemo(
     () =>
@@ -224,9 +249,31 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-2">
-          {STATUS_COLUMNS.map((status) => (
-            <div key={status} className="bg-slate-50 rounded-lg p-2 min-h-[120px]">
-              <p className="text-xs font-semibold text-slate-500 mb-2">{STATUS_LABELS[status]}</p>
+          {STATUS_COLUMNS.map((status) => {
+            const wip = wipByStatus[status];
+            return (
+            <div key={status} className={`bg-slate-50 rounded-lg p-2 min-h-[120px] ${wip?.overLimit ? "ring-2 ring-rose-400" : ""}`}>
+              <div className="flex items-center justify-between gap-1 mb-2">
+                <p className="text-xs font-semibold text-slate-500">{STATUS_LABELS[status]}</p>
+                {(status === "IN_PROGRESS" || status === "BLOCKED") && (
+                  <div className="flex items-center gap-1">
+                    {wip && (
+                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${wip.overLimit ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-500"}`}>
+                        {wip.count}/{wip.limit}
+                      </span>
+                    )}
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="WIP"
+                      defaultValue={wipLimits?.[status] ?? ""}
+                      onBlur={(e) => setWipLimit(status, e.target.value ? Number(e.target.value) : null)}
+                      title={`WIP limit for ${STATUS_LABELS[status]}`}
+                      className="w-10 text-xs border border-slate-200 rounded px-1 py-0.5 bg-white"
+                    />
+                  </div>
+                )}
+              </div>
               <div className="space-y-1.5">
                 {sprintTasks
                   .filter((t) => t.status === status)
@@ -255,7 +302,8 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
                   ))}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -288,6 +336,50 @@ export default function SprintBoard({ detail, allResources }: { detail: ProjectD
               <Line type="monotone" dataKey="ideal" name="Ideal" stroke="#94a3b8" strokeDasharray="4 4" dot={false} />
               <Line type="monotone" dataKey="actual" name="Actual remaining" stroke="var(--accent-600)" connectNulls={false} />
             </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {flowStats.sampleSize > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-slate-700 mb-2">Flow metrics (all completed tasks)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-xs text-slate-400 mb-0.5">Avg. cycle time</p>
+              <p className="text-lg font-semibold text-slate-800">
+                {flowStats.avgCycleTimeDays != null ? `${flowStats.avgCycleTimeDays.toFixed(1)}d` : "—"}
+              </p>
+              <p className="text-xs text-slate-400">In Progress → Done ({flowStats.cycleTimeSampleSize} tasks)</p>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-xs text-slate-400 mb-0.5">Avg. lead time</p>
+              <p className="text-lg font-semibold text-slate-800">
+                {flowStats.avgLeadTimeDays != null ? `${flowStats.avgLeadTimeDays.toFixed(1)}d` : "—"}
+              </p>
+              <p className="text-xs text-slate-400">Created → Done ({flowStats.sampleSize} tasks)</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedSprint && (
+        <SprintStandupRetro key={selectedSprint.id} projectId={detail.project.id} sprintId={selectedSprint.id} allResources={allResources} />
+      )}
+
+      {cfdData.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-slate-700 mb-2">Cumulative flow (last 30 days, all tasks)</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={cfdData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={4} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="done" name="Done" stackId="1" stroke="#16a34a" fill="#86efac" />
+              <Area type="monotone" dataKey="inProgress" name="In Progress" stackId="1" stroke="var(--accent-600)" fill="var(--accent-200, #bfdbfe)" />
+              <Area type="monotone" dataKey="todo" name="To Do" stackId="1" stroke="#94a3b8" fill="#e2e8f0" />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       )}

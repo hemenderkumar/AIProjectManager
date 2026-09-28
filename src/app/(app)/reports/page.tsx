@@ -7,11 +7,19 @@ import { StylePresetPicker } from "@/components/ContentTemplatePicker";
 
 type Report = { id: string; type: string; title: string; content: string; generatedAt: string };
 
+const REPORT_TYPE_LABELS: Record<string, string> = {
+  STEERING_COMMITTEE: "Steering committee",
+  WEEKLY_STATUS: "Weekly status",
+  PRINCE2_HIGHLIGHT: "Highlight Report",
+  PRINCE2_END_STAGE: "End Stage Report",
+};
+
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [active, setActive] = useState<Report | null>(null);
   const [generating, setGenerating] = useState<string | null>(null);
   const [styleTemplateId, setStyleTemplateId] = useState("");
+  const [prince2Mode, setPrince2Mode] = useState(false);
 
   async function load() {
     const data = await fetch("/api/reports").then((r) => r.json());
@@ -21,6 +29,10 @@ export default function ReportsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
+    fetch("/api/admin/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => setPrince2Mode(s?.terminologyMode === "PRINCE2"))
+      .catch(() => {});
   }, []);
 
   async function generate(type: string) {
@@ -62,6 +74,26 @@ export default function ReportsPage() {
               {generating === "STEERING_COMMITTEE" ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
               Steering pack now
             </button>
+            {prince2Mode && (
+              <>
+                <button
+                  onClick={() => generate("PRINCE2_HIGHLIGHT")}
+                  disabled={generating === "PRINCE2_HIGHLIGHT"}
+                  className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
+                >
+                  {generating === "PRINCE2_HIGHLIGHT" ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                  Highlight Report now
+                </button>
+                <button
+                  onClick={() => generate("PRINCE2_END_STAGE")}
+                  disabled={generating === "PRINCE2_END_STAGE"}
+                  className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
+                >
+                  {generating === "PRINCE2_END_STAGE" ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                  End Stage Report now
+                </button>
+              </>
+            )}
           </div>
         }
       />
@@ -80,7 +112,7 @@ export default function ReportsPage() {
                 <FileText size={15} className="text-slate-400 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-slate-800">{r.title}</p>
-                  <p className="text-xs text-slate-400">{r.type === "STEERING_COMMITTEE" ? "Steering committee" : "Weekly status"}</p>
+                  <p className="text-xs text-slate-400">{REPORT_TYPE_LABELS[r.type] ?? r.type}</p>
                 </div>
               </button>
             ))}
@@ -98,7 +130,7 @@ export default function ReportsPage() {
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{active.title}</p>
                   <p className="text-xs text-slate-400">
-                    {active.type === "STEERING_COMMITTEE" ? "Steering committee" : "Weekly status"}
+                    {REPORT_TYPE_LABELS[active.type] ?? active.type}
                   </p>
                 </div>
                 <ExportButtons endpoint={`/api/reports/${active.id}`} filenamePrefix="portfolio-report" />

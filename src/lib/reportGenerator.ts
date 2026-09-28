@@ -61,6 +61,60 @@ Escalations (risks/blockers that need committee-level help), Budget Overview, Pr
   return saved;
 }
 
+// PRINCE2-named reports -- only offered when settings.terminologyMode is "PRINCE2" (checked by
+// the caller, /api/reports/generate). Same generation/storage/email pipeline as the two
+// reports above, just PRINCE2 section headings in the system prompt.
+export async function generatePrince2HighlightReport(styleAddendum?: string | null) {
+  const summary = await getPortfolioSummary();
+  const context = formatPortfolioForAI(summary);
+
+  const system = `You are a PRINCE2 Project Manager preparing a Highlight Report for the Project Board.
+Structure with Markdown headings: This Period's Summary, Progress Against Plan (RAG per project),
+Products Completed This Period, Issues and Risks, Products Planned for Next Period, Budget/Tolerance
+Status (flag anything forecast to breach agreed tolerance). Keep it factual and concise -- a
+Highlight Report informs the Board, it doesn't ask them to decide anything.${styleAddendum ? `\n\nAdditional style guidance: ${styleAddendum}` : ""}`;
+
+  const content = await askClaude(system, `Portfolio data for the Highlight Report:\n\n${context}`);
+
+  const [saved] = await db
+    .insert(reports)
+    .values({
+      type: "PRINCE2_HIGHLIGHT",
+      title: `Highlight Report — ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`,
+      content,
+    })
+    .returning();
+
+  await emailToLeadership(saved.title, content);
+  return saved;
+}
+
+export async function generatePrince2EndStageReport(styleAddendum?: string | null) {
+  const summary = await getPortfolioSummary();
+  const context = formatPortfolioForAI(summary);
+
+  const system = `You are a PRINCE2 Project Manager preparing an End Stage Report for the Project Board, to be
+reviewed alongside a Stage Boundary approval decision. Structure with Markdown headings: Stage
+Objectives Achieved, Product Status (what was delivered vs. planned), Review of the Business
+Case (is it still viable), Review of Risks and Issues, Lessons Report Summary, Follow-On Action
+Recommendations, Next Stage Plan Recommendation (should the Board authorize the next stage).
+Be explicit about the go/no-go recommendation for each project nearing a stage boundary.${styleAddendum ? `\n\nAdditional style guidance: ${styleAddendum}` : ""}`;
+
+  const content = await askClaude(system, `Portfolio data for the End Stage Report:\n\n${context}`);
+
+  const [saved] = await db
+    .insert(reports)
+    .values({
+      type: "PRINCE2_END_STAGE",
+      title: `End Stage Report — ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`,
+      content,
+    })
+    .returning();
+
+  await emailToLeadership(saved.title, content);
+  return saved;
+}
+
 async function emailToLeadership(subject: string, content: string) {
   const leaders = await db
     .select()
