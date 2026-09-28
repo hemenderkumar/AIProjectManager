@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
-import { Zap, Sparkles, Trash2, Loader2 } from "lucide-react";
+import { Zap, Sparkles, Trash2, Loader2, Wand2 } from "lucide-react";
 
 type Rule = {
   id: string;
@@ -23,6 +23,21 @@ const TRIGGER_LABELS: Record<string, string> = {
   DELIVERABLE_APPROVED: "A deliverable is approved",
 };
 
+// One template per underlying trigger (plus a two-action combo) so a new user sees the full
+// range of what's actually possible without having to guess the trigger/action vocabulary --
+// see lib/automation.ts for the full list this engine supports. Clicking a template drafts it
+// immediately via the same AI endpoint as a hand-typed instruction, landing on the identical
+// "review trigger/actions -> tweak the wording -> Save rule" flow, so a template is just a
+// faster starting point, never a shortcut that skips review.
+const RULE_TEMPLATES: { label: string; instruction: string }[] = [
+  { label: "Notify on overdue task", instruction: "Notify the assignee when a task becomes overdue" },
+  { label: "Notify on new assignment", instruction: "Notify the assignee when a task is assigned to them" },
+  { label: "Slack on deliverable approved", instruction: "Post a Slack message when a deliverable is approved" },
+  { label: "Slack on status change", instruction: "Post a Slack message when a task's status changes" },
+  { label: "Slack on new risk", instruction: "Post a Slack message when a risk is logged" },
+  { label: "Auto-block overdue tasks", instruction: "When a task becomes overdue, mark it Blocked and notify the assignee" },
+];
+
 export default function AutomationsPageClient() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +55,11 @@ export default function AutomationsPageClient() {
   }
   useEffect(load, []);
 
-  async function draftWithAi() {
-    if (!instruction.trim()) return;
+  // Accepts an optional override so a template click can draft immediately with its own text
+  // rather than waiting on the setInstruction() state update to land first.
+  async function draftWithAi(overrideInstruction?: string) {
+    const text = overrideInstruction ?? instruction;
+    if (!text.trim()) return;
     setDrafting(true);
     setDraftError(null);
     setDraft(null);
@@ -49,7 +67,7 @@ export default function AutomationsPageClient() {
       const res = await fetch("/api/ai/draft-automation-rule", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction }),
+        body: JSON.stringify({ instruction: text }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -60,6 +78,16 @@ export default function AutomationsPageClient() {
     } finally {
       setDrafting(false);
     }
+  }
+
+  // Fills the box with the template's wording AND drafts it right away, so clicking a
+  // template feels like picking a ready-made rule -- the instruction is left editable
+  // afterward so the person can tweak the wording and hit "Draft with AI" again before saving.
+  // Named applyTemplate (not "useTemplate") so eslint's react-hooks rule doesn't mistake this
+  // plain event handler for a custom hook based on the name alone.
+  function applyTemplate(templateInstruction: string) {
+    setInstruction(templateInstruction);
+    draftWithAi(templateInstruction);
   }
 
   async function saveDraft() {
@@ -109,7 +137,7 @@ export default function AutomationsPageClient() {
               onChange={(e) => setInstruction(e.target.value)}
             />
             <button
-              onClick={draftWithAi}
+              onClick={() => draftWithAi()}
               disabled={drafting || !instruction.trim()}
               className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50"
             >
@@ -117,6 +145,23 @@ export default function AutomationsPageClient() {
               {drafting ? "Drafting…" : "Draft with AI"}
             </button>
           </div>
+
+          <div className="mb-3">
+            <p className="text-xs text-slate-400 mb-1.5 flex items-center gap-1"><Wand2 size={12} /> Or start from a template — you can tweak the wording and re-draft before saving:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {RULE_TEMPLATES.map((t) => (
+                <button
+                  key={t.label}
+                  onClick={() => applyTemplate(t.instruction)}
+                  disabled={drafting}
+                  className="text-xs px-2.5 py-1 rounded-full border border-slate-200 text-slate-600 hover:border-accent-300 hover:text-accent-600 hover:bg-accent-50 disabled:opacity-50"
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {draftError && <p className="text-xs text-rose-600 mb-2">{draftError}</p>}
           {draft && (
             <div className="border border-slate-200 rounded-lg p-3 space-y-1.5 mb-2">
