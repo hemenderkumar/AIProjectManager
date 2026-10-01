@@ -76,6 +76,13 @@ export async function POST(req: NextRequest) {
       // Alignment), never guessed at server-side.
       ideaCategory: ["SOFTWARE", "HARDWARE_PHYSICAL", "SERVICE", "OTHER"].includes(body.ideaCategory) ? body.ideaCategory : null,
       hasSoftwareComponent: Boolean(body.hasSoftwareComponent),
+      // How this project will actually be executed (Waterfall/Scrum/Hybrid) and whether its
+      // reports use PRINCE2 terminology — both pickable at creation time now so a from-scratch
+      // project doesn't silently default to Waterfall/Standard and require a later fix-up on
+      // the Tasks tab before the first AI plan is generated. Falls back to the column defaults
+      // (WATERFALL/STANDARD) for any value outside the known enum options.
+      ...(["WATERFALL", "SCRUM", "HYBRID"].includes(body.executionMethodology) ? { executionMethodology: body.executionMethodology } : {}),
+      ...(["STANDARD", "PRINCE2"].includes(body.terminologyMode) ? { terminologyMode: body.terminologyMode } : {}),
     })
     .returning();
 

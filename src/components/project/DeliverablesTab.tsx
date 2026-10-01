@@ -29,6 +29,10 @@ type Deliverable = {
   id: string;
   type: string;
   title: string;
+  // SDLC phase this deliverable belongs to (Requirements, Design, Testing, UAT, Deployment,
+  // etc.) — defaulted from `type` on create, editable since actual phase names vary by
+  // project/methodology. Lines the deliverable up against the same lifecycle tasks.phase uses.
+  phase: string | null;
   executiveSummary: string | null;
   content: string | null;
   diagram: string | null;
@@ -173,7 +177,7 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
 
   async function updateDeliverable(
     id: string,
-    patch: Partial<Pick<Deliverable, "title" | "executiveSummary" | "content" | "status" | "componentList" | "architectureHighlights" | "pros" | "cons">>
+    patch: Partial<Pick<Deliverable, "title" | "phase" | "executiveSummary" | "content" | "status" | "componentList" | "architectureHighlights" | "pros" | "cons">>
   ) {
     setDeliverables((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
     await fetch(`/api/deliverables/${id}`, {
@@ -459,10 +463,13 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                     {expanded ? <ChevronUp size={14} className="text-slate-400 shrink-0" /> : <ChevronDown size={14} className="text-slate-400 shrink-0" />}
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-800 truncate">{d.title}</p>
-                      <p className="text-xs text-slate-400">
-                        {typeInfo?.label ?? d.type}
-                        {d.createdByAi ? " · AI generated" : ""}
-                        {d.testCases.length > 0 ? ` · ${d.testCases.length} test cases` : ""}
+                      <p className="text-xs text-slate-400 flex items-center gap-1.5 flex-wrap">
+                        <span>{typeInfo?.label ?? d.type}</span>
+                        {d.phase && (
+                          <span className="text-[10px] font-medium text-accent-700 bg-accent-50 rounded-full px-1.5 py-0.5">{d.phase}</span>
+                        )}
+                        {d.createdByAi ? <span>· AI generated</span> : null}
+                        {d.testCases.length > 0 ? <span>· {d.testCases.length} test cases</span> : null}
                       </p>
                     </div>
                   </button>
@@ -500,6 +507,20 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                         <CheckCircle2 size={12} /> Approved by {d.approvedBy}{d.approvedAt ? ` on ${new Date(d.approvedAt).toLocaleDateString()}` : ""}
                       </p>
                     )}
+                    <div className="mb-3 flex items-center gap-2">
+                      <label className="text-xs font-medium text-slate-500 shrink-0">Phase</label>
+                      {canEdit ? (
+                        <input
+                          value={d.phase ?? ""}
+                          placeholder="e.g. Requirements, Design, Testing, Deployment"
+                          onChange={(e) => setDeliverables((prev) => prev.map((x) => (x.id === d.id ? { ...x, phase: e.target.value } : x)))}
+                          onBlur={(e) => updateDeliverable(d.id, { phase: e.target.value.trim() || null })}
+                          className="text-xs border border-slate-200 rounded-md px-2 py-1 bg-white w-56"
+                        />
+                      ) : (
+                        <span className="text-xs text-slate-600">{d.phase || "—"}</span>
+                      )}
+                    </div>
                     {d.testCases.length > 0 || typeInfo?.isTest ? (
                       <TestCaseTable
                         deliverableId={d.id}

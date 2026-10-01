@@ -71,6 +71,7 @@ export const ENTITY_CONFIG: Record<
     minRole: "CONTRIBUTOR",
     fields: [
       { key: "title", label: "Title", kind: "text" },
+      { key: "phase", label: "Phase", kind: "text" },
       { key: "content", label: "Content", kind: "text" },
       { key: "status", label: "Status", kind: "enum", options: ["DRAFT", "IN_REVIEW", "APPROVED", "FINAL"] },
     ],

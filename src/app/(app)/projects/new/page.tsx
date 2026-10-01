@@ -49,6 +49,8 @@ function NewProjectForm() {
     proposedSolution: "",
     expectedBenefits: "",
     ideationNotes: "",
+    executionMethodology: "WATERFALL",
+    terminologyMode: "STANDARD",
   });
 
   function update<K extends keyof typeof form>(key: K, value: string) {
@@ -257,6 +259,19 @@ function NewProjectForm() {
                 <option value="MEDIUM">Medium</option>
                 <option value="HIGH">High</option>
                 <option value="CRITICAL">Critical</option>
+              </select>
+            </Field>
+            <Field label="Execution methodology">
+              <select value={form.executionMethodology} onChange={(e) => update("executionMethodology", e.target.value)} className={inputCls}>
+                <option value="WATERFALL">Waterfall</option>
+                <option value="SCRUM">Scrum</option>
+                <option value="HYBRID">Hybrid</option>
+              </select>
+            </Field>
+            <Field label="Report terminology">
+              <select value={form.terminologyMode} onChange={(e) => update("terminologyMode", e.target.value)} className={inputCls}>
+                <option value="STANDARD">Standard</option>
+                <option value="PRINCE2">PRINCE2</option>
               </select>
             </Field>
             <CountryStateFields

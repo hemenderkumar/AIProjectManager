@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { deliverables, deliverableTestCases } from "@/lib/db/schema";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
+import { deliverablePhaseForType } from "@/lib/deliverables";
 
 type DeliverableType = "REQUIREMENTS_NFR" | "DESIGN" | "FUNCTIONAL_TEST_SCRIPT" | "UAT_SCRIPT" | "RELEASE_DOCUMENTATION";
 
@@ -158,6 +159,7 @@ export async function POST(req: NextRequest) {
         projectId,
         type: deliverableType,
         title: data.title || DEFAULT_TITLES[deliverableType],
+        phase: deliverablePhaseForType(deliverableType),
         createdByAi: true,
         createdBy: user.name,
       })
@@ -205,6 +207,7 @@ export async function POST(req: NextRequest) {
       projectId,
       type: deliverableType,
       title: data.title || DEFAULT_TITLES[deliverableType],
+      phase: deliverablePhaseForType(deliverableType),
       executiveSummary: data.executiveSummary || null,
       content: data.content,
       diagram: isDesign ? data.diagram || null : null,

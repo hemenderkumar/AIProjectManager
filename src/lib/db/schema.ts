@@ -1935,6 +1935,11 @@ export const deliverables = pgTable("deliverables", {
     .references(() => projects.id, { onDelete: "cascade" }),
   type: deliverableTypeEnum("type").notNull(),
   title: text("title").notNull(),
+  // SDLC phase this deliverable belongs to — same free-text convention as tasks.phase, so a
+  // deliverable and the tasks that produce it line up against the same lifecycle. Defaulted
+  // from `type` on create (see deliverablePhaseForType in lib/deliverables.ts) but editable,
+  // since a project's actual phase names can vary by methodology/project type.
+  phase: text("phase"),
   // Document body (markdown) — populated for the narrative types (requirements/NFR, design,
   // release documentation, other). The two test-script types instead use structured rows in
   // deliverableTestCases below, since those are meant to actually be executed, not just read.

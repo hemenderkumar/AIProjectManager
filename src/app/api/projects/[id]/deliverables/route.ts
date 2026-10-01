@@ -4,6 +4,7 @@ import { deliverables, deliverableTestCases } from "@/lib/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { logAudit } from "@/lib/audit";
+import { deliverablePhaseForType } from "@/lib/deliverables";
 
 const TEST_TYPES = new Set(["FUNCTIONAL_TEST_SCRIPT", "UAT_SCRIPT"]);
 
@@ -51,6 +52,7 @@ export async function POST(
       projectId: id,
       type: body.type,
       title: body.title.trim(),
+      phase: body.phase || deliverablePhaseForType(body.type),
       content: body.content || null,
       diagram: body.diagram || null,
       createdByAi: false,
