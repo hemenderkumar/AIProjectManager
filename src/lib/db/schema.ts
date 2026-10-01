@@ -1418,6 +1418,85 @@ export const budgetChangeRequests = pgTable("budget_change_requests", {
   resultingBaselineId: text("resulting_baseline_id").references((): AnyPgColumn => budgetBaselines.id, { onDelete: "set null" }),
 });
 
+// Governance layer 1 of 3 (see also escalations, portfolioDecisions below): gives the
+// project's Sponsor stakeholder real approval authority instead of just being a name on the
+// charter. A sponsor has no Executa login, so this follows the same tokenized no-login
+// pattern as statusRequests/rfpVendors -- the token itself is the entire security boundary,
+// looked up directly with no additional auth check. One-time-ness is enforced purely by the
+// `status` check, same as those two tables; no separate expiry.
+export const approvalEntityTypeEnum = pgEnum("approval_entity_type", ["CHARTER", "BUDGET_CHANGE_REQUEST", "GENERAL"]);
+export const approvalStatusEnum = pgEnum("approval_status", ["PENDING", "APPROVED", "REJECTED"]);
+
+export const approvalRequests = pgTable("approval_requests", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  entityType: approvalEntityTypeEnum("entity_type").notNull().default("GENERAL"),
+  // Id of the thing being approved when entityType points at a real row (e.g. a
+  // budgetChangeRequests id) -- null for CHARTER/GENERAL, which aren't row-based.
+  entityId: text("entity_id"),
+  sponsorStakeholderId: text("sponsor_stakeholder_id")
+    .notNull()
+    .references((): AnyPgColumn => stakeholders.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  status: approvalStatusEnum("status").notNull().default("PENDING"),
+  // What the sponsor is being asked to approve -- a snapshot of the relevant text at request
+  // time, so the sponsor's decision page doesn't need project-edit access to render.
+  summary: text("summary"),
+  decisionNote: text("decision_note"),
+  requestedBy: text("requested_by").notNull(),
+  requestedAt: timestamp("requested_at").notNull().defaultNow(),
+  decidedAt: timestamp("decided_at"),
+});
+
+// Governance layer 2 of 3: turns "Escalations" from a free-text heading the AI infers inside
+// the steering committee report into a real, trackable item with a status and an owner --
+// see generateSteeringCommitteeReport in reportGenerator.ts, which now pulls open rows from
+// here instead of (or alongside) inferring from portfolio data alone. Deliberately a sibling
+// of riskItems rather than a riskItems column: an escalation is "this needs committee-level
+// help right now", which is a narrower and more urgent thing than every open risk.
+export const escalationStatusEnum = pgEnum("escalation_status", ["OPEN", "IN_PROGRESS", "RESOLVED"]);
+
+export const escalations = pgTable("escalations", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  severity: priorityEnum("severity").notNull().default("HIGH"),
+  status: escalationStatusEnum("status").notNull().default("OPEN"),
+  owner: text("owner"),
+  raisedBy: text("raised_by").notNull(),
+  // Optional link back to the risk this escalation grew out of, if any -- most escalations
+  // won't have one (e.g. a budget or stakeholder issue with no prior risk entry).
+  linkedRiskId: text("linked_risk_id").references((): AnyPgColumn => riskItems.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  resolution: text("resolution"),
+});
+
+// Governance layer 3 of 3: a decision log for the Portfolio Board level -- which initiatives
+// actually got funded, deferred, held, or killed, by whom, and why. Deliberately append-only
+// (every decision is its own row, not an update to a single "current decision" field) so the
+// history of a project's funding story stays intact; the Portfolio Board view reads the most
+// recent row per project as the "current" decision.
+export const portfolioDecisionTypeEnum = pgEnum("portfolio_decision_type", ["FUND", "DEFER", "HOLD", "KILL"]);
+
+export const portfolioDecisions = pgTable("portfolio_decisions", {
+  id: cuid(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  decisionType: portfolioDecisionTypeEnum("decision_type").notNull(),
+  budgetRequested: real("budget_requested"),
+  budgetApproved: real("budget_approved"),
+  rationale: text("rationale"),
+  decidedBy: text("decided_by").notNull(),
+  decidedAt: timestamp("decided_at").notNull().defaultNow(),
+});
+
 export const timeEntries = pgTable("time_entries", {
   id: cuid(),
   taskId: text("task_id")
@@ -2030,6 +2109,35 @@ export const budgetChangeRequestsRelations = relations(budgetChangeRequests, ({ 
   baseline: one(budgetBaselines, {
     fields: [budgetChangeRequests.baselineId],
     references: [budgetBaselines.id],
+  }),
+}));
+
+export const approvalRequestsRelations = relations(approvalRequests, ({ one }) => ({
+  project: one(projects, {
+    fields: [approvalRequests.projectId],
+    references: [projects.id],
+  }),
+  sponsorStakeholder: one(stakeholders, {
+    fields: [approvalRequests.sponsorStakeholderId],
+    references: [stakeholders.id],
+  }),
+}));
+
+export const escalationsRelations = relations(escalations, ({ one }) => ({
+  project: one(projects, {
+    fields: [escalations.projectId],
+    references: [projects.id],
+  }),
+  linkedRisk: one(riskItems, {
+    fields: [escalations.linkedRiskId],
+    references: [riskItems.id],
+  }),
+}));
+
+export const portfolioDecisionsRelations = relations(portfolioDecisions, ({ one }) => ({
+  project: one(projects, {
+    fields: [portfolioDecisions.projectId],
+    references: [projects.id],
   }),
 }));
 

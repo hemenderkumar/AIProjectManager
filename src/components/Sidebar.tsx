@@ -27,6 +27,7 @@ import {
   LineChart,
   LayoutGrid,
   Gauge,
+  Landmark,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 import type { ModuleKey } from "@/lib/modules";
@@ -145,6 +146,9 @@ export default function Sidebar({
           )}
           {isInternal && (
             <NavLink href="/pmo-scorecard" icon={<Gauge size={17} />} pathname={pathname}>PMO Scorecard</NavLink>
+          )}
+          {isInternal && (
+            <NavLink href="/portfolio-board" icon={<Landmark size={17} />} pathname={pathname}>Portfolio Board</NavLink>
           )}
           {user?.role === "SUPER_USER" && (
             <NavLink href="/organization" icon={<Building2 size={17} />} pathname={pathname}>My Organization</NavLink>

@@ -8,6 +8,7 @@ import { Sparkles, Loader2, FileDown, Download, Plus, Trash2 } from "lucide-reac
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
 import AiEditChat from "./AiEditChat";
+import SponsorApprovalPanel from "./SponsorApprovalPanel";
 import { renderMermaidToImages } from "@/lib/mermaidToImage";
 
 type CostItemCategory = "MATERIAL" | "IMPLEMENTATION" | "ONGOING_SUPPORT" | "LABOR";
@@ -782,6 +783,7 @@ export default function CharterTab({ detail }: { detail: ProjectDetail }) {
               <input type="date" value={form.charterApprovedAt} onChange={(e) => update("charterApprovedAt", e.target.value)} className={inputCls} />
             </Field>
           </div>
+          <SponsorApprovalPanel projectId={p.id} hasSponsor={!!p.sponsorStakeholderId} />
         </div>
       </Card>
 

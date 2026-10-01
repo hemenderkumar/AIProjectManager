@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { reports, users } from "@/lib/db/schema";
 import { askClaude } from "@/lib/ai";
 import { getPortfolioSummary, formatPortfolioForAI } from "@/lib/portfolio";
+import { formatOpenEscalationsForAI } from "@/lib/escalations";
 import { sendEmail } from "@/lib/email";
 import { inArray } from "drizzle-orm";
 
@@ -40,13 +41,21 @@ export async function generateSteeringCommitteeReport(styleAddendum?: string | n
   // Same reasoning as generateWeeklyStatusReport above — intentionally unscoped.
   const summary = await getPortfolioSummary();
   const context = formatPortfolioForAI(summary);
+  // Real tracked escalations (see escalations table) rather than leaving the AI to infer
+  // "escalation-worthy" content purely from risks/overdue tasks.
+  const openEscalations = await formatOpenEscalationsForAI();
 
   const system = `You are a PMO director preparing a steering committee meeting pack.
 Structure with Markdown headings: Meeting Purpose, Decisions Needed, Portfolio Health Summary,
-Escalations (risks/blockers that need committee-level help), Budget Overview, Proposed Agenda
-(numbered, with rough minutes each). Be decisive about what the committee should actually decide.${styleAddendum ? `\n\nAdditional style guidance: ${styleAddendum}` : ""}`;
+Escalations (list the tracked open escalations given below verbatim-ish, grouped by project;
+only add inferred items if something in the portfolio data clearly needs committee-level help
+beyond what's tracked), Budget Overview, Proposed Agenda (numbered, with rough minutes each).
+Be decisive about what the committee should actually decide.${styleAddendum ? `\n\nAdditional style guidance: ${styleAddendum}` : ""}`;
 
-  const content = await askClaude(system, `Portfolio data for the steering committee pack:\n\n${context}`);
+  const content = await askClaude(
+    system,
+    `Portfolio data for the steering committee pack:\n\n${context}\n\nTracked open escalations:\n${openEscalations}`
+  );
 
   const [saved] = await db
     .insert(reports)

@@ -7,6 +7,7 @@ import { PriorityBadge } from "@/components/badges";
 import { Plus, Sparkles, Loader2 } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import AiEditChat from "./AiEditChat";
+import EscalationsPanel from "./EscalationsPanel";
 
 export default function RisksTab({ detail }: { detail: ProjectDetail }) {
   const router = useRouter();
@@ -170,6 +171,8 @@ export default function RisksTab({ detail }: { detail: ProjectDetail }) {
           </table>
         </div>
       </Card>
+
+      <EscalationsPanel projectId={detail.project.id} />
     </div>
   );
 }
