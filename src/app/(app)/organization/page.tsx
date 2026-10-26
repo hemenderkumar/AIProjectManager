@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
 import { Download, AlertTriangle, Loader2, Plus, Trash2, Palette, Upload, X } from "lucide-react";
 import RateCardSection from "@/components/RateCardSection";
 import SsoSettingsSection from "@/components/SsoSettingsSection";
+import WhiteLabelSection from "@/components/WhiteLabelSection";
+import ClientBillingSection from "@/components/ClientBillingSection";
 
 type Organization = {
   id: string;
@@ -390,6 +392,12 @@ export default function OrganizationPage() {
           </div>
           {brandError && <p className="text-xs text-rose-600 mt-3">{brandError}</p>}
         </div>
+
+        <WhiteLabelSection />
+
+        <Suspense fallback={null}>
+          <ClientBillingSection />
+        </Suspense>
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-1">

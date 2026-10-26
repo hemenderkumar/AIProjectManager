@@ -73,7 +73,7 @@ export const ENTITY_CONFIG: Record<
       { key: "title", label: "Title", kind: "text" },
       { key: "phase", label: "Phase", kind: "text" },
       { key: "content", label: "Content", kind: "text" },
-      { key: "status", label: "Status", kind: "enum", options: ["DRAFT", "IN_REVIEW", "APPROVED", "FINAL"] },
+      { key: "status", label: "Status", kind: "enum", options: ["DRAFT", "IN_REVIEW", "CHANGES_REQUESTED", "APPROVED", "FINAL"] },
     ],
     load: async (id) => {
       const [row] = await db.select().from(deliverables).where(eq(deliverables.id, id));

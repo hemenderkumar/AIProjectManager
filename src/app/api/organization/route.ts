@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
+import { validateWhiteLabel } from "@/lib/branding";
 
 // Self-service: a SUPER_USER's own organization record (name + any pending deletion
 // request). Not for browsing other organizations — that's the ADMIN-only
@@ -58,11 +59,24 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
+  const wl = validateWhiteLabel(body);
+  if (!wl.ok) return NextResponse.json({ error: wl.error }, { status: 400 });
+  Object.assign(updates, wl.updates);
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
-  await db.update(organizations).set(updates).where(eq(organizations.id, user.organizationId));
+  try {
+    await db.update(organizations).set(updates).where(eq(organizations.id, user.organizationId));
+  } catch (err) {
+    // login_slug has a UNIQUE constraint (Postgres 23505)
+    if ((err as { code?: string; cause?: { code?: string } })?.code === "23505" ||
+        (err as { cause?: { code?: string } })?.cause?.code === "23505") {
+      return NextResponse.json({ error: "That login address is already taken" }, { status: 409 });
+    }
+    throw err;
+  }
   const [org] = await db.select().from(organizations).where(eq(organizations.id, user.organizationId));
   return NextResponse.json(org);
 }

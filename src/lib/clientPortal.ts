@@ -55,7 +55,7 @@ export async function getClientPortalData(user?: SessionUser | null) {
   // may need their sign-off) or already approved/final (something they can reference) --
   // internal DRAFT working copies stay off the portal until a PM moves them forward.
   const recentDeliverables = allDeliverables
-    .filter((d) => d.status === "IN_REVIEW" || d.status === "APPROVED" || d.status === "FINAL")
+    .filter((d) => d.status === "IN_REVIEW" || d.status === "CHANGES_REQUESTED" || d.status === "APPROVED" || d.status === "FINAL")
     .map((d) => ({ ...d, projectName: projectNameById.get(d.projectId) ?? "" }))
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
     .slice(0, 8);

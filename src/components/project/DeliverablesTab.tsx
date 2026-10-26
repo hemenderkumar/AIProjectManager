@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { ProjectDetail } from "./ProjectTabs";
 import type { SessionUser } from "@/lib/auth";
 import { Card, inputCls, PrimaryButton } from "./ui";
+import DeliverableThread from "@/components/DeliverableThread";
 import {
   Sparkles, Loader2, ChevronDown, ChevronUp, Trash2, Plus, FileText, ClipboardCheck,
   Gauge, CheckCircle2, AlertTriangle, XCircle, ListChecks, FileDown, Paperclip, Upload, X,
@@ -87,7 +88,7 @@ const TYPES: { value: string; label: string; description: string; isTest: boolea
 
 const TRACEABLE_TYPES = new Set(["REQUIREMENTS_NFR", "DESIGN"]);
 
-const DELIVERABLE_STATUSES = ["DRAFT", "IN_REVIEW", "APPROVED", "FINAL"];
+const DELIVERABLE_STATUSES = ["DRAFT", "IN_REVIEW", "CHANGES_REQUESTED", "APPROVED", "FINAL"];
 const TEST_CASE_STATUSES = ["NOT_RUN", "PASS", "FAIL", "BLOCKED"];
 
 const TEST_STATUS_STYLES: Record<string, string> = {
@@ -507,6 +508,10 @@ export default function DeliverablesTab({ detail, user }: { detail: ProjectDetai
                         <CheckCircle2 size={12} /> Approved by {d.approvedBy}{d.approvedAt ? ` on ${new Date(d.approvedAt).toLocaleDateString()}` : ""}
                       </p>
                     )}
+                    <details className="mb-3 border border-slate-200 rounded-lg px-3 py-2 bg-slate-50/50">
+                      <summary className="text-xs font-medium text-slate-600 cursor-pointer">Client discussion &amp; files</summary>
+                      <div className="mt-2"><DeliverableThread deliverableId={d.id} /></div>
+                    </details>
                     <div className="mb-3 flex items-center gap-2">
                       <label className="text-xs font-medium text-slate-500 shrink-0">Phase</label>
                       {canEdit ? (

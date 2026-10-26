@@ -978,6 +978,23 @@ export const organizations = pgTable("organizations", {
   // are never silently overridden.
   logoDataUrl: text("logo_data_url"),
   brandColor: text("brand_color"),
+
+  // White-label (client portal): what clients see instead of "Executa". brandDisplayName
+  // falls back to `name`. loginSlug powers a branded sign-in page at /login?org=<slug>.
+  // hidePoweredBy removes the "Powered by Executa" footer. emailFromName brands outbound
+  // notification emails ("<name> via Executa" style sender display name).
+  brandDisplayName: text("brand_display_name"),
+  loginSlug: text("login_slug").unique(),
+  loginTagline: text("login_tagline"),
+  hidePoweredBy: boolean("hide_powered_by").notNull().default(false),
+  emailFromName: text("email_from_name"),
+  emailReplyTo: text("email_reply_to"),
+
+  // Stripe Connect (client invoice payments): the consulting company's OWN connected
+  // account -- client card/ACH payments settle straight to it, never through Executa's
+  // balance. stripeConnectReady flips true once Stripe reports charges_enabled.
+  stripeConnectAccountId: text("stripe_connect_account_id"),
+  stripeConnectReady: boolean("stripe_connect_ready").notNull().default(false),
 });
 
 // Who a promo code is meant for, distinct from who *can technically* redeem it (Stripe itself
@@ -1926,6 +1943,9 @@ export const deliverableStatusEnum = pgEnum("deliverable_status", [
   "IN_REVIEW",
   "APPROVED",
   "FINAL",
+  // Set when the client reviewer asks for revisions in the client portal; the PM addresses the
+  // note and moves it back to IN_REVIEW.
+  "CHANGES_REQUESTED",
 ]);
 
 export const deliverables = pgTable("deliverables", {
@@ -1979,6 +1999,58 @@ export const deliverables = pgTable("deliverables", {
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Conversation on a deliverable shared between the delivery team and the client reviewer.
+// kind=DECISION rows are the audit trail of client approve / request-changes actions (the
+// note the client typed is the body); COMMENT rows are free discussion. Each row can carry
+// one attachment, stored inline as base64 (same no-object-storage convention as
+// signedDocumentData). authorSide is snapshotted so the thread renders correctly even if the
+// author later changes organization.
+export const deliverableCommentKindEnum = pgEnum("deliverable_comment_kind", ["COMMENT", "DECISION"]);
+export const deliverableComments = pgTable("deliverable_comments", {
+  id: cuid(),
+  deliverableId: text("deliverable_id")
+    .notNull()
+    .references(() => deliverables.id, { onDelete: "cascade" }),
+  kind: deliverableCommentKindEnum("kind").notNull().default("COMMENT"),
+  authorUserId: text("author_user_id"),
+  authorName: text("author_name").notNull(),
+  authorSide: text("author_side").notNull().default("TEAM"), // "TEAM" | "CLIENT"
+  body: text("body").notNull().default(""),
+  attachmentFilename: text("attachment_filename"),
+  attachmentMime: text("attachment_mime"),
+  attachmentSize: integer("attachment_size"),
+  attachmentData: text("attachment_data"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Receivables: what a client owes the consulting company, payable online through the
+// company's own Stripe Connect account. Deliberately separate from `invoices`, which holds
+// vendor bills the project OWNER pays (payables).
+export const clientInvoiceStatusEnum = pgEnum("client_invoice_status", ["DRAFT", "SENT", "PAID", "VOID"]);
+export const clientInvoices = pgTable("client_invoices", {
+  id: cuid(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  number: text("number").notNull(),
+  description: text("description"),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("usd"),
+  dueDate: timestamp("due_date"),
+  status: clientInvoiceStatusEnum("status").notNull().default("DRAFT"),
+  // Stripe linkage (written by the checkout route + webhook, idempotent on paidAt).
+  stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  paidAt: timestamp("paid_at"),
+  paymentMethod: text("payment_method"), // "card" | "us_bank_account" | ...
+  receiptUrl: text("receipt_url"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const testCaseStatusEnum = pgEnum("test_case_status", [

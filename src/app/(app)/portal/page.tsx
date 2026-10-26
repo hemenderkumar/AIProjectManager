@@ -5,15 +5,15 @@ import { RagBadge, StageBadge } from "@/components/badges";
 import { getCurrentUser } from "@/lib/auth";
 import { getClientPortalData } from "@/lib/clientPortal";
 import { formatDate } from "@/lib/format";
-import { FileCheck2, Receipt, MessageCircleHeart, Flag } from "lucide-react";
+import { Receipt, MessageCircleHeart, Flag } from "lucide-react";
+import PortalDeliverables from "@/components/portal/PortalDeliverables";
+import { canClientDecide } from "@/lib/deliverableReview";
+import { getBrandingForOrg } from "@/lib/branding";
+import { roleAtLeast } from "@/lib/auth";
+import PortalInvoices from "@/components/portal/PortalInvoices";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
-
-const DELIVERABLE_STATUS_STYLES: Record<string, string> = {
-  IN_REVIEW: "bg-amber-50 text-amber-700",
-  APPROVED: "bg-emerald-50 text-emerald-700",
-  FINAL: "bg-emerald-50 text-emerald-700",
-};
 
 const INVOICE_STATUS_STYLES: Record<string, string> = {
   PENDING: "bg-slate-100 text-slate-600",
@@ -31,10 +31,14 @@ export default async function ClientPortalPage() {
   const data = await getClientPortalData(user);
 
   const activeProjects = data.projects.filter((p) => p.stage !== "CLOSED");
+  const branding = await getBrandingForOrg(user?.organizationId);
 
   return (
     <div>
-      <Topbar title="Client Portal" subtitle="A quick read on how your projects are going" />
+      <Topbar
+        title={branding ? `${branding.name} Client Portal` : "Client Portal"}
+        subtitle="A quick read on how your projects are going"
+      />
 
       <div className="p-8 space-y-6 max-w-6xl">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -108,29 +112,23 @@ export default async function ClientPortalPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-              <FileCheck2 size={15} className="text-accent-600" />
-              <p className="text-sm font-semibold text-slate-900">Deliverables</p>
-            </div>
-            <div className="divide-y divide-slate-50">
-              {data.recentDeliverables.length === 0 && (
-                <p className="text-sm text-slate-400 p-4">No deliverables awaiting review yet.</p>
-              )}
-              {data.recentDeliverables.map((d) => (
-                <div key={d.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm text-slate-700 truncate">{d.title}</p>
-                    <p className="text-xs text-slate-400">{d.projectName}</p>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${DELIVERABLE_STATUS_STYLES[d.status] ?? "bg-slate-100 text-slate-600"}`}>
-                    {d.status.replace("_", " ")}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <PortalDeliverables
+            canDecide={user ? canClientDecide(user) : false}
+            items={data.recentDeliverables.map((d) => ({
+              id: d.id,
+              title: d.title,
+              projectName: d.projectName,
+              status: d.status,
+              phase: d.phase,
+              executiveSummary: d.executiveSummary,
+              approvedBy: d.approvedBy,
+            }))}
+          />
         </div>
+
+        <Suspense fallback={null}>
+          <PortalInvoices canPay={user ? canClientDecide(user) || roleAtLeast(user.role, "PM") : false} />
+        </Suspense>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 overflow-hidden">
@@ -184,6 +182,10 @@ export default async function ClientPortalPage() {
             )}
           </div>
         </div>
+
+        {!(branding?.hidePoweredBy) && (
+          <p className="text-[11px] text-slate-400 text-center pt-2">Powered by Executa</p>
+        )}
       </div>
     </div>
   );
