@@ -36,6 +36,38 @@ export function sanitizeSlaOverrides(raw: unknown): SlaTargetOverrides {
   return out;
 }
 
+export const SLA_SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
+
+// Admin input is hours per severity ({ HIGH: { ack: 2, resolve: 24 } }); blank/null clears a
+// value back to the default. Output is the minutes shape stored in organizations.sla_targets,
+// or null when nothing is customised.
+export function validateSlaTargetsInput(
+  raw: unknown,
+): { ok: true; value: SlaTargetOverrides | null } | { ok: false; error: string } {
+  if (raw === null || raw === "") return { ok: true, value: null };
+  if (typeof raw !== "object") return { ok: false, error: "slaTargets must be an object" };
+  const out: SlaTargetOverrides = {};
+  for (const sev of SLA_SEVERITIES) {
+    const entry = (raw as Record<string, unknown>)[sev];
+    if (entry == null) continue;
+    if (typeof entry !== "object") return { ok: false, error: `${sev}: invalid value` };
+    const mins: Partial<{ ack: number; resolve: number }> = {};
+    for (const k of ["ack", "resolve"] as const) {
+      const v = (entry as Record<string, unknown>)[k];
+      if (v === null || v === "" || v === undefined) continue;
+      const hours = typeof v === "number" ? v : Number(v);
+      if (!Number.isFinite(hours) || hours < 1 / 12 || hours > 24 * 90) {
+        return { ok: false, error: `${sev} ${k}: enter hours between 5 minutes (0.1) and 90 days` };
+      }
+      mins[k] = Math.round(hours * 60);
+    }
+    const effective = slaTargetMinutes(sev, { [sev]: mins });
+    if (effective.ack > effective.resolve) return { ok: false, error: `${sev}: acknowledge time can't exceed resolve time` };
+    if (Object.keys(mins).length) out[sev] = mins;
+  }
+  return { ok: true, value: Object.keys(out).length ? out : null };
+}
+
 export function slaTargetMinutes(severity: string, overrides?: SlaTargetOverrides): { ack: number; resolve: number } {
   const base = SLA_TARGET_MINUTES[severity as IncidentSeverity] ?? SLA_TARGET_MINUTES.MEDIUM;
   const o = overrides?.[severity as IncidentSeverity];

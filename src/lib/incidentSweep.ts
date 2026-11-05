@@ -8,6 +8,21 @@ import { dispatchWebhook } from "./webhooks";
 
 export type SweepSummary = { checked: number; warned: number; breached: number; escalated: number; reporterNudges: number; reporterNotices: number };
 
+// Opportunistic sweep for plans limited to a daily cron: called when someone opens the Support
+// page. Throttled per server instance to once an hour; the sweep itself is idempotent
+// (warn/breach are stamped once), so overlapping instances can't double-notify.
+let lastOpportunisticRun = 0;
+export async function maybeRunIncidentSweep(minIntervalMs = 60 * 60_000) {
+  const now = Date.now();
+  if (now - lastOpportunisticRun < minIntervalMs) return;
+  lastOpportunisticRun = now;
+  try {
+    await runIncidentSweep(new Date(now));
+  } catch (err) {
+    console.error("opportunistic incident sweep failed", err);
+  }
+}
+
 // Proactive pass over every open incident. Safe to run repeatedly: warn / breach are stamped
 // once (slaWarnedAt / slaBreachedAt) so nobody is notified twice for the same threshold.
 export async function runIncidentSweep(now: Date = new Date()): Promise<SweepSummary> {

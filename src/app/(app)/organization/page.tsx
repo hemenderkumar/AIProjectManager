@@ -6,6 +6,7 @@ import RateCardSection from "@/components/RateCardSection";
 import SsoSettingsSection from "@/components/SsoSettingsSection";
 import WhiteLabelSection from "@/components/WhiteLabelSection";
 import ClientBillingSection from "@/components/ClientBillingSection";
+import SlaTargetsSection from "@/components/SlaTargetsSection";
 
 type Organization = {
   id: string;
@@ -398,6 +399,8 @@ export default function OrganizationPage() {
         <Suspense fallback={null}>
           <ClientBillingSection />
         </Suspense>
+
+        <SlaTargetsSection />
 
         <div className="bg-white rounded-xl border border-slate-200/70 shadow-sm shadow-slate-200/60 p-5">
           <div className="flex items-center justify-between mb-1">

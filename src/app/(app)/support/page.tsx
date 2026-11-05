@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { after } from "next/server";
+import { maybeRunIncidentSweep } from "@/lib/incidentSweep";
 import { eq, isNull } from "drizzle-orm";
 import Topbar from "@/components/Topbar";
 import SupportTabs from "@/components/SupportTabs";
@@ -22,6 +24,9 @@ export default async function SupportPage() {
   if (!(await isModuleEnabled(user, "support"))) {
     return <ModuleLocked moduleName={MODULE_REGISTRY.support.label} />;
   }
+
+  // Runs after the response is sent, so it never slows the page.
+  after(() => maybeRunIncidentSweep());
 
   // Rate cards are scoped per company now. ADMIN gets a true portfolio-wide average (every
   // company's rows); everyone else gets their own company's rates merged over the global

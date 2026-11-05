@@ -5,7 +5,7 @@ vi.mock("@/lib/email", () => ({ sendEmail: vi.fn() }));
 vi.mock("@/lib/brandedEmail", () => ({ sendBrandedEmail: vi.fn() }));
 
 import { tokenize, jaccard, findSimilarIncidents, resolutionEvidence, detectRecurrence, type IncidentLike } from "@/lib/incidentSimilarity";
-import { evaluateSweep, nextSeverity, sanitizeSlaOverrides, slaTargetMinutes, type IncidentForSweep } from "@/lib/incidentSla";
+import { evaluateSweep, nextSeverity, sanitizeSlaOverrides, slaTargetMinutes, validateSlaTargetsInput, type IncidentForSweep } from "@/lib/incidentSla";
 import { computeIncidentInsights } from "@/lib/incidentInsights";
 import { extractEmail } from "@/lib/incidentComms";
 
@@ -84,6 +84,23 @@ describe("sla sweep", () => {
     expect(o).toEqual({ HIGH: { ack: 10, resolve: 120 } });
     expect(slaTargetMinutes("HIGH", o)).toEqual({ ack: 10, resolve: 120 });
     expect(slaTargetMinutes("LOW", o)).toEqual(slaTargetMinutes("LOW"));
+  });
+});
+
+describe("sla target admin input", () => {
+  it("converts hours to minutes and clears blanks", () => {
+    expect(validateSlaTargetsInput({ HIGH: { ack: "2", resolve: 12 }, LOW: { ack: "", resolve: "" } })).toEqual({
+      ok: true, value: { HIGH: { ack: 120, resolve: 720 } },
+    });
+    expect(validateSlaTargetsInput(null)).toEqual({ ok: true, value: null });
+    expect(validateSlaTargetsInput({})).toEqual({ ok: true, value: null });
+  });
+  it("rejects bad numbers and ack > resolve", () => {
+    expect(validateSlaTargetsInput({ HIGH: { ack: "abc" } })).toMatchObject({ ok: false });
+    expect(validateSlaTargetsInput({ HIGH: { resolve: 99999 } })).toMatchObject({ ok: false });
+    expect(validateSlaTargetsInput({ HIGH: { ack: 30, resolve: 10 } })).toMatchObject({ ok: false });
+    // ack above the *default* resolve for that severity is also invalid
+    expect(validateSlaTargetsInput({ CRITICAL: { ack: 10 } })).toMatchObject({ ok: false });
   });
 });
 

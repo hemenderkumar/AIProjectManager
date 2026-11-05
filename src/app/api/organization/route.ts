@@ -4,6 +4,7 @@ import { organizations } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth";
 import { validateWhiteLabel } from "@/lib/branding";
+import { validateSlaTargetsInput } from "@/lib/incidentSla";
 
 // Self-service: a SUPER_USER's own organization record (name + any pending deletion
 // request). Not for browsing other organizations — that's the ADMIN-only
@@ -57,6 +58,12 @@ export async function PATCH(req: NextRequest) {
     } else {
       return NextResponse.json({ error: "logoDataUrl must be a base64 png/jpeg/svg/webp data URI" }, { status: 400 });
     }
+  }
+
+  if ("slaTargets" in body) {
+    const sla = validateSlaTargetsInput(body.slaTargets);
+    if (!sla.ok) return NextResponse.json({ error: sla.error }, { status: 400 });
+    updates.slaTargets = sla.value;
   }
 
   const wl = validateWhiteLabel(body);
