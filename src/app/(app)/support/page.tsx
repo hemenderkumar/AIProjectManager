@@ -1,6 +1,4 @@
 import { notFound } from "next/navigation";
-import { after } from "next/server";
-import { maybeRunIncidentSweep } from "@/lib/incidentSweep";
 import { eq, isNull } from "drizzle-orm";
 import Topbar from "@/components/Topbar";
 import SupportTabs from "@/components/SupportTabs";
@@ -17,6 +15,9 @@ import { MODULE_REGISTRY } from "@/lib/modules";
 import ModuleLocked from "@/components/ModuleLocked";
 
 export const dynamic = "force-dynamic";
+// Fail fast (instead of the 300s default) if a database call ever hangs, so a stuck request
+// can't stall the sidebar's navigation for minutes.
+export const maxDuration = 30;
 
 export default async function SupportPage() {
   const user = await getCurrentUser();
@@ -24,9 +25,6 @@ export default async function SupportPage() {
   if (!(await isModuleEnabled(user, "support"))) {
     return <ModuleLocked moduleName={MODULE_REGISTRY.support.label} />;
   }
-
-  // Runs after the response is sent, so it never slows the page.
-  after(() => maybeRunIncidentSweep());
 
   // Rate cards are scoped per company now. ADMIN gets a true portfolio-wide average (every
   // company's rows); everyone else gets their own company's rates merged over the global
