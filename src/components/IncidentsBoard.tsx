@@ -7,6 +7,7 @@ import { formatDate, formatDateTime } from "@/lib/format";
 import { computeIncidentSla, averageMttrMinutes, formatMinutes } from "@/lib/incidentSla";
 import { Plus, Sparkles, Loader2, Trash2, X, AlertTriangle, Clock, Send, ClipboardList } from "lucide-react";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
+import IncidentSuggestions from "@/components/IncidentSuggestions";
 
 type Incident = {
   id: string;
@@ -26,9 +27,11 @@ type Incident = {
   aiRecommendation: string | null;
   escalatedAt: string | null;
   followUpTaskId: string | null;
+  reporterEmail?: string | null;
+  problemId?: string | null;
 };
 
-type IncidentUpdate = { id: string; authorName: string; body: string; createdAt: string };
+type IncidentUpdate = { id: string; authorName: string; body: string; createdAt: string; visibility?: string };
 
 type ProjectOption = { id: string; name: string };
 type UserOption = { id: string; name: string };
@@ -95,7 +98,9 @@ export default function IncidentsBoard({ incidents, projects, users }: { inciden
     reportedByUserId: "",
     assignee: "",
     assigneeUserId: "",
+    reporterEmail: "",
   });
+  const [publicUpdate, setPublicUpdate] = useState(false);
   const [recommending, setRecommending] = useState<string | null>(null);
   const [openIncidentId, setOpenIncidentId] = useState<string | null>(null);
   const [resolutionDraft, setResolutionDraft] = useState("");
@@ -157,7 +162,7 @@ export default function IncidentsBoard({ incidents, projects, users }: { inciden
     setSaving(false);
     if (!(await checkOk(res, "Could not create this incident."))) return;
     setShowForm(false);
-    setForm({ title: "", description: "", projectId: "", severity: "MEDIUM", reportedBy: "", reportedByUserId: "", assignee: "", assigneeUserId: "" });
+    setForm({ title: "", description: "", projectId: "", severity: "MEDIUM", reportedBy: "", reportedByUserId: "", assignee: "", assigneeUserId: "", reporterEmail: "" });
     router.refresh();
   }
 
@@ -238,10 +243,11 @@ export default function IncidentsBoard({ incidents, projects, users }: { inciden
       const res = await fetch(`/api/incidents/${id}/updates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: newComment }),
+        body: JSON.stringify({ body: newComment, visibility: publicUpdate ? "PUBLIC" : "INTERNAL" }),
       });
       if (!(await checkOk(res, "Could not post this update."))) return;
       setNewComment("");
+      setPublicUpdate(false);
       loadUpdates(id);
     } finally {
       setPostingComment(false);
@@ -345,6 +351,13 @@ export default function IncidentsBoard({ incidents, projects, users }: { inciden
                   onChange={(e) => setForm((f) => ({ ...f, reportedBy: e.target.value, reportedByUserId: e.target.value ? "" : f.reportedByUserId }))}
                   className={fieldCls}
                   placeholder="or type a name (e.g. a customer)"
+                />
+                <input
+                  type="email"
+                  value={form.reporterEmail}
+                  onChange={(e) => setForm((f) => ({ ...f, reporterEmail: e.target.value }))}
+                  className={`${fieldCls} mt-1.5`}
+                  placeholder="reporter email (optional, to keep them updated)"
                 />
               </FormField>
               <FormField label="Assignee">
@@ -451,6 +464,9 @@ export default function IncidentsBoard({ incidents, projects, users }: { inciden
                         </div>
                       </div>
 
+                      <IncidentSuggestions incidentId={inc.id} problemId={inc.problemId ?? null} canManage />
+                      {inc.problemId && <p className="text-xs text-violet-700 mb-2">Linked to a problem — see the Problems tab.</p>}
+
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <button
                           onClick={() => getRecommendation(inc.id)}
@@ -505,7 +521,7 @@ export default function IncidentsBoard({ incidents, projects, users }: { inciden
                             {(updatesById[inc.id] ?? []).map((u) => (
                               <div key={u.id} className="text-xs bg-white border border-slate-100 rounded-lg px-2.5 py-2">
                                 <div className="flex items-center justify-between text-slate-400 mb-0.5">
-                                  <span className="font-medium text-slate-600">{u.authorName}</span>
+                                  <span className="font-medium text-slate-600">{u.authorName}{u.visibility === "PUBLIC" && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700">sent to reporter</span>}</span>
                                   <span>{formatDateTime(u.createdAt)}</span>
                                 </div>
                                 <p className="text-slate-700 whitespace-pre-wrap">{u.body}</p>
@@ -532,6 +548,14 @@ export default function IncidentsBoard({ incidents, projects, users }: { inciden
                             {postingComment ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                           </button>
                         </div>
+                        {inc.reporterEmail ? (
+                          <label className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+                            <input type="checkbox" checked={publicUpdate} onChange={(e) => setPublicUpdate(e.target.checked)} />
+                            Also email this update to the reporter ({inc.reporterEmail})
+                          </label>
+                        ) : (
+                          <p className="mt-2 text-[11px] text-slate-400">No reporter email on this incident, so updates stay internal.</p>
+                        )}
                       </div>
                     </td>
                   </tr>

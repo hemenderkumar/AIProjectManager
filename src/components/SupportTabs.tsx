@@ -3,6 +3,7 @@ import { useState } from "react";
 import IncidentsBoard from "./IncidentsBoard";
 import SupportEstimator from "./SupportEstimator";
 import IncidentPatterns from "./IncidentPatterns";
+import ProblemsPanel from "./ProblemsPanel";
 
 type Incident = Parameters<typeof IncidentsBoard>[0]["incidents"];
 type ProjectOption = { id: string; name: string };
@@ -24,7 +25,7 @@ export default function SupportTabs({
   // Cards, since it would otherwise surface other clients' incidents to a client-company user.
   showPatterns?: boolean;
 }) {
-  const [tab, setTab] = useState<"incidents" | "estimator" | "patterns">("incidents");
+  const [tab, setTab] = useState<"incidents" | "problems" | "estimator" | "patterns">("incidents");
 
   return (
     <div>
@@ -36,6 +37,14 @@ export default function SupportTabs({
           }`}
         >
           Incidents
+        </button>
+        <button
+          onClick={() => setTab("problems")}
+          className={`px-3.5 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === "problems" ? "border-accent-600 text-accent-600" : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Problems
         </button>
         <button
           onClick={() => setTab("estimator")}
@@ -58,6 +67,7 @@ export default function SupportTabs({
       </div>
 
       {tab === "incidents" && <IncidentsBoard incidents={incidents} projects={projects} users={users ?? []} />}
+      {tab === "problems" && <ProblemsPanel incidents={incidents} />}
       {tab === "estimator" && (
         <SupportEstimator projects={projects} defaultBlendedHourlyRate={defaultBlendedHourlyRate} />
       )}

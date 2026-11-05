@@ -995,6 +995,10 @@ export const organizations = pgTable("organizations", {
   // balance. stripeConnectReady flips true once Stripe reports charges_enabled.
   stripeConnectAccountId: text("stripe_connect_account_id"),
   stripeConnectReady: boolean("stripe_connect_ready").notNull().default(false),
+
+  // Optional per-organization incident SLA override: { CRITICAL: { ack, resolve }, ... } in
+  // minutes. Null = use the built-in defaults in lib/incidentSla.ts.
+  slaTargets: jsonb("sla_targets"),
 });
 
 // Who a promo code is meant for, distinct from who *can technically* redeem it (Stripe itself
@@ -1580,6 +1584,18 @@ export const incidents = pgTable("incidents", {
   // lib/incidents.ts. Only possible when the incident has a projectId; onDelete set null so
   // deleting the task doesn't take the incident record down with it.
   followUpTaskId: text("follow_up_task_id").references(() => tasks.id, { onDelete: "set null" }),
+  // Reporter's email when they are not an Executa user (email intake / public API / manual entry) --
+  // lets the reporter be kept informed without needing an account. Falls back to the linked
+  // reportedByUserId's email.
+  reporterEmail: text("reporter_email"),
+  // Proactive-ops bookkeeping, written by the SLA sweep (lib/incidentOps.ts). Each is stamped
+  // once so warnings/escalations are never repeated on every sweep.
+  slaWarnedAt: timestamp("sla_warned_at"),
+  slaBreachedAt: timestamp("sla_breached_at"),
+  // Last time the reporter was sent an update; drives the "keep the reporter informed" nudge.
+  lastReporterUpdateAt: timestamp("last_reporter_update_at"),
+  // The underlying problem this incident is a symptom of (problem management).
+  problemId: text("problem_id").references((): AnyPgColumn => problems.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -1594,7 +1610,33 @@ export const incidentUpdates = pgTable("incident_updates", {
   authorId: text("author_id").references(() => users.id, { onDelete: "set null" }),
   authorName: text("author_name").notNull(),
   body: text("body").notNull(),
+  // "INTERNAL" (responders only) or "PUBLIC" (shared with the reporter by email as well).
+  visibility: text("visibility").notNull().default("INTERNAL"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Problem management: the underlying cause behind one or more incidents. A problem tracks
+// investigation -> known error (with a workaround/runbook shown on new matching incidents) ->
+// resolved (permanent fix done). Linked incidents point back via incidents.problemId.
+export const problemStatusEnum = pgEnum("problem_status", ["INVESTIGATING", "KNOWN_ERROR", "RESOLVED"]);
+export const problems = pgTable("problems", {
+  id: cuid(),
+  organizationId: text("organization_id").references(() => organizations.id, { onDelete: "cascade" }),
+  projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: problemStatusEnum("status").notNull().default("INVESTIGATING"),
+  rootCause: text("root_cause"),
+  // Temporary mitigation users/responders can apply right now, and ordered runbook steps.
+  workaround: text("workaround"),
+  runbook: text("runbook"),
+  permanentFix: text("permanent_fix"),
+  // The tracked task that delivers the permanent fix; the problem resolves when it is done.
+  fixTaskId: text("fix_task_id").references(() => tasks.id, { onDelete: "set null" }),
+  createdBy: text("created_by"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Running ideation brainstorm log: a dated, append-only list of entries (AI-generated or

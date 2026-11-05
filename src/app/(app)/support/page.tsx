@@ -59,6 +59,9 @@ export default async function SupportPage() {
     acknowledgedAt: i.acknowledgedAt ? i.acknowledgedAt.toISOString() : null,
     resolvedAt: i.resolvedAt ? i.resolvedAt.toISOString() : null,
     escalatedAt: i.escalatedAt ? i.escalatedAt.toISOString() : null,
+    slaWarnedAt: i.slaWarnedAt ? i.slaWarnedAt.toISOString() : null,
+    slaBreachedAt: i.slaBreachedAt ? i.slaBreachedAt.toISOString() : null,
+    lastReporterUpdateAt: i.lastReporterUpdateAt ? i.lastReporterUpdateAt.toISOString() : null,
   }));
 
   // Default blended rate for the estimator now comes from the org's Rate Card (avg $/hr

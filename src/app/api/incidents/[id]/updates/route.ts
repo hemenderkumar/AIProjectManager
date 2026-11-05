@@ -29,7 +29,7 @@ export async function POST(
     return NextResponse.json({ error: "body is required" }, { status: 400 });
   }
 
-  const result = await addIncidentUpdate(user, id, String(body.body));
+  const result = await addIncidentUpdate(user, id, String(body.body), body.visibility === "PUBLIC" ? "PUBLIC" : "INTERNAL");
   if ("error" in result) {
     const status = result.error === "not_found" ? 404 : result.error === "forbidden" ? 403 : 400;
     return NextResponse.json({ error: result.error }, { status });

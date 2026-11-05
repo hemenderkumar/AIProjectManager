@@ -4,6 +4,8 @@ import { eq, inArray, isNull, or, desc } from "drizzle-orm";
 import { canAccessProject, canAccessOptionalProject, isInternalStaff, listVisibleProjects } from "./tenancy";
 import { dispatchWebhook } from "./webhooks";
 import type { SessionUser } from "./auth";
+import { autoTriageIncident } from "./incidentTriage";
+import { extractEmail, notifyReporter } from "./incidentComms";
 
 // SLA targets are intentionally fixed per severity (see lib/incidentSla.ts) rather than
 // per-org configurable in this v1 -- that's a reasonable follow-up once a specific org asks
@@ -57,6 +59,7 @@ export type CreateIncidentInput = {
   reportedByUserId?: string | null;
   assigneeUserId?: string | null;
   reportedAt?: string | null;
+  reporterEmail?: string | null;
 };
 
 export async function createIncident(user: SessionUser, data: CreateIncidentInput) {
@@ -76,10 +79,14 @@ export async function createIncident(user: SessionUser, data: CreateIncidentInpu
       assignee: data.assignee || null,
       reportedByUserId: data.reportedByUserId || null,
       assigneeUserId: data.assigneeUserId || null,
+      reporterEmail: extractEmail(data.reporterEmail) ?? extractEmail(data.reportedBy),
       reportedAt: data.reportedAt ? new Date(data.reportedAt) : new Date(),
       escalatedAt: severity === "CRITICAL" ? new Date() : null,
     })
     .returning();
+
+  // History-aware triage (similar incidents, known-error workaround) -- best-effort.
+  await autoTriageIncident(created.id);
 
   const orgId = await incidentOrgId(created);
   await dispatchWebhook(orgId, "INCIDENT_CREATED", {
@@ -96,7 +103,7 @@ export async function createIncident(user: SessionUser, data: CreateIncidentInpu
 const PATCH_ALLOWED_FIELDS = [
   "projectId", "title", "description", "severity", "status",
   "reportedBy", "assignee", "reportedByUserId", "assigneeUserId",
-  "reportedAt", "acknowledgedAt", "resolvedAt", "resolutionNotes", "aiRecommendation",
+  "reportedAt", "acknowledgedAt", "resolvedAt", "resolutionNotes", "aiRecommendation", "reporterEmail",
 ] as const;
 const PATCH_DATE_FIELDS = new Set(["reportedAt", "acknowledgedAt", "resolvedAt"]);
 
@@ -146,6 +153,23 @@ export async function patchIncident(user: SessionUser, id: string, body: Record<
     });
   }
 
+  // Keep the reporter informed on the moments they care about.
+  if ("status" in body && body.status !== existing.status && updated.reporterEmail) {
+    if (body.status === "IN_PROGRESS" && existing.status === "OPEN") {
+      await notifyReporter(id, {
+        subject: "We're working on your issue",
+        heading: "Your issue has been picked up",
+        paragraphs: [`${updated.assignee ?? "Our team"} is now working on it. We'll keep you posted.`],
+      });
+    } else if (body.status === "RESOLVED" || body.status === "CLOSED") {
+      await notifyReporter(id, {
+        subject: "Your issue has been resolved",
+        heading: "Your issue has been resolved",
+        paragraphs: [updated.resolutionNotes ? `Resolution: ${updated.resolutionNotes}` : "The issue has been marked resolved.", "If it's still happening, reply to this email and we'll reopen it."],
+      });
+    }
+  }
+
   return { incident: updated };
 }
 
@@ -170,7 +194,7 @@ export async function listIncidentUpdates(user: SessionUser, incidentId: string)
   return { updates: rows };
 }
 
-export async function addIncidentUpdate(user: SessionUser, incidentId: string, bodyText: string) {
+export async function addIncidentUpdate(user: SessionUser, incidentId: string, bodyText: string, visibility: "INTERNAL" | "PUBLIC" = "INTERNAL") {
   const [existing] = await db.select({ projectId: incidents.projectId }).from(incidents).where(eq(incidents.id, incidentId));
   if (!existing) return { error: "not_found" as const };
   if (!(await canAccessOptionalProject(user, existing.projectId))) return { error: "forbidden" as const };
@@ -179,8 +203,16 @@ export async function addIncidentUpdate(user: SessionUser, incidentId: string, b
 
   const [created] = await db
     .insert(incidentUpdates)
-    .values({ incidentId, authorId: user.id, authorName: user.name, body: trimmed })
+    .values({ incidentId, authorId: user.id, authorName: user.name, body: trimmed, visibility })
     .returning();
+  // PUBLIC updates go to the reporter too (and reset their "last heard from us" clock).
+  if (visibility === "PUBLIC") {
+    await notifyReporter(incidentId, {
+      subject: "Update on your issue",
+      heading: "An update on your issue",
+      paragraphs: [trimmed],
+    });
+  }
   return { update: created };
 }
 
