@@ -7,6 +7,7 @@ import { draftBusinessCase, type BusinessCaseFields } from "@/lib/businessCaseDr
 import { db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { computeIdeaCost, type IdeaResearchData } from "@/lib/ideaEvaluation";
 
 // Same access-check shape as charter-pdf/charter-docx: distinguish "session expired" from
 // "wrong role" for the VIEWER tier specifically, since that's almost always what's actually
@@ -109,6 +110,13 @@ export async function GET(
     contingencyPercent: p.contingencyPercent,
     totalFundingRequired: p.totalFundingRequired,
     implementationItems,
+    askDecisionNeeded: p.askDecisionNeeded,
+    askTeam: p.askTeam,
+    askTimeline: p.askTimeline,
+    askIfApproved: p.askIfApproved,
+    askIfDeclined: p.askIfDeclined,
+    research: (p.ideaResearch ?? null) as IdeaResearchData | null,
+    costSummary: computeIdeaCost({ items: detail.costItems, ...p }),
     generatedAt: new Date(),
   });
 

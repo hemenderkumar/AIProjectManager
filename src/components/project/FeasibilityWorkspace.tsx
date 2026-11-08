@@ -5,6 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateTime, formatDateInput } from "@/lib/format";
 import { Sparkles, Loader2, ShieldCheck, CheckCircle2 } from "lucide-react";
+import IdeaAiChat from "./IdeaAiChat";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 
 const TECH_REVIEW_LABELS: Record<string, string> = {
@@ -365,6 +366,7 @@ export default function FeasibilityWorkspace({ detail }: { detail: ProjectDetail
           )}
         </div>
       </Card>
+      <IdeaAiChat projectId={p.id} scope="feasibility" title="Feasibility helper" suggestions={["Is this realistic with a small team?", "Draft feasibility notes", "Estimate materials and labour cost"]} />
     </div>
   );
 }

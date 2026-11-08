@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { getProjectDetail } from "@/lib/portfolio";
 import OverviewTab from "./OverviewTab";
+import IdeaEvaluationHub from "./IdeaEvaluationHub";
 import IdeationWorkspace from "./IdeationWorkspace";
 import FeasibilityWorkspace from "./FeasibilityWorkspace";
 import ArchitectureWorkspace from "./ArchitectureWorkspace";
@@ -39,6 +40,7 @@ type Resource = {
 };
 
 const TABS = [
+  "Idea Evaluation",
   "Idea & Alignment",
   "Technical Feasibility",
   "Architecture",
@@ -83,7 +85,7 @@ const TAB_GROUPS: { label: string; icon: React.ReactNode; tabs: (typeof TABS)[nu
   {
     label: "Project Initiation",
     icon: <Compass size={14} />,
-    tabs: ["Idea & Alignment", "Technical Feasibility", "Architecture", "Financial Forecast & Projections", "Scope & Charter", "Resourcing Decision", "Milestones"],
+    tabs: ["Idea Evaluation", "Idea & Alignment", "Technical Feasibility", "Architecture", "Financial Forecast & Projections", "Scope & Charter", "Resourcing Decision", "Milestones"],
   },
   { label: "Execute", icon: <Rocket size={14} />, tabs: ["Tasks", "Resources", "Status Tracking", "Risks", "Communications"] },
   { label: "Commercial", icon: <Receipt size={14} />, tabs: ["SOW", "Deliverables", "Delivery & Pricing", "Invoices", "Budget"] },
@@ -100,6 +102,8 @@ function resolveInitialTab(tabParam: string | null, autoPlan: boolean, ideationS
   if (match) return match;
   // Land on whichever stage the project is actually at, not always the first one — e.g. a
   // project already at Charter opens on "Scope & Charter", not back at "Idea & Alignment".
+  // Early ideas land on the Idea Evaluation hub, which walks them to a decision.
+  if (ideationSubStage === "IDEA_ALIGNMENT") return "Idea Evaluation";
   const defaultStage: IdeationSubStage = ideationSubStage === "READY_FOR_EXECUTION" ? "RESOURCING_DECISION" : ideationSubStage;
   return SUB_STAGE_LABELS[defaultStage] as (typeof TABS)[number];
 }
@@ -179,6 +183,7 @@ export default function ProjectTabs({
       {/* Project metadata/housekeeping (name, sponsor, integrations, danger zone, ...) only on
           the entry-point tab now, instead of repeated above all 6 stages — that repetition was
           the biggest contributor to "every idea is a big scrolling window". */}
+      {active === "Idea Evaluation" && <IdeaEvaluationHub detail={detail} user={user ?? null} />}
       {active === "Idea & Alignment" && <OverviewTab detail={detail} user={user ?? null} />}
 
       {activeStageKey && roleAtLeast(user?.role, "SUPER_USER") && p.ideationSubStage !== "READY_FOR_EXECUTION" && (

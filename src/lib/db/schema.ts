@@ -10,6 +10,7 @@ import {
   jsonb,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import type { IdeaResearchData } from "../ideaEvaluation";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
@@ -481,6 +482,22 @@ export const projects = pgTable("projects", {
   // sourcingRecommendation below so it works for any idea's own relevant regions.
   marketSizeByRegion: text("market_size_by_region"),
   competitiveDifferentiation: text("competitive_differentiation"),
+
+  // Idea Evaluation hub: the single outcome of the idea phase. "The ask" is what the sponsor is
+  // being asked to decide/approve (the money itself is totalFundingRequired above, so the ask
+  // isn't duplicated); research is AI web research with cited sources (see lib/ideaResearch.ts);
+  // the decision is the sponsor's go / park / stop on the finished evaluation.
+  askDecisionNeeded: text("ask_decision_needed"),
+  askTeam: text("ask_team"),
+  askTimeline: text("ask_timeline"),
+  askIfApproved: text("ask_if_approved"),
+  askIfDeclined: text("ask_if_declined"),
+  ideaResearch: jsonb("idea_research").$type<IdeaResearchData | null>(),
+  ideaResearchedAt: timestamp("idea_researched_at"),
+  ideaDecision: text("idea_decision"), // GO | PARK | STOP
+  ideaDecisionNote: text("idea_decision_note"),
+  ideaDecidedBy: text("idea_decided_by"),
+  ideaDecidedAt: timestamp("idea_decided_at"),
 
   // Integrations (#263). Both opt-in and off by default; either can be cleared independently
   // of the other. slackWebhookUrl is a plain incoming-webhook URL (no OAuth flow -- the

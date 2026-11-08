@@ -5,6 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import { formatDateInput } from "@/lib/format";
 import { Sparkles, Loader2, CheckCircle2, ShieldCheck } from "lucide-react";
+import IdeaAiChat from "./IdeaAiChat";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
 import MermaidDiagram from "@/components/MermaidDiagram";
 
@@ -202,6 +203,7 @@ export default function ArchitectureWorkspace({ detail }: { detail: ProjectDetai
         </button>
         {saveError && <p className="mt-2 text-xs text-rose-600">{saveError}</p>}
       </Card>
+      <IdeaAiChat projectId={p.id} scope="architecture" title="Architecture helper" suggestions={["Suggest a high-level architecture", "What are the pros and cons?", "What infrastructure will we need?"]} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type PptxGenJS from "pptxgenjs";
 import { BRAND_HEX, setupExecutaPptx, titleSlide, executaSlide } from "./brand";
 import { computeUpfrontInvestment, computeRoiSeries } from "./businessCaseRoi";
 import { extractRoadmapSteps } from "./businessCaseRoadmap";
+import type { IdeaCostSummary, IdeaResearchData } from "./ideaEvaluation";
 
 type TableRow = PptxGenJS.TableRow;
 
@@ -39,6 +40,14 @@ export type BusinessCaseInput = {
   contingencyPercent: number | null;
   totalFundingRequired: number | null;
   implementationItems: { name: string; amount: number }[];
+  // Idea Evaluation hub additions -- all optional so older callers keep working.
+  askDecisionNeeded?: string | null;
+  askTeam?: string | null;
+  askTimeline?: string | null;
+  askIfApproved?: string | null;
+  askIfDeclined?: string | null;
+  research?: IdeaResearchData | null;
+  costSummary?: IdeaCostSummary | null;
   generatedAt: Date;
 };
 
@@ -176,18 +185,42 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     execSlide.addText(label.toUpperCase(), { x, y: 5.75, w: 3.85, h: 0.35, fontSize: 10, color: BRAND_HEX.muted, align: "center", charSpacing: 1 });
   });
 
+  // 1c. Decision Requested -- the early, plain-language ask (what is being asked, how much,
+  // by when, and what happens either way), before any of the supporting detail.
+  const decisionSlide = bodySlide(pptx, "Decision Requested", "What we are asking for");
+  const askText = input.askDecisionNeeded?.trim();
+  decisionSlide.addShape(pptx.ShapeType.roundRect, { x: 0.5, y: 1.3, w: 12.3, h: 1.5, fill: { color: BRAND_HEX.indigo }, line: { color: BRAND_HEX.indigo, width: 0 }, rectRadius: 0.08 });
+  decisionSlide.addText(askText || "Not yet written. Fill in \"Decision needed\" in The ask on the Idea Evaluation tab before sharing this deck.", {
+    x: 0.75, y: 1.4, w: input.totalFundingRequired ? 8.4 : 11.8, h: 1.3, fontSize: askText ? 18 : 13, bold: !!askText, italic: !askText, color: BRAND_HEX.white, valign: "middle", wrap: true,
+  });
+  if (input.totalFundingRequired) {
+    decisionSlide.addText(money(input.totalFundingRequired), { x: 9.3, y: 1.45, w: 3.3, h: 0.8, fontSize: 32, bold: true, color: BRAND_HEX.white, align: "center", valign: "middle" });
+    decisionSlide.addText("FUNDING REQUESTED", { x: 9.3, y: 2.25, w: 3.3, h: 0.35, fontSize: 10, color: BRAND_HEX.indigoLight, align: "center", charSpacing: 1 });
+  }
+  const askCards: [string, string | null | undefined][] = [
+    ["Team & skills needed", input.askTeam], ["Timeline", input.askTimeline],
+    ["If approved", input.askIfApproved], ["If declined", input.askIfDeclined],
+  ];
+  askCards.forEach(([label, value], i) => {
+    const x = 0.5 + (i % 2) * 6.25;
+    const y = 3.1 + Math.floor(i / 2) * 1.95;
+    decisionSlide.addShape(pptx.ShapeType.roundRect, { x, y, w: 6.05, h: 1.75, fill: { color: "F5F7FB" }, line: { color: BRAND_HEX.border, width: 0.5 }, rectRadius: 0.08 });
+    decisionSlide.addText(label.toUpperCase(), { x: x + 0.2, y: y + 0.12, w: 5.65, h: 0.3, fontSize: 10, bold: true, color: BRAND_HEX.indigo, charSpacing: 1 });
+    decisionSlide.addText(value?.trim() || EMPTY, { x: x + 0.2, y: y + 0.45, w: 5.65, h: 1.2, fontSize: 13, color: BRAND_HEX.slate, valign: "top", wrap: true });
+  });
+
   // 2. Agenda
   const agendaSlide = bodySlide(pptx, "Agenda");
   const agendaItems = [
     "The Opportunity", "Our Solution", "Solution & Benefits", "SWOT Analysis", "Market Analysis & Outlook",
-    "Regional Market Sizing", "Competitive Differentiation", "Approach & Technology", "Sourcing & Materials",
-    "Unit Economics", "Revenue Projections", "Benefits & ROI Projection", "Roadmap", "The Ask",
+    "Regional Market Sizing", "Competitive Differentiation", "Market Research", "Approach & Technology", "Sourcing & Materials",
+    "Unit Economics", "Revenue Projections", "Benefits & ROI Projection", "Roadmap", "Total Cost", "The Ask",
   ];
   agendaItems.forEach((item, i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
     const x = 0.5 + col * 6.3;
-    const y = 1.35 + row * 0.75;
+    const y = 1.35 + row * 0.68;
     agendaSlide.addShape(pptx.ShapeType.ellipse, { x, y: y + 0.04, w: 0.34, h: 0.34, fill: { color: BRAND_HEX.indigo }, line: { color: BRAND_HEX.indigo, width: 0 } });
     agendaSlide.addText(String(i + 1), {
       x, y: y + 0.04, w: 0.34, h: 0.34,
@@ -359,6 +392,31 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     color: hasCompDiff ? BRAND_HEX.slate : BRAND_HEX.muted,
     valign: "top", wrap: true,
   });
+
+  // 6b. Market Research -- AI-assisted, with cited sources when live web search was available.
+  const rs = input.research;
+  if (rs && rs.summary) {
+    const rSlide = bodySlide(pptx, "Market Research", rs.webSearched ? "AI-assisted · sources cited" : "AI-assisted · unverified, from general knowledge");
+    const leftParts: PptxGenJS.TextProps[] = [{ text: rs.summary, options: { fontSize: 13, color: BRAND_HEX.slate, breakLine: true } }];
+    if (rs.marketSize) leftParts.push({ text: "Market size: ", options: { fontSize: 12, bold: true, color: BRAND_HEX.navy, breakLine: false } }, { text: rs.marketSize, options: { fontSize: 12, color: BRAND_HEX.slate, breakLine: true } });
+    if (rs.positioning) leftParts.push({ text: "Positioning: ", options: { fontSize: 12, bold: true, color: BRAND_HEX.navy, breakLine: false } }, { text: rs.positioning, options: { fontSize: 12, color: BRAND_HEX.slate } });
+    rSlide.addText(leftParts, { x: 0.5, y: 1.3, w: 5.9, h: 4.3, valign: "top", wrap: true, paraSpaceAfter: 8, fit: "shrink" });
+    if (rs.competitors.length) {
+      const head = ["Competitor", "What they offer"].map((t) => ({ text: t, options: { bold: true, color: BRAND_HEX.white, fill: { color: BRAND_HEX.navy }, fontSize: 11 } }));
+      const rows: TableRow[] = rs.competitors.slice(0, 5).map((c) => [
+        { text: c.name, options: { fontSize: 10.5, bold: true, color: BRAND_HEX.navy } },
+        { text: `${c.what}${c.pricing ? ` (${c.pricing})` : ""}`, options: { fontSize: 10.5, color: BRAND_HEX.slate } },
+      ]);
+      rSlide.addTable([head, ...rows], { x: 6.7, y: 1.3, w: 6.1, colW: [1.6, 4.5], border: { type: "solid", color: BRAND_HEX.border, pt: 0.5 }, fontSize: 10.5 });
+    }
+    if (rs.risks.length) {
+      rSlide.addText("Market risks: " + rs.risks.slice(0, 3).join("  •  "), { x: 0.5, y: 5.65, w: 12.3, h: 0.6, fontSize: 11, color: BRAND_HEX.slate, valign: "top", fit: "shrink" });
+    }
+    const srcLine = rs.sources.length
+      ? "Sources: " + rs.sources.slice(0, 5).map((x) => { try { return new URL(x.url).hostname.replace(/^www\./, ""); } catch { return x.title; } }).join(", ")
+      : "No live sources were available for this research — verify figures before relying on them.";
+    rSlide.addText(srcLine, { x: 0.5, y: 6.3, w: 12.3, h: 0.4, fontSize: 9.5, italic: true, color: BRAND_HEX.muted, valign: "top", fit: "shrink" });
+  }
 
   // 7. Approach & Technology
   const approachSlide = bodySlide(pptx, "Approach & Technology", "08 · Why This Will Work");
@@ -572,6 +630,31 @@ export async function generateBusinessCasePptx(input: BusinessCaseInput): Promis
     });
   } else {
     roadmapSlide.addText(EMPTY, { x: 0.5, y: 1.3, w: 12.3, h: 5.5, fontSize: 15, color: BRAND_HEX.slate, valign: "top" });
+  }
+
+  // 11b. Total Cost -- materials, labour, implementation (incl. licences), ongoing support.
+  const cs = input.costSummary;
+  if (cs && cs.firstYearTotal > 0) {
+    const cSlide = bodySlide(pptx, "Total Cost", "What it takes to build and run");
+    const crow = (label: string, value: number, bold = false, muted = false): TableRow => [
+      { text: label, options: { fontSize: 12, bold, color: muted ? BRAND_HEX.muted : BRAND_HEX.slate } },
+      { text: money(value), options: { fontSize: 12, bold, color: bold ? BRAND_HEX.navy : muted ? BRAND_HEX.muted : BRAND_HEX.slate, align: "right" } },
+    ];
+    const cRows: TableRow[] = [crow("Materials", cs.materials), crow("Labour", cs.labor), crow("Implementation", cs.implementation)];
+    if (cs.licenses > 0) cRows.push(crow("   of which licences / subscriptions", cs.licenses, false, true));
+    cRows.push(crow("Contingency", cs.contingency), crow("One-time total", cs.oneTimeTotal, true), crow("Ongoing support (per year)", cs.ongoingAnnual), crow("First-year total", cs.firstYearTotal, true));
+    cSlide.addTable(cRows, { x: 0.5, y: 1.3, w: 7.4, colW: [5.4, 2], border: { type: "solid", color: BRAND_HEX.border, pt: 0.5 }, rowH: 0.48 });
+    const slices: [string, number][] = [["Materials", cs.materials], ["Labour", cs.labor], ["Implementation", cs.implementation], ["Contingency", cs.contingency], ["Ongoing (1 yr)", cs.ongoingAnnual]];
+    const nz = slices.filter(([, v]) => v > 0);
+    if (nz.length >= 2) {
+      cSlide.addText("First-year cost mix", { x: 8.15, y: 1.3, w: 4.65, h: 0.35, fontSize: 12, bold: true, color: BRAND_HEX.indigo });
+      cSlide.addChart(pptx.ChartType.doughnut, [{ name: "Cost ($)", labels: nz.map(([l]) => l), values: nz.map(([, v]) => Math.round(v)) }], {
+        x: 8.15, y: 1.7, w: 4.65, h: 3.8,
+        chartColors: [BRAND_HEX.indigo, BRAND_HEX.indigoDark, BRAND_HEX.indigoLight, BRAND_HEX.muted, "818CF8"],
+        showLegend: true, legendPos: "b", legendColor: BRAND_HEX.slate, legendFontSize: 9,
+        showValue: false, showPercent: true, dataLabelColor: BRAND_HEX.white, dataLabelFontSize: 9,
+      });
+    }
   }
 
   // 12. The Ask — implementation budget breakdown + contingency + total funding required
