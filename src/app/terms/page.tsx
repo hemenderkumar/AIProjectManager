@@ -65,7 +65,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="font-medium text-slate-900 mb-1">10. Contact</h2>
+          <h2 className="font-medium text-slate-900 mb-1">11. Contact</h2>
           <p>Questions about these terms: hemender.kumar@gmail.com.</p>
         </section>
       </div>
