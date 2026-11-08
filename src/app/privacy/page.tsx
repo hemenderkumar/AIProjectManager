@@ -26,7 +26,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">3. AI features</h2>
-          <p>Optional AI features (project planning, charter drafting, technical recommendations, delivery/pricing recommendations, status reports, idea suggestions, the AI assistant) send relevant project data to Anthropic&apos;s API to generate a response. AI-generated content may be inaccurate or incomplete — it is provided for drafting assistance only and should be reviewed by a human before being relied upon for decisions.</p>
+          <p>Optional AI features (project planning, charter drafting, technical recommendations, delivery/pricing recommendations, status reports, idea suggestions, idea market research, the AI assistant) send relevant project data to Anthropic&apos;s API to generate a response. Idea market research may also run web searches, and the search queries are derived from the idea text you submitted, so avoid including confidential details you would not want used in a search. AI-generated content may be inaccurate or incomplete — it is provided for drafting assistance only and should be reviewed by a human before being relied upon for decisions.</p>
         </section>
 
         <section>
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-medium text-slate-900 mb-1">6. Multi-tenancy & data isolation</h2>
-          <p>If your organization is one of several client companies using Executa through the same operator, your organization&apos;s projects, users, and incidents are scoped so that no other client organization can see them. Internal-only reference data (such as the operator&apos;s staffing roster and rate cards) is never shared with any client organization.</p>
+          <p>If your organization is one of several client companies using Executa through the same operator, your organization&apos;s projects, users, and incidents are scoped so that no other client organization can see them. Executa platform administrators can view content in any organization, including ideas and their supporting analysis, solely to provide support, maintain security, prevent abuse, and operate the service. We do not use your ideas for any other purpose, and administrator access is limited to authorized personnel and recorded in the audit log where it involves a decision or change. Internal-only reference data (such as the operator&apos;s staffing roster and rate cards) is never shared with any client organization.</p>
         </section>
 
         <section>

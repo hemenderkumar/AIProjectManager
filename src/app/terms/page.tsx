@@ -34,27 +34,33 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="font-medium text-slate-900 mb-1">5. Acceptable use</h2>
+          <h2 className="font-medium text-slate-900 mb-1">5. Your content, ideas & administrator access</h2>
+          <p>You and your organization keep ownership of everything you submit to Executa, including ideas, business cases, cost estimates, market research, and the content of any deck you generate. If you submit an idea on behalf of your organization, you confirm you are entitled to do so. We do not claim any right to your ideas and will not use them to build or inform a competing product or service. You grant Executa only the limited permission needed to host, process, and display your content to operate the service for you.</p>
+          <p className="mt-2">So that we can provide support, maintain security, prevent abuse, and operate the platform, Executa platform administrators can view content in any organization, including ideas and their supporting analysis. Administrator access is limited to authorized personnel for those purposes, and sensitive administrator actions are recorded in an audit log. Beyond that, one organization&apos;s content is never visible to another organization.</p>
+        </section>
+
+        <section>
+          <h2 className="font-medium text-slate-900 mb-1">6. Acceptable use</h2>
           <p>Don&apos;t use the service to store or process data you don&apos;t have the right to store, to violate any law, or to attempt to disrupt, probe, or gain unauthorized access to the service or another organization&apos;s data.</p>
         </section>
 
         <section>
-          <h2 className="font-medium text-slate-900 mb-1">6. Data export & deletion</h2>
+          <h2 className="font-medium text-slate-900 mb-1">7. Data export & deletion</h2>
           <p>An organization owner can export all of their organization&apos;s data at any time, and can request permanent deletion of their organization&apos;s data. Deletion requests are reviewed and confirmed by a Executa administrator before anything is removed, so a request can be cancelled at any point before it&apos;s confirmed. Once confirmed, deletion is permanent and cannot be undone.</p>
         </section>
 
         <section>
-          <h2 className="font-medium text-slate-900 mb-1">7. Limitation of liability</h2>
-          <p>To the maximum extent permitted by law, Executa is not liable for indirect, incidental, special, or consequential damages, or for any loss of profits, data, or business arising from use of the service, including reliance on AI-generated content or pricing recommendations.</p>
+          <h2 className="font-medium text-slate-900 mb-1">8. Limitation of liability</h2>
+          <p>To the maximum extent permitted by law, Executa is not liable for indirect, incidental, special, or consequential damages, or for any loss of profits, data, or business arising from use of the service, including reliance on AI-generated content, market research, or pricing recommendations.</p>
         </section>
 
         <section>
-          <h2 className="font-medium text-slate-900 mb-1">8. Changes</h2>
+          <h2 className="font-medium text-slate-900 mb-1">9. Changes</h2>
           <p>We may update these terms from time to time. Continued use of the service after changes take effect constitutes acceptance of the updated terms.</p>
         </section>
 
         <section>
-          <h2 className="font-medium text-slate-900 mb-1">9. Governing law</h2>
+          <h2 className="font-medium text-slate-900 mb-1">10. Governing law</h2>
           <p>These terms are governed by the laws of [JURISDICTION — not yet specified; consult a licensed attorney to determine the appropriate governing law for where Executa is operated and sold], without regard to conflict-of-law principles.</p>
         </section>
 
