@@ -16,7 +16,12 @@ export type IdeaResearchData = {
   focus?: string | null;
 };
 
-const str = (v: unknown, max = 1200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+// Web-search answers come back with <cite index="..."> wrappers; strip them (keeping the text
+// inside) so they never reach the UI or the deck.
+export function stripCitations(t: string): string {
+  return t.replace(/<\/?cite[^>]*>/gi, "").replace(/\s{2,}/g, " ");
+}
+const str = (v: unknown, max = 1200) => (typeof v === "string" ? stripCitations(v).trim().slice(0, max) : "");
 const strList = (v: unknown, maxItems = 8, maxLen = 400) =>
   Array.isArray(v) ? v.map((x) => str(x, maxLen)).filter(Boolean).slice(0, maxItems) : [];
 
@@ -206,6 +211,28 @@ export function sanitizeChatChanges(raw: unknown, allowedKeys?: string[]): Recor
     } else if (typeof v === "string" && v.trim()) {
       out[k] = v.trim().slice(0, 6000);
     }
+  }
+  return out;
+}
+
+// ---- AI cost estimate ---------------------------------------------------------------------
+export type EstimatedCostLine = { category: "MATERIAL" | "LABOR" | "IMPLEMENTATION" | "ONGOING_SUPPORT"; name: string; amount: number; notes: string | null };
+const COST_CATEGORIES = ["MATERIAL", "LABOR", "IMPLEMENTATION", "ONGOING_SUPPORT"] as const;
+
+// Coerces the model's estimate into valid cost lines: known categories only, positive finite
+// amounts, bounded counts. Ongoing support amounts are per month.
+export function normalizeCostEstimate(raw: unknown): EstimatedCostLine[] {
+  const lines = (raw && typeof raw === "object" ? (raw as { lines?: unknown }).lines : null) ?? raw;
+  if (!Array.isArray(lines)) return [];
+  const out: EstimatedCostLine[] = [];
+  for (const l of lines) {
+    const o = (l && typeof l === "object" ? l : {}) as Record<string, unknown>;
+    const category = typeof o.category === "string" ? (o.category.toUpperCase() as EstimatedCostLine["category"]) : null;
+    const amount = typeof o.amount === "number" ? o.amount : Number(o.amount);
+    const name = str(o.name, 100);
+    if (!category || !(COST_CATEGORIES as readonly string[]).includes(category) || !name || !Number.isFinite(amount) || amount <= 0 || amount > 1e9) continue;
+    out.push({ category, name, amount: Math.round(amount), notes: str(o.notes, 200) || null });
+    if (out.length >= 24) break;
   }
   return out;
 }

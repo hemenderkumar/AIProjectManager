@@ -116,3 +116,22 @@ do not invent numbers. Reply with ONLY JSON: {"askDecisionNeeded": "the single d
     },
   };
 }
+
+// ---- cost estimate ----------------------------------------------------------------------
+import { normalizeCostEstimate, type EstimatedCostLine } from "./ideaEvaluation";
+
+export async function estimateIdeaCost(brief: IdeaBrief, context: string): Promise<{ lines: EstimatedCostLine[]; assumptions: string; error?: string }> {
+  const system = `You are a pragmatic delivery lead producing an early, order-of-magnitude cost estimate for a proposed idea.
+Break the cost into lines in these categories only:
+- MATERIAL: hardware, equipment, physical materials, cloud/infrastructure setup (one-time)
+- LABOR: people effort to design and build (one-time), e.g. "2 engineers x 4 months"
+- IMPLEMENTATION: one-time delivery costs: third-party licences/subscriptions needed to build or launch (name them with "licence"), integrations, legal/compliance, testing, launch
+- ONGOING_SUPPORT: recurring costs, amounts PER MONTH: hosting, licences, support staff, maintenance
+Use realistic USD market rates. 6-14 lines total. Do not pad; every line must be needed for THIS idea.
+Reply with ONLY JSON: {"lines":[{"category":"","name":"","amount":0,"notes":"basis for the number, 1 short sentence"}],"assumptions":"2-3 sentences: key assumptions and confidence"}`;
+  const { data, error } = await askClaudeJSON<{ lines?: unknown; assumptions?: unknown }>(system, `${briefText(brief)}\n${context}`, 2500, 0.2);
+  if (!data) return { lines: [], assumptions: "", error: error ?? "Cost estimate failed" };
+  const lines = normalizeCostEstimate(data);
+  if (!lines.length) return { lines: [], assumptions: "", error: "The AI didn't return usable cost lines — try again." };
+  return { lines, assumptions: typeof data.assumptions === "string" ? data.assumptions.slice(0, 600) : "" };
+}

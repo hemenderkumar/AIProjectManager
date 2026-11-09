@@ -57,3 +57,26 @@ describe("research + chat sanitising", () => {
     expect(sanitizeChatChanges({ askTeam: "x", askTimeline: "y" }, ["askTeam"])).toEqual({ askTeam: "x" });
   });
 });
+
+import { stripCitations, normalizeCostEstimate } from "../ideaEvaluation";
+import { clip, bullets } from "../ideaDeck";
+
+describe("citations, cost estimate and deck text helpers", () => {
+  it("strips cite wrappers but keeps the text", () => {
+    expect(stripCitations('<cite index="3-2,5-1">Market is $4bn.</cite> Growing.')).toBe("Market is $4bn. Growing.");
+    expect(normalizeResearch({ summary: '<cite index="1">Hello</cite>' }, [], true).summary).toBe("Hello");
+  });
+  it("keeps only valid cost lines", () => {
+    const lines = normalizeCostEstimate({ lines: [
+      { category: "labor", name: "Build", amount: 1000 }, { category: "MATERIAL", name: "Bad", amount: -5 },
+      { category: "OTHER", name: "x", amount: 5 }, { category: "ONGOING_SUPPORT", name: "Hosting", amount: "250" },
+    ] });
+    expect(lines.map((l) => l.name)).toEqual(["Build", "Hosting"]);
+    expect(normalizeCostEstimate("nope")).toEqual([]);
+  });
+  it("clips at boundaries and splits bullets", () => {
+    expect(clip("A fairly long first sentence here. Second one follows on.", 40)).toBe("A fairly long first sentence here.");
+    expect(clip("short", 20)).toBe("short");
+    expect(bullets("- a\n- b\n- c", 2)).toEqual(["a", "b"]);
+  });
+});

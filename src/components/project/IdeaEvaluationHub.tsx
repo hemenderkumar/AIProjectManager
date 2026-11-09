@@ -49,6 +49,11 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
   const [deciding, setDeciding] = useState<string | null>(null);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
+  const [costBusy, setCostBusy] = useState(false);
+  const [costMsg, setCostMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [allBusy, setAllBusy] = useState<string | null>(null);
+  const [allMsg, setAllMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -103,6 +108,61 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
     }
   }
 
+  async function estimateCost(): Promise<boolean> {
+    setCostBusy(true);
+    setCostMsg(null);
+    try {
+      const res = await fetch("/api/ai/idea-cost", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId: p.id }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCostMsg({ ok: false, text: data?.error ?? "Couldn't estimate the cost. Please try again." });
+        return false;
+      }
+      setCostMsg({ ok: true, text: `Estimated ${data.count} cost lines. ${data.assumptions ?? ""}`.trim() });
+      router.refresh();
+      return true;
+    } catch {
+      setCostMsg({ ok: false, text: "Couldn't reach the server." });
+      return false;
+    } finally {
+      setCostBusy(false);
+    }
+  }
+
+  // One click: research, cost estimate and the ask, in order. Each step is saved as it
+  // finishes; a failure stops the run and says which step, so nothing is silently skipped.
+  async function generateEverything() {
+    setAllMsg(null);
+    const post = (url: string, body: object) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    try {
+      if (!research) {
+        setAllBusy("Researching the market…");
+        const r = await post("/api/ai/idea-research", { projectId: p.id });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error ?? "Market research failed");
+      }
+      if (cost.firstYearTotal <= 0) {
+        setAllBusy("Estimating costs…");
+        const r = await post("/api/ai/idea-cost", { projectId: p.id });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error ?? "Cost estimate failed");
+      }
+      if (!p.askDecisionNeeded?.trim()) {
+        setAllBusy("Drafting the ask…");
+        const r = await post("/api/ai/idea-ask", { projectId: p.id });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d?.error ?? "Drafting the ask failed");
+        const save = await fetch(`/api/projects/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d.ask) });
+        if (!save.ok) throw new Error("Couldn't save the drafted ask");
+      }
+      setAllMsg({ ok: true, text: "Done — review each section, then download the deck." });
+      router.refresh();
+    } catch (e) {
+      setAllMsg({ ok: false, text: `${e instanceof Error ? e.message : "Something went wrong"} Earlier steps were saved; run again to continue.` });
+      router.refresh();
+    } finally {
+      setAllBusy(null);
+    }
+  }
+
   async function decide(decision: "GO" | "PARK" | "STOP") {
     setDeciding(decision);
     setDecisionError(null);
@@ -120,7 +180,7 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
     setDownloading(true);
     setDownloadError(null);
     try {
-      const res = await fetch(`/api/projects/${p.id}/business-case-pptx`);
+      const res = await fetch(`/api/projects/${p.id}/idea-deck`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setDownloadError(data?.error ?? `Couldn't generate the deck (server returned ${res.status}).`);
@@ -162,6 +222,14 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
             </li>
           ))}
         </ul>
+        {!ready.ready && (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button onClick={generateEverything} disabled={allBusy !== null} className="flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-lg bg-accent-600 text-white shadow-sm hover:bg-accent-700 disabled:opacity-50">
+              {allBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} {allBusy ?? "Generate everything with AI"}
+            </button>
+            {allMsg && <span className={`text-xs ${allMsg.ok ? "text-emerald-700" : "text-rose-600"}`}>{allMsg.text}</span>}
+          </div>
+        )}
         <p className="text-xs text-slate-500 mt-4">
           {next ? <>Next: <span className="font-medium text-slate-700">{next.label}</span> — {next.hint}</> : "Everything is in place. Download the deck and take the decision below."}
         </p>
@@ -240,40 +308,55 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
         )}
       </Card>
 
-      <Card title="Total cost">
-        <table className="w-full text-sm">
-          <tbody>
-            {costRows.map(([k, v]) => (
-              <tr key={k} className="border-b border-slate-100">
-                <td className="py-1.5 text-slate-600">{k}</td>
-                <td className="py-1.5 text-right tabular-nums">{money(v)}</td>
-              </tr>
-            ))}
-            {cost.licenses > 0 && (
-              <tr className="border-b border-slate-100">
-                <td className="py-1.5 text-slate-400 pl-4 text-xs">of which licences / subscriptions</td>
-                <td className="py-1.5 text-right tabular-nums text-xs text-slate-400">{money(cost.licenses)}</td>
-              </tr>
-            )}
-            <tr className="border-b border-slate-100">
-              <td className="py-1.5 text-slate-600">Contingency ({p.contingencyPercent ?? 0}%)</td>
-              <td className="py-1.5 text-right tabular-nums">{money(cost.contingency)}</td>
-            </tr>
-            <tr className="border-b border-slate-100 font-medium">
-              <td className="py-1.5">One-time total</td>
-              <td className="py-1.5 text-right tabular-nums">{money(cost.oneTimeTotal)}</td>
-            </tr>
-            <tr className="border-b border-slate-100">
-              <td className="py-1.5 text-slate-600">Ongoing support (per year)</td>
-              <td className="py-1.5 text-right tabular-nums">{money(cost.ongoingAnnual)}</td>
-            </tr>
-            <tr className="font-semibold">
-              <td className="py-2">First-year total</td>
-              <td className="py-2 text-right tabular-nums">{money(cost.firstYearTotal)}</td>
-            </tr>
-          </tbody>
-        </table>
-        <p className="text-xs text-slate-400 mt-2">Built from the itemised cost lines (or the charter figures when none exist). Edit them in Scope &amp; Charter, or ask the AI helper to set them.</p>
+      <Card
+        title="Total cost"
+        action={
+          <button onClick={estimateCost} disabled={costBusy} className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50">
+            {costBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {cost.firstYearTotal > 0 ? "Re-estimate with AI" : "Estimate with AI"}
+          </button>
+        }
+      >
+        <AiWaitIndicator active={costBusy} messages={["Reading the idea…", "Pricing materials and labour…", "Adding licences and support…"]} />
+        {costMsg && <p className={`text-xs mb-2 ${costMsg.ok ? "text-slate-600" : "text-rose-600"}`}>{costMsg.text}</p>}
+        {cost.firstYearTotal <= 0 ? (
+          <p className="text-sm text-slate-500">No costs yet. Click “Estimate with AI” for a first-pass breakdown of materials, labour, licences, implementation and ongoing support, then adjust the numbers in Scope &amp; Charter.</p>
+        ) : (
+          <>
+            <table className="w-full text-sm">
+              <tbody>
+                {costRows.map(([k, v]) => (
+                  <tr key={k} className="border-b border-slate-100">
+                    <td className="py-1.5 text-slate-600">{k}</td>
+                    <td className="py-1.5 text-right tabular-nums">{money(v)}</td>
+                  </tr>
+                ))}
+                {cost.licenses > 0 && (
+                  <tr className="border-b border-slate-100">
+                    <td className="py-1.5 text-slate-400 pl-4 text-xs">of which licences / subscriptions</td>
+                    <td className="py-1.5 text-right tabular-nums text-xs text-slate-400">{money(cost.licenses)}</td>
+                  </tr>
+                )}
+                <tr className="border-b border-slate-100">
+                  <td className="py-1.5 text-slate-600">Contingency ({p.contingencyPercent ?? 0}%)</td>
+                  <td className="py-1.5 text-right tabular-nums">{money(cost.contingency)}</td>
+                </tr>
+                <tr className="border-b border-slate-100 font-medium">
+                  <td className="py-1.5">One-time total</td>
+                  <td className="py-1.5 text-right tabular-nums">{money(cost.oneTimeTotal)}</td>
+                </tr>
+                <tr className="border-b border-slate-100">
+                  <td className="py-1.5 text-slate-600">Ongoing support (per year)</td>
+                  <td className="py-1.5 text-right tabular-nums">{money(cost.ongoingAnnual)}</td>
+                </tr>
+                <tr className="font-semibold">
+                  <td className="py-2">First-year total</td>
+                  <td className="py-2 text-right tabular-nums">{money(cost.firstYearTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="text-xs text-slate-400 mt-2">AI estimates are a starting point, not a quote. Lines you add or edit yourself in Scope &amp; Charter are kept when you re-estimate.</p>
+          </>
+        )}
       </Card>
 
       <Card
