@@ -28,7 +28,7 @@ describe("computeIdeaCost", () => {
 describe("ideaReadiness", () => {
   it("reports done items and the ready flag", () => {
     const cost = computeIdeaCost({ items: [], materialCostEstimate: 100 });
-    const r = ideaReadiness({ problemStatement: "p", proposedSolution: "s", expectedBenefits: "b", feasibilityScore: 70, cost, researched: true, askDecisionNeeded: "approve", totalFundingRequired: 0 });
+    const r = ideaReadiness({ problemStatement: "p", proposedSolution: "s", expectedBenefits: "b", feasibilityScore: 70, cost, researched: true, recommended: true, askDecisionNeeded: "approve", totalFundingRequired: 0 });
     expect(r.ready).toBe(true);
     expect(ideaReadiness({ cost, researched: false }).doneCount).toBe(1);
   });
@@ -78,5 +78,19 @@ describe("citations, cost estimate and deck text helpers", () => {
     expect(clip("A fairly long first sentence here. Second one follows on.", 40)).toBe("A fairly long first sentence here.");
     expect(clip("short", 20)).toBe("short");
     expect(bullets("- a\n- b\n- c", 2)).toEqual(["a", "b"]);
+  });
+});
+
+import { normalizeRecommendation } from "../ideaEvaluation";
+describe("normalizeRecommendation", () => {
+  it("accepts a valid verdict and bounds the score", () => {
+    const r = normalizeRecommendation({ verdict: "proceed_with_conditions", headline: "h", whyYes: ["a"], whyNot: ["b"], feasibilityScore: 140, confidence: "high" });
+    expect(r?.verdict).toBe("PROCEED_WITH_CONDITIONS");
+    expect(r?.feasibilityScore).toBeNull();
+    expect(r?.confidence).toBe("HIGH");
+  });
+  it("rejects unusable output", () => {
+    expect(normalizeRecommendation({ verdict: "MAYBE", whyYes: ["a"] })).toBeNull();
+    expect(normalizeRecommendation({ verdict: "PROCEED" })).toBeNull();
   });
 });

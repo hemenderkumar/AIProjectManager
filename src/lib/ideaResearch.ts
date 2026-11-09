@@ -135,3 +135,23 @@ Reply with ONLY JSON: {"lines":[{"category":"","name":"","amount":0,"notes":"bas
   if (!lines.length) return { lines: [], assumptions: "", error: "The AI didn't return usable cost lines — try again." };
   return { lines, assumptions: typeof data.assumptions === "string" ? data.assumptions.slice(0, 600) : "" };
 }
+
+// ---- recommendation ---------------------------------------------------------------------
+import { normalizeRecommendation, type IdeaRecommendation } from "./ideaEvaluation";
+
+export async function recommendIdea(brief: IdeaBrief, evidence: string): Promise<{ data: IdeaRecommendation | null; error?: string }> {
+  const system = `You are a candid investment-committee analyst deciding whether an idea should be taken forward.
+Weigh ONLY the evidence supplied. Be decisive and specific: every reason must point to a concrete fact from the evidence
+(a cost figure, a competitor, a risk, a missing capability) -- no generic filler. Give BOTH the case for and the case against,
+even when the verdict is clear. If key evidence is missing, say so under "gaps" and lower the confidence rather than guessing.
+Verdicts: PROCEED (strong case, limited blockers), PROCEED_WITH_CONDITIONS (worth pursuing if the listed conditions are met),
+DO_NOT_PROCEED (case is weak, too costly or too risky now -- say what would change your mind).
+feasibilityScore is 0-100: confidence the team could deliver this with normal effort given the evidence (not a guess dressed as precision).
+Reply with ONLY JSON: {"verdict":"","headline":"one sentence a CEO can act on","whyYes":["3-5 reasons to proceed"],"whyNot":["2-5 reasons for caution or against"],
+"conditions":["what must be true / be done first; empty if PROCEED"],"nextSteps":["3-4 concrete next actions"],"confidence":"LOW|MEDIUM|HIGH",
+"feasibilityScore":0,"feasibilityRationale":"1-2 sentences","gaps":["missing evidence"]}`;
+  const { data, error } = await askClaudeJSON<unknown>(system, `${briefText(brief)}\n\nEVIDENCE\n${evidence}`, 2200, 0.2);
+  if (!data) return { data: null, error };
+  const rec = normalizeRecommendation(data);
+  return rec ? { data: rec } : { data: null, error: "The AI didn't return a usable recommendation — try again." };
+}

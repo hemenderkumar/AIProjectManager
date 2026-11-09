@@ -5,7 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import IdeaAiChat from "./IdeaAiChat";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
-import { computeIdeaCost, ideaReadiness, type IdeaResearchData } from "@/lib/ideaEvaluation";
+import { computeIdeaCost, ideaReadiness, VERDICT_LABELS, type IdeaResearchData, type IdeaRecommendation } from "@/lib/ideaEvaluation";
 import { CheckCircle2, Circle, Sparkles, Loader2, Download, Search, ExternalLink, AlertTriangle } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 
@@ -27,7 +27,8 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
   const canDecide = !!user && PM_ORDER[user.role] >= PM_ORDER.PM;
 
   const cost = useMemo(() => computeIdeaCost({ items: detail.costItems, ...p }), [detail.costItems, p]);
-  const ready = ideaReadiness({ ...p, cost, researched: !!research });
+  const rec = (p.ideaRecommendation ?? null) as IdeaRecommendation | null;
+  const ready = ideaReadiness({ ...p, cost, researched: !!research, recommended: !!rec });
   const next = ready.items.find((i) => !i.done);
 
   const [ask, setAsk] = useState({
@@ -51,6 +52,8 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
 
   const [costBusy, setCostBusy] = useState(false);
   const [costMsg, setCostMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [recBusy, setRecBusy] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
   const [allBusy, setAllBusy] = useState<string | null>(null);
   const [allMsg, setAllMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -129,6 +132,21 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
     }
   }
 
+  async function makeRecommendation(): Promise<void> {
+    setRecBusy(true);
+    setRecError(null);
+    try {
+      const res = await fetch("/api/ai/idea-recommend", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId: p.id }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setRecError(data?.error ?? "Couldn't generate the recommendation. Please try again.");
+      else router.refresh();
+    } catch {
+      setRecError("Couldn't reach the server.");
+    } finally {
+      setRecBusy(false);
+    }
+  }
+
   // One click: research, cost estimate and the ask, in order. Each step is saved as it
   // finishes; a failure stops the run and says which step, so nothing is silently skipped.
   async function generateEverything() {
@@ -152,6 +170,11 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
         if (!r.ok) throw new Error(d?.error ?? "Drafting the ask failed");
         const save = await fetch(`/api/projects/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d.ask) });
         if (!save.ok) throw new Error("Couldn't save the drafted ask");
+      }
+      if (!rec) {
+        setAllBusy("Making the recommendation…");
+        const rr = await post("/api/ai/idea-recommend", { projectId: p.id });
+        if (!rr.ok) throw new Error((await rr.json().catch(() => ({})))?.error ?? "Recommendation failed");
       }
       setAllMsg({ ok: true, text: "Done — review each section, then download the deck." });
       router.refresh();
@@ -237,6 +260,53 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
           <p className={`inline-block mt-3 text-xs font-semibold px-2.5 py-1 rounded-full ${DECISION_STYLE[p.ideaDecision] ?? "bg-slate-100 text-slate-700"}`}>
             Decision: {p.ideaDecision}{p.ideaDecidedBy ? ` by ${p.ideaDecidedBy}` : ""}
           </p>
+        )}
+      </Card>
+
+      <Card
+        title="Recommendation"
+        action={
+          <button onClick={makeRecommendation} disabled={recBusy} className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50">
+            {recBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {rec ? "Refresh recommendation" : "Get AI recommendation"}
+          </button>
+        }
+      >
+        <AiWaitIndicator active={recBusy} messages={["Weighing the evidence…", "Building the case for and against…", "Drafting the recommendation…"]} />
+        {recError && <p className="text-xs text-rose-600 mb-2">{recError}</p>}
+        {!rec && !recBusy && <p className="text-sm text-slate-500">No recommendation yet. The AI weighs the research, costs, feasibility and the ask, then says whether to take this forward — and why or why not. For best results run the market research and cost estimate first.</p>}
+        {rec && (
+          <div className="space-y-4 text-sm">
+            <div className={`rounded-lg px-4 py-3 ${rec.verdict === "PROCEED" ? "bg-emerald-50 text-emerald-900" : rec.verdict === "DO_NOT_PROCEED" ? "bg-rose-50 text-rose-900" : "bg-amber-50 text-amber-900"}`}>
+              <p className="font-semibold">{VERDICT_LABELS[rec.verdict]}</p>
+              {rec.headline && <p className="mt-0.5">{rec.headline}</p>}
+              <p className="text-xs mt-1 opacity-75">AI confidence: {rec.confidence.toLowerCase()}{rec.feasibilityScore != null ? ` · Feasibility ${rec.feasibilityScore}/100` : ""}</p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-semibold text-emerald-700 mb-1">Why take it forward</p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-800">{rec.whyYes.length ? rec.whyYes.map((t) => <li key={t}>{t}</li>) : <li className="text-slate-400 list-none -ml-5">None identified.</li>}</ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-rose-700 mb-1">Why not / concerns</p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-800">{rec.whyNot.length ? rec.whyNot.map((t) => <li key={t}>{t}</li>) : <li className="text-slate-400 list-none -ml-5">None identified.</li>}</ul>
+              </div>
+            </div>
+            {rec.conditions.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-1">{rec.verdict === "DO_NOT_PROCEED" ? "What would change this" : "Conditions to meet first"}</p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-800">{rec.conditions.map((t) => <li key={t}>{t}</li>)}</ul>
+              </div>
+            )}
+            {rec.nextSteps.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-600 mb-1">Next steps</p>
+                <ol className="list-decimal pl-5 space-y-1 text-slate-800">{rec.nextSteps.map((t) => <li key={t}>{t}</li>)}</ol>
+              </div>
+            )}
+            {rec.feasibilityRationale && <p className="text-xs text-slate-500">Feasibility basis: {rec.feasibilityRationale}</p>}
+            {rec.gaps.length > 0 && <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">Evidence the AI did not have: {rec.gaps.join("; ")}.</p>}
+            <p className="text-xs text-slate-400">This is an AI recommendation to support the decision, not the decision itself. The go / park / stop call below is made by a person.</p>
+          </div>
         )}
       </Card>
 

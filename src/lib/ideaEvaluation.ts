@@ -135,6 +135,7 @@ export type ReadinessInput = {
   feasibilityNotes?: string | null;
   cost: IdeaCostSummary;
   researched: boolean;
+  recommended?: boolean;
   askDecisionNeeded?: string | null;
   totalFundingRequired?: number | null;
 };
@@ -148,6 +149,7 @@ export function ideaReadiness(i: ReadinessInput): { items: ReadinessItem[]; done
     { key: "feasibility", label: "Feasibility checked", done: i.feasibilityScore != null || has(i.feasibilityNotes), hint: "Can it be done with the people, tech and materials available?" },
     { key: "cost", label: "Total cost estimated", done: i.cost.oneTimeTotal > 0 || i.cost.ongoingAnnual > 0, hint: "Materials, labour, licences, implementation and ongoing support." },
     { key: "research", label: "Market research done", done: i.researched, hint: "Competitors, market size and positioning, with sources." },
+    { key: "recommendation", label: "Recommendation made", done: !!i.recommended, hint: "A clear proceed / don't proceed call, with the reasons for and against." },
     { key: "ask", label: "The ask is clear", done: has(i.askDecisionNeeded) && ((i.totalFundingRequired ?? 0) > 0 || i.cost.oneTimeTotal > 0), hint: "What decision and how much funding you need." },
   ];
   const doneCount = items.filter((x) => x.done).length;
@@ -235,4 +237,51 @@ export function normalizeCostEstimate(raw: unknown): EstimatedCostLine[] {
     if (out.length >= 24) break;
   }
   return out;
+}
+
+// ---- AI recommendation --------------------------------------------------------------------
+export const RECOMMENDATION_VERDICTS = ["PROCEED", "PROCEED_WITH_CONDITIONS", "DO_NOT_PROCEED"] as const;
+export type RecommendationVerdict = (typeof RECOMMENDATION_VERDICTS)[number];
+export const VERDICT_LABELS: Record<RecommendationVerdict, string> = {
+  PROCEED: "Recommended — take it forward",
+  PROCEED_WITH_CONDITIONS: "Recommended with conditions",
+  DO_NOT_PROCEED: "Not recommended at this stage",
+};
+export type IdeaRecommendation = {
+  verdict: RecommendationVerdict;
+  headline: string;
+  whyYes: string[];
+  whyNot: string[];
+  conditions: string[];
+  nextSteps: string[];
+  confidence: "LOW" | "MEDIUM" | "HIGH";
+  feasibilityScore: number | null;
+  feasibilityRationale: string;
+  gaps: string[]; // evidence the AI did not have, so the reader knows how far to trust it
+  generatedAt: string;
+};
+
+// Coerces the model's JSON into the stored shape. Returns null if it isn't usable (no valid
+// verdict, or no reasoning at all) so a bad response never shows as a confident verdict.
+export function normalizeRecommendation(raw: unknown, now: Date = new Date()): IdeaRecommendation | null {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const verdict = typeof r.verdict === "string" ? (r.verdict.toUpperCase() as RecommendationVerdict) : null;
+  if (!verdict || !(RECOMMENDATION_VERDICTS as readonly string[]).includes(verdict)) return null;
+  const whyYes = strList(r.whyYes, 6, 300);
+  const whyNot = strList(r.whyNot, 6, 300);
+  if (!whyYes.length && !whyNot.length) return null;
+  const score = typeof r.feasibilityScore === "number" ? r.feasibilityScore : Number(r.feasibilityScore);
+  const conf = typeof r.confidence === "string" ? r.confidence.toUpperCase() : "";
+  return {
+    verdict,
+    headline: str(r.headline, 300),
+    whyYes, whyNot,
+    conditions: strList(r.conditions, 6, 300),
+    nextSteps: strList(r.nextSteps, 6, 250),
+    confidence: conf === "HIGH" || conf === "LOW" ? conf : "MEDIUM",
+    feasibilityScore: Number.isFinite(score) && score >= 0 && score <= 100 ? Math.round(score) : null,
+    feasibilityRationale: str(r.feasibilityRationale, 500),
+    gaps: strList(r.gaps, 6, 200),
+    generatedAt: now.toISOString(),
+  };
 }

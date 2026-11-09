@@ -3,7 +3,7 @@ import { getProjectDetail } from "@/lib/portfolio";
 import { requireProjectAccess } from "@/lib/tenancy";
 import { isDownloadBlocked, getCurrentUser } from "@/lib/auth";
 import { generateIdeaDeck } from "@/lib/ideaDeck";
-import { computeIdeaCost, type IdeaResearchData } from "@/lib/ideaEvaluation";
+import { computeIdeaCost, type IdeaResearchData, type IdeaRecommendation } from "@/lib/ideaEvaluation";
 
 // The Idea Evaluation deck (Executa pitch-deck style). Only reads what's already saved -- it
 // never calls the AI itself, so it's fast and always reflects exactly what the hub shows.
@@ -31,6 +31,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     research: (p.ideaResearch ?? null) as IdeaResearchData | null,
     cost: computeIdeaCost({ items: detail.costItems, ...p }),
     ask: { decision: p.askDecisionNeeded, team: p.askTeam, timeline: p.askTimeline, ifApproved: p.askIfApproved, ifDeclined: p.askIfDeclined, funding: p.totalFundingRequired },
+    recommendation: (p.ideaRecommendation ?? null) as IdeaRecommendation | null,
     generatedAt: new Date(),
   });
 

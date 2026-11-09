@@ -4,7 +4,8 @@
 import PptxGenJS from "pptxgenjs";
 import fs from "fs";
 import path from "path";
-import type { IdeaCostSummary, IdeaResearchData } from "./ideaEvaluation";
+import type { IdeaCostSummary, IdeaResearchData, IdeaRecommendation } from "./ideaEvaluation";
+import { VERDICT_LABELS } from "./ideaEvaluation";
 import { stripCitations } from "./ideaEvaluation";
 import { extractRoadmapSteps } from "./businessCaseRoadmap";
 
@@ -33,6 +34,7 @@ export type IdeaDeckInput = {
   research: IdeaResearchData | null;
   cost: IdeaCostSummary | null;
   ask: { decision: string | null; team: string | null; timeline: string | null; ifApproved: string | null; ifDeclined: string | null; funding: number | null };
+  recommendation: IdeaRecommendation | null;
   generatedAt: Date;
 };
 
@@ -138,6 +140,7 @@ export async function generateIdeaDeck(i: IdeaDeckInput): Promise<Buffer> {
       ["P", "Problem", has(i.problem) ? clip(i.problem, 230) : null],
       ["S", "Solution", has(i.solution) ? clip(i.solution, 230) : null],
       ["M", "Market", research ? clip(research.positioning || research.summary, 230) : null],
+      ["R", "Recommendation", i.recommendation ? clip(`${VERDICT_LABELS[i.recommendation.verdict]}. ${i.recommendation.headline}`, 230) : null],
       ["A", "The ask", has(i.ask.decision) ? clip(i.ask.decision, 230) : null],
     ];
     const present = rows.filter((r) => r[2]);
@@ -149,6 +152,28 @@ export async function generateIdeaDeck(i: IdeaDeckInput): Promise<Buffer> {
       s.addText(t, { x: 1.2, y, w: 2, h: 0.3, fontFace: BODY, fontSize: 13, bold: true, color: C.navy, margin: 0 });
       s.addText(body!, { x: 1.2, y: y + 0.3, w: 11.4, h: rowH - 0.35, fontFace: BODY, fontSize: 12, color: C.slate, margin: 0, valign: "top" });
     });
+  }
+
+  // 2b. Recommendation -- the clear call, with the case for and against.
+  if (i.recommendation) {
+    const r = i.recommendation;
+    const tone = r.verdict === "PROCEED" ? { bg: C.greenInk, ink: C.white } : r.verdict === "DO_NOT_PROCEED" ? { bg: C.redInk, ink: C.white } : { bg: C.amber, ink: C.navy };
+    const s = shell("Recommendation", "Whether to take this forward, and why", "Recommendation");
+    card(s, 0.6, 1.75, 12.1, 1.25, tone.bg);
+    s.addText(VERDICT_LABELS[r.verdict], { x: 0.9, y: 1.8, w: 11.5, h: 0.55, fontFace: HEAD, fontSize: 22, bold: true, color: tone.ink, margin: 0, valign: "middle" });
+    if (r.headline) s.addText(clip(r.headline, 190), { x: 0.9, y: 2.35, w: 11.5, h: 0.6, fontFace: BODY, fontSize: 14, color: tone.ink, margin: 0, valign: "top" });
+    const colW = 5.9;
+    const lists: [string, string[], string, string][] = [["Why take it forward", r.whyYes.slice(0, 4), C.green, C.greenInk], ["Why not / concerns", r.whyNot.slice(0, 4), C.red, C.redInk]];
+    lists.forEach(([t, items, fill, ink], idx) => {
+      const x = 0.6 + idx * (colW + 0.3);
+      card(s, x, 3.2, colW, 2.55, fill);
+      s.addText(t, { x: x + 0.25, y: 3.3, w: colW - 0.5, h: 0.4, fontFace: HEAD, fontSize: 15, bold: true, color: ink, margin: 0 });
+      s.addText(items.length ? items.map((x2, k) => ({ text: clip(x2, 140), options: { bullet: true, breakLine: k < items.length - 1, paraSpaceAfter: 4 } })) : "None identified.", {
+        x: x + 0.25, y: 3.75, w: colW - 0.5, h: 1.95, fontFace: BODY, fontSize: 11.5, color: C.ink, margin: 0, valign: "top",
+      });
+    });
+    const foot = r.conditions.length ? `${r.verdict === "DO_NOT_PROCEED" ? "What would change this" : "Conditions"}: ${r.conditions.slice(0, 3).map((x) => clip(x, 90)).join("  •  ")}` : r.nextSteps.length ? `Next: ${r.nextSteps.slice(0, 3).map((x) => clip(x, 90)).join("  •  ")}` : "";
+    if (foot) s.addText(foot, { x: 0.6, y: 5.95, w: 12.1, h: 0.85, fontFace: BODY, fontSize: 12, color: C.slate, margin: 0, valign: "top" });
   }
 
   // 3. Problem + 4. Solution & benefits ------------------------------------------------

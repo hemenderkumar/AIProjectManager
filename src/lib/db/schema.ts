@@ -10,7 +10,7 @@ import {
   jsonb,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import type { IdeaResearchData } from "../ideaEvaluation";
+import type { IdeaResearchData, IdeaRecommendation } from "../ideaEvaluation";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
@@ -494,6 +494,7 @@ export const projects = pgTable("projects", {
   askIfDeclined: text("ask_if_declined"),
   ideaResearch: jsonb("idea_research").$type<IdeaResearchData | null>(),
   ideaResearchedAt: timestamp("idea_researched_at"),
+  ideaRecommendation: jsonb("idea_recommendation").$type<IdeaRecommendation | null>(),
   ideaDecision: text("idea_decision"), // GO | PARK | STOP
   ideaDecisionNote: text("idea_decision_note"),
   ideaDecidedBy: text("idea_decided_by"),
