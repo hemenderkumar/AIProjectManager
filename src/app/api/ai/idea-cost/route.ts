@@ -54,5 +54,10 @@ export async function POST(req: NextRequest) {
     ongoingSupportMonthlyCost: sumBy("ONGOING_SUPPORT"), updatedAt: new Date(),
   }).where(eq(projects.id, projectId));
 
+  // Keep the basis of the estimate so the deck's appendix can explain it.
+  const prev = p.ideaPlan;
+  await db.update(projects).set({
+    ideaPlan: { generatedAt: new Date().toISOString(), savings: [], partnerships: [], projection: null, ...(prev ?? {}), costAssumptions: assumptions },
+  }).where(eq(projects.id, projectId));
   return NextResponse.json({ count: lines.length, assumptions });
 }

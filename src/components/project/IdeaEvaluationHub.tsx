@@ -5,7 +5,7 @@ import type { ProjectDetail } from "./ProjectTabs";
 import { Card, Field, inputCls, PrimaryButton } from "./ui";
 import IdeaAiChat from "./IdeaAiChat";
 import AiWaitIndicator from "@/components/AiWaitIndicator";
-import { computeIdeaCost, ideaReadiness, VERDICT_LABELS, type IdeaResearchData, type IdeaRecommendation } from "@/lib/ideaEvaluation";
+import { computeIdeaCost, ideaReadiness, VERDICT_LABELS, computeProjection, totalSavings, type IdeaResearchData, type IdeaRecommendation, type IdeaPlan } from "@/lib/ideaEvaluation";
 import { CheckCircle2, Circle, Sparkles, Loader2, Download, Search, ExternalLink, AlertTriangle } from "lucide-react";
 import type { SessionUser } from "@/lib/auth";
 
@@ -28,6 +28,7 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
 
   const cost = useMemo(() => computeIdeaCost({ items: detail.costItems, ...p }), [detail.costItems, p]);
   const rec = (p.ideaRecommendation ?? null) as IdeaRecommendation | null;
+  const plan = (p.ideaPlan ?? null) as IdeaPlan | null;
   const ready = ideaReadiness({ ...p, cost, researched: !!research, recommended: !!rec });
   const next = ready.items.find((i) => !i.done);
 
@@ -52,6 +53,8 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
 
   const [costBusy, setCostBusy] = useState(false);
   const [costMsg, setCostMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
   const [recBusy, setRecBusy] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
   const [allBusy, setAllBusy] = useState<string | null>(null);
@@ -132,6 +135,21 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
     }
   }
 
+  async function makePlan(): Promise<void> {
+    setPlanBusy(true);
+    setPlanError(null);
+    try {
+      const res = await fetch("/api/ai/idea-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId: p.id }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) setPlanError(data?.error ?? "Couldn't generate the plan. Please try again.");
+      else router.refresh();
+    } catch {
+      setPlanError("Couldn't reach the server.");
+    } finally {
+      setPlanBusy(false);
+    }
+  }
+
   async function makeRecommendation(): Promise<void> {
     setRecBusy(true);
     setRecError(null);
@@ -162,6 +180,11 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
         setAllBusy("Estimating costs…");
         const r = await post("/api/ai/idea-cost", { projectId: p.id });
         if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error ?? "Cost estimate failed");
+      }
+      if (!plan || (!plan.savings.length && !plan.projection)) {
+        setAllBusy("Planning savings, partnerships and projections…");
+        const r = await post("/api/ai/idea-plan", { projectId: p.id });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error ?? "Plan generation failed");
       }
       if (!p.askDecisionNeeded?.trim()) {
         setAllBusy("Drafting the ask…");
@@ -427,6 +450,58 @@ export default function IdeaEvaluationHub({ detail, user }: { detail: ProjectDet
             <p className="text-xs text-slate-400 mt-2">AI estimates are a starting point, not a quote. Lines you add or edit yourself in Scope &amp; Charter are kept when you re-estimate.</p>
           </>
         )}
+      </Card>
+
+      <Card
+        title="Savings, partnerships & 3-year outlook"
+        action={
+          <button onClick={makePlan} disabled={planBusy || cost.firstYearTotal <= 0} title={cost.firstYearTotal <= 0 ? "Estimate the cost first" : undefined} className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-accent-50 text-accent-600 hover:bg-accent-100 disabled:opacity-50">
+            {planBusy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {plan && (plan.savings.length || plan.projection) ? "Regenerate" : "Generate with AI"}
+          </button>
+        }
+      >
+        <AiWaitIndicator active={planBusy} messages={["Looking for cost savings…", "Thinking about partners…", "Projecting three years…"]} />
+        {planError && <p className="text-xs text-rose-600 mb-2">{planError}</p>}
+        {(!plan || (!plan.savings.length && !plan.projection && !plan.partnerships.length)) && !planBusy && (
+          <p className="text-sm text-slate-500">{cost.firstYearTotal <= 0 ? "Estimate the cost first — then the AI can suggest where to cut it, who to partner with, and project cost against revenue for three years. It also fills any empty SWOT quadrants." : "Not generated yet. The AI will suggest cost-saving levers, partnership ideas and a three-year cost-versus-revenue outlook, and fill any empty SWOT quadrants."}</p>
+        )}
+        {plan && plan.savings.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-slate-600 mb-1">Ways to cut cost with AI — potential first-year saving about {money(totalSavings(plan))}</p>
+            <ul className="space-y-1.5 text-sm">
+              {plan.savings.map((x) => (
+                <li key={x.lever} className="flex gap-2"><span className="text-emerald-700 font-medium tabular-nums shrink-0">−{money(x.estimatedSaving)}</span><span><span className="font-medium">{x.lever}.</span> {x.how}{x.risk ? <span className="text-slate-500"> Trade-off: {x.risk}</span> : null}</span></li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {plan && plan.partnerships.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-slate-600 mb-1">Partnership ideas</p>
+            <ul className="space-y-1.5 text-sm">
+              {plan.partnerships.map((x) => (
+                <li key={x.partner}><span className="font-medium">{x.partner}.</span> {x.role} {x.benefit ? <span>Benefit: {x.benefit}. </span> : null}{x.caution ? <span className="text-slate-500">Watch: {x.caution}</span> : null}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {plan?.projection && cost.firstYearTotal > 0 && (() => {
+          const pr = computeProjection(cost, plan.projection);
+          return (
+            <div>
+              <p className="text-xs font-semibold text-slate-600 mb-1">Three-year outlook (illustrative){pr.breakEvenYear ? ` — breaks even in year ${pr.breakEvenYear}` : " — does not break even within 3 years"}</p>
+              <table className="w-full text-sm">
+                <thead><tr className="text-xs text-slate-500"><th className="text-left font-medium py-1"></th>{pr.years.map((y) => <th key={y.year} className="text-right font-medium py-1">Year {y.year}</th>)}</tr></thead>
+                <tbody>
+                  {([["Revenue", "revenue"], ["Cost", "cost"], ["Net", "net"], ["Cumulative", "cumulative"]] as const).map(([label, key]) => (
+                    <tr key={key} className="border-t border-slate-100"><td className="py-1.5 text-slate-600">{label}</td>{pr.years.map((y) => <td key={y.year} className={`py-1.5 text-right tabular-nums ${y[key] < 0 ? "text-rose-600" : ""}`}>{y[key] < 0 ? `-${money(-y[key])}` : money(y[key])}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
+              {plan.projection.assumptions.length > 0 && <p className="text-xs text-slate-400 mt-2">Assumptions: {plan.projection.assumptions.join(" · ")}</p>}
+            </div>
+          );
+        })()}
       </Card>
 
       <Card

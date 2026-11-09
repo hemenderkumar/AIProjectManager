@@ -94,3 +94,26 @@ describe("normalizeRecommendation", () => {
     expect(normalizeRecommendation({ verdict: "PROCEED" })).toBeNull();
   });
 });
+
+import { normalizePlan, computeProjection, totalSavings } from "../ideaEvaluation";
+describe("plan + projection", () => {
+  const cost = computeIdeaCost({ items: [{ category: "MATERIAL", name: "a", amount: 1000 }, { category: "LABOR", name: "b", amount: 9000 }, { category: "ONGOING_SUPPORT", name: "c", amount: 100, isRecurring: true }] });
+  it("caps savings at half the category and drops categories with no cost", () => {
+    const plan = normalizePlan({ savings: [
+      { lever: "AI coding", appliesTo: "LABOR", estimatedSaving: 99999, how: "x" },
+      { lever: "Cheaper licences", appliesTo: "IMPLEMENTATION", estimatedSaving: 500 },
+    ], partnerships: [{ partner: "Reseller" }, { partner: "" }], projection: { revenue: [0, 50000, 200000], variableCostPercent: 90 } }, cost);
+    expect(plan.savings).toHaveLength(1);
+    expect(plan.savings[0].estimatedSaving).toBe(4500);
+    expect(totalSavings(plan)).toBe(4500);
+    expect(plan.partnerships).toHaveLength(1);
+    expect(plan.projection?.variableCostPercent).toBe(70);
+  });
+  it("rejects bad revenue and computes break-even", () => {
+    expect(normalizePlan({ projection: { revenue: [1, "x", 3] } }, cost).projection).toBeNull();
+    const pr = computeProjection(cost, { revenue: [0, 50000, 200000], variableCostPercent: 10, assumptions: [] });
+    expect(pr.years[0].cost).toBeCloseTo(cost.oneTimeTotal + cost.ongoingAnnual);
+    expect(pr.years[1].cost).toBeCloseTo(cost.ongoingAnnual + 5000);
+    expect(pr.breakEvenYear).toBe(2);
+  });
+});

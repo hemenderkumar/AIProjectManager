@@ -285,3 +285,79 @@ export function normalizeRecommendation(raw: unknown, now: Date = new Date()): I
     generatedAt: now.toISOString(),
   };
 }
+
+// ---- plan: AI cost savings, partnerships, 3-year projection -------------------------------
+export type CostSaving = { lever: string; how: string; appliesTo: EstimatedCostLine["category"]; estimatedSaving: number; risk: string };
+export type Partnership = { partner: string; role: string; benefit: string; caution: string };
+export type ProjectionInput = { revenue: [number, number, number]; variableCostPercent: number; assumptions: string[] };
+export type IdeaPlan = {
+  generatedAt: string;
+  costAssumptions: string; // how the cost estimate was built (saved by the cost estimate step)
+  savings: CostSaving[];
+  partnerships: Partnership[];
+  projection: ProjectionInput | null;
+};
+
+const CAT_KEYS: EstimatedCostLine["category"][] = ["MATERIAL", "LABOR", "IMPLEMENTATION", "ONGOING_SUPPORT"];
+function categoryTotal(cost: IdeaCostSummary, c: EstimatedCostLine["category"]): number {
+  return c === "MATERIAL" ? cost.materials : c === "LABOR" ? cost.labor : c === "IMPLEMENTATION" ? cost.implementation : cost.ongoingAnnual;
+}
+
+// Keeps the plan grounded: a saving must apply to a category that actually has cost and can't
+// claim more than half of it; revenue must be three non-negative numbers.
+export function normalizePlan(raw: unknown, cost: IdeaCostSummary, costAssumptions = "", now: Date = new Date()): IdeaPlan {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const savings: CostSaving[] = [];
+  for (const x of Array.isArray(r.savings) ? r.savings : []) {
+    const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
+    const cat = typeof o.appliesTo === "string" ? (o.appliesTo.toUpperCase() as EstimatedCostLine["category"]) : null;
+    const amt = typeof o.estimatedSaving === "number" ? o.estimatedSaving : Number(o.estimatedSaving);
+    const lever = str(o.lever, 120);
+    if (!cat || !CAT_KEYS.includes(cat) || !lever || !Number.isFinite(amt) || amt <= 0) continue;
+    const base = categoryTotal(cost, cat);
+    if (base <= 0) continue;
+    savings.push({ lever, how: str(o.how, 300), appliesTo: cat, estimatedSaving: Math.round(Math.min(amt, base * 0.5)), risk: str(o.risk, 200) });
+    if (savings.length >= 6) break;
+  }
+  const partnerships: Partnership[] = [];
+  for (const x of Array.isArray(r.partnerships) ? r.partnerships : []) {
+    const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
+    const partner = str(o.partner, 120);
+    if (!partner) continue;
+    partnerships.push({ partner, role: str(o.role, 200), benefit: str(o.benefit, 250), caution: str(o.caution, 200) });
+    if (partnerships.length >= 5) break;
+  }
+  let projection: ProjectionInput | null = null;
+  const pr = (r.projection && typeof r.projection === "object" ? r.projection : null) as Record<string, unknown> | null;
+  if (pr && Array.isArray(pr.revenue) && pr.revenue.length >= 3) {
+    const rev = pr.revenue.slice(0, 3).map((v) => (typeof v === "number" ? v : Number(v)));
+    if (rev.every((v) => Number.isFinite(v) && v >= 0 && v < 1e11)) {
+      const vp = typeof pr.variableCostPercent === "number" ? pr.variableCostPercent : Number(pr.variableCostPercent);
+      projection = {
+        revenue: [Math.round(rev[0]), Math.round(rev[1]), Math.round(rev[2])],
+        variableCostPercent: Number.isFinite(vp) ? Math.min(70, Math.max(0, vp)) : 0,
+        assumptions: strList(pr.assumptions, 6, 250),
+      };
+    }
+  }
+  return { generatedAt: now.toISOString(), costAssumptions, savings, partnerships, projection };
+}
+
+export type ProjectionYear = { year: 1 | 2 | 3; revenue: number; cost: number; net: number; cumulative: number };
+// Year 1 carries the one-time investment plus a year of running cost; later years carry running
+// cost only. Variable cost (hosting/COGS that scales with sales) is a % of that year's revenue.
+export function computeProjection(cost: IdeaCostSummary, p: ProjectionInput): { years: ProjectionYear[]; breakEvenYear: number | null } {
+  let cumulative = 0;
+  const years = ([1, 2, 3] as const).map((year, idx) => {
+    const revenue = p.revenue[idx];
+    const c = (year === 1 ? cost.oneTimeTotal : 0) + cost.ongoingAnnual + revenue * (p.variableCostPercent / 100);
+    const net = revenue - c;
+    cumulative += net;
+    return { year, revenue, cost: Math.round(c), net: Math.round(net), cumulative: Math.round(cumulative) };
+  });
+  return { years, breakEvenYear: years.find((y) => y.cumulative >= 0)?.year ?? null };
+}
+
+export function totalSavings(plan: IdeaPlan | null): number {
+  return plan ? plan.savings.reduce((s, x) => s + x.estimatedSaving, 0) : 0;
+}

@@ -32,6 +32,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     cost: computeIdeaCost({ items: detail.costItems, ...p }),
     ask: { decision: p.askDecisionNeeded, team: p.askTeam, timeline: p.askTimeline, ifApproved: p.askIfApproved, ifDeclined: p.askIfDeclined, funding: p.totalFundingRequired },
     recommendation: (p.ideaRecommendation ?? null) as IdeaRecommendation | null,
+    plan: p.ideaPlan ?? null,
+    costLines: detail.costItems.map((c) => ({ category: c.category, name: c.name, amount: c.amount, notes: c.notes })),
     generatedAt: new Date(),
   });
 

@@ -5,7 +5,7 @@ import PptxGenJS from "pptxgenjs";
 import fs from "fs";
 import path from "path";
 import type { IdeaCostSummary, IdeaResearchData, IdeaRecommendation } from "./ideaEvaluation";
-import { VERDICT_LABELS } from "./ideaEvaluation";
+import { VERDICT_LABELS, computeProjection, totalSavings, type IdeaPlan } from "./ideaEvaluation";
 import { stripCitations } from "./ideaEvaluation";
 import { extractRoadmapSteps } from "./businessCaseRoadmap";
 
@@ -35,6 +35,8 @@ export type IdeaDeckInput = {
   cost: IdeaCostSummary | null;
   ask: { decision: string | null; team: string | null; timeline: string | null; ifApproved: string | null; ifDeclined: string | null; funding: number | null };
   recommendation: IdeaRecommendation | null;
+  plan: IdeaPlan | null;
+  costLines: { category: string; name: string; amount: number; notes: string | null }[];
   generatedAt: Date;
 };
 
@@ -306,6 +308,68 @@ export async function generateIdeaDeck(i: IdeaDeckInput): Promise<Buffer> {
     }
   }
 
+  // 8b. Reducing cost with AI -----------------------------------------------------------
+  if (cost && i.plan && i.plan.savings.length) {
+    const sv = i.plan.savings;
+    const total = totalSavings(i.plan);
+    const s = shell("Reducing cost with AI", "Where AI and smarter sourcing can bring the estimate down", "Cost reduction");
+    stat(s, 0.6, 1.75, 3.6, `~${compact(total)}`, "Potential first-year saving", true);
+    stat(s, 0.6, 3.25, 3.6, `${Math.round((total / cost.firstYearTotal) * 100)}%`, "Of the first-year estimate");
+    s.addText("Indicative, not guaranteed. Savings depend on adoption and are capped at half of each cost category.", { x: 0.6, y: 4.75, w: 3.6, h: 1.0, fontFace: BODY, fontSize: 11, italic: true, color: C.muted, margin: 0, valign: "top" });
+    const h = Math.min(1.3, 4.95 / sv.length - 0.1);
+    sv.forEach((x, idx) => {
+      const y = 1.75 + idx * (h + 0.1);
+      card(s, 4.5, y, 8.2, h, C.panel);
+      s.addText(x.lever, { x: 4.7, y: y + 0.05, w: 5.6, h: 0.35, fontFace: BODY, fontSize: 13, bold: true, color: C.navy, margin: 0, valign: "middle" });
+      s.addText(`−${compact(x.estimatedSaving)}`, { x: 10.6, y: y + 0.05, w: 1.9, h: 0.35, fontFace: HEAD, fontSize: 15, bold: true, color: C.greenInk, align: "right", margin: 0, valign: "middle" });
+      s.addText(clip(x.how + (x.risk ? `  Trade-off: ${x.risk}` : ""), 200), { x: 4.7, y: y + 0.42, w: 7.8, h: h - 0.47, fontFace: BODY, fontSize: 10.5, color: C.slate, margin: 0, valign: "top" });
+    });
+  }
+
+  // 8c. Partnerships --------------------------------------------------------------------
+  if (i.plan && i.plan.partnerships.length) {
+    const pt = i.plan.partnerships;
+    const s = shell("Partnership opportunities", "Partners that could cut cost, speed delivery or open distribution", "Partnerships");
+    const cols = pt.length > 3 ? 2 : 1;
+    const w = cols === 2 ? 5.9 : 12.1;
+    const rows = Math.ceil(pt.length / cols);
+    const h = Math.min(1.55, 4.95 / rows - 0.12);
+    pt.forEach((x, idx) => {
+      const cx = 0.6 + (idx % cols) * (w + 0.3);
+      const cy = 1.75 + Math.floor(idx / cols) * (h + 0.12);
+      card(s, cx, cy, w, h, C.panel);
+      badge(s, cx + 0.2, cy + 0.18, String(idx + 1), C.amber, C.navy);
+      s.addText(x.partner, { x: cx + 0.8, y: cy + 0.12, w: w - 1.0, h: 0.4, fontFace: BODY, fontSize: 13, bold: true, color: C.navy, margin: 0, valign: "middle" });
+      const body = [x.role, x.benefit && `Benefit: ${x.benefit}`, x.caution && `Watch: ${x.caution}`].filter(Boolean).join("  ");
+      s.addText(clip(body, 230), { x: cx + 0.8, y: cy + 0.55, w: w - 1.0, h: h - 0.62, fontFace: BODY, fontSize: 10.5, color: C.slate, margin: 0, valign: "top" });
+    });
+  }
+
+  // 8d. Three-year outlook ----------------------------------------------------------------
+  const proj = cost && i.plan?.projection ? computeProjection(cost, i.plan.projection) : null;
+  if (proj) {
+    const s = shell("Three-year outlook: cost vs revenue", "Illustrative projection — see Appendix B for assumptions", "Projection");
+    s.addChart(pptx.ChartType.bar, [
+      { name: "Cost", labels: proj.years.map((y) => `Year ${y.year}`), values: proj.years.map((y) => y.cost) },
+      { name: "Revenue", labels: proj.years.map((y) => `Year ${y.year}`), values: proj.years.map((y) => y.revenue) },
+    ], {
+      x: 0.6, y: 1.7, w: 6.4, h: 4.2, barDir: "col", barGrouping: "clustered", chartColors: [C.muted, C.navy],
+      showLegend: true, legendPos: "b", legendFontSize: 10, legendColor: C.slate, catAxisLabelColor: C.slate, valAxisLabelColor: C.slate, catAxisLabelFontSize: 10, valAxisLabelFontSize: 9,
+      valAxisLabelFormatCode: '$#,##0,"K"', valGridLine: { color: "E2E8F0", size: 0.5 }, catGridLine: { style: "none" }, showValue: false,
+    });
+    const head = ["", "Year 1", "Year 2", "Year 3"].map((t, k) => ({ text: t, options: { bold: true, color: C.white, fill: { color: C.navy }, fontFace: BODY, fontSize: 11, align: (k ? "right" : "left") as "right" | "left" } }));
+    const row = (label: string, vals: number[], bold = false) => [
+      { text: label, options: { fontFace: BODY, fontSize: 11, bold, color: C.slate } },
+      ...vals.map((v) => ({ text: v < 0 ? `-${money(-v)}` : money(v), options: { fontFace: BODY, fontSize: 11, bold, color: v < 0 ? C.redInk : C.slate, align: "right" as const } })),
+    ];
+    s.addTable([head, row("Revenue", proj.years.map((y) => y.revenue)), row("Cost", proj.years.map((y) => y.cost)), row("Net", proj.years.map((y) => y.net), true), row("Cumulative", proj.years.map((y) => y.cumulative), true)], {
+      x: 7.3, y: 1.8, w: 5.4, colW: [1.5, 1.3, 1.3, 1.3], rowH: 0.42, border: { type: "solid", color: "DDE3F0", pt: 0.5 },
+    });
+    card(s, 7.3, 4.2, 5.4, 1.7, proj.breakEvenYear ? C.green : C.sand);
+    s.addText(proj.breakEvenYear ? `Breaks even in year ${proj.breakEvenYear}` : "Does not break even within 3 years", { x: 7.5, y: 4.3, w: 5.0, h: 0.5, fontFace: HEAD, fontSize: 16, bold: true, color: proj.breakEvenYear ? C.greenInk : C.sandInk, margin: 0, valign: "middle" });
+    s.addText(`Cumulative net after 3 years: ${proj.years[2].cumulative < 0 ? "-" : ""}${money(Math.abs(proj.years[2].cumulative))}. Year 1 cost includes the one-time investment.`, { x: 7.5, y: 4.85, w: 5.0, h: 0.95, fontFace: BODY, fontSize: 11, color: C.slate, margin: 0, valign: "top" });
+  }
+
   // 9. SWOT -------------------------------------------------------------------------------
   {
     const q: [string, string | null, string, string, string][] = [
@@ -367,6 +431,52 @@ export async function generateIdeaDeck(i: IdeaDeckInput): Promise<Buffer> {
       s.addText(t!.toUpperCase(), { x: x + 0.25, y: y + 0.1, w: w - 0.5, h: 0.3, fontFace: BODY, fontSize: 11, bold: true, color: C.amber, charSpacing: 2, margin: 0 });
       s.addText(clip(body, 170), { x: x + 0.25, y: y + 0.42, w: w - 0.5, h: h - 0.5, fontFace: BODY, fontSize: 13, color: C.white, margin: 0, valign: "top" });
     });
+  }
+
+  // Appendix A: how the cost was estimated ---------------------------------------------------
+  if (cost && (i.costLines.length || has(i.plan?.costAssumptions))) {
+    const catLabel: Record<string, string> = { MATERIAL: "Materials", LABOR: "Labour", IMPLEMENTATION: "Implementation", ONGOING_SUPPORT: "Ongoing (per month)" };
+    const order = ["MATERIAL", "LABOR", "IMPLEMENTATION", "ONGOING_SUPPORT"];
+    const lines = [...i.costLines].sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category));
+    const chunks: typeof lines[] = [];
+    for (let k = 0; k < lines.length; k += 10) chunks.push(lines.slice(k, k + 10));
+    if (!chunks.length) chunks.push([]);
+    chunks.forEach((chunk, ci) => {
+      const s = shell(`Appendix A — How the cost was estimated${chunks.length > 1 ? ` (${ci + 1}/${chunks.length})` : ""}`, ci === 0 && has(i.plan?.costAssumptions) ? clip(i.plan!.costAssumptions, 230) : "Line items and the basis for each figure", "Appendix");
+      if (chunk.length) {
+        const head = ["Category", "Item", "Amount", "Basis"].map((t, k) => ({ text: t, options: { bold: true, color: C.white, fill: { color: C.navy }, fontFace: BODY, fontSize: 10.5, align: (k === 2 ? "right" : "left") as "right" | "left" } }));
+        const body = chunk.map((l) => [
+          { text: catLabel[l.category] ?? l.category, options: { fontFace: BODY, fontSize: 10, color: C.blue, bold: true } },
+          { text: clip(l.name, 60), options: { fontFace: BODY, fontSize: 10, color: C.ink } },
+          { text: `${money(l.amount)}${l.category === "ONGOING_SUPPORT" ? "/mo" : ""}`, options: { fontFace: BODY, fontSize: 10, color: C.ink, align: "right" as const } },
+          { text: clip(l.notes ?? "Estimate entered by the team", 110), options: { fontFace: BODY, fontSize: 9.5, color: C.slate } },
+        ]);
+        s.addTable([head, ...body], { x: 0.6, y: 1.8, w: 12.1, colW: [1.9, 3.3, 1.4, 5.5], rowH: 0.42, border: { type: "solid", color: "DDE3F0", pt: 0.5 }, valign: "middle" });
+      }
+      if (ci === chunks.length - 1) {
+        s.addText(`Totals — materials ${money(cost.materials)}, labour ${money(cost.labor)}, implementation ${money(cost.implementation)}${cost.contingency > 0 ? `, contingency ${money(cost.contingency)}` : ""}; ongoing support ${money(cost.ongoingAnnual)}/yr. AI-generated estimates are an order-of-magnitude starting point, not quotes.`, {
+          x: 0.6, y: 6.35, w: 12.1, h: 0.6, fontFace: BODY, fontSize: 10.5, italic: true, color: C.muted, margin: 0, valign: "top",
+        });
+      }
+    });
+  }
+
+  // Appendix B: projection method and assumptions ----------------------------------------------
+  if (cost && i.plan?.projection) {
+    const pj = i.plan.projection;
+    const s = shell("Appendix B — Projection method & assumptions", "How the three-year outlook was built", "Appendix");
+    card(s, 0.6, 1.8, 5.8, 4.9, C.panel);
+    s.addText("METHOD", { x: 0.9, y: 1.95, w: 5.2, h: 0.3, fontFace: BODY, fontSize: 11, bold: true, color: C.blue, charSpacing: 2, margin: 0 });
+    s.addText([
+      { text: "Revenue: ", options: { bold: true } }, { text: `AI-estimated for years 1-3 (${pj.revenue.map((v) => compact(v)).join(", ")}) from market evidence and competitor pricing.`, options: { breakLine: true } },
+      { text: "Cost: ", options: { bold: true } }, { text: `Year 1 = one-time investment (${money(cost.oneTimeTotal)}) + ongoing support (${money(cost.ongoingAnnual)}/yr). Years 2-3 = ongoing support only.`, options: { breakLine: true } },
+      { text: "Variable cost: ", options: { bold: true } }, { text: `${Math.round(pj.variableCostPercent)}% of revenue (costs that scale with sales, such as hosting and fees).`, options: { breakLine: true } },
+      { text: "Not included: ", options: { bold: true } }, { text: "tax, financing, price changes, or cost growth beyond the above." },
+    ], { x: 0.9, y: 2.3, w: 5.2, h: 4.2, fontFace: BODY, fontSize: 12, color: C.ink, margin: 0, valign: "top", paraSpaceAfter: 8 });
+    card(s, 6.7, 1.8, 6.0, 4.9, C.panel);
+    s.addText("KEY ASSUMPTIONS", { x: 7.0, y: 1.95, w: 5.4, h: 0.3, fontFace: BODY, fontSize: 11, bold: true, color: C.blue, charSpacing: 2, margin: 0 });
+    const as = pj.assumptions.length ? pj.assumptions : ["No explicit assumptions were recorded — treat the projection as a rough guide only."];
+    s.addText(as.map((t, k) => ({ text: clip(t, 200), options: { bullet: true, breakLine: k < as.length - 1, paraSpaceAfter: 6 } })), { x: 7.0, y: 2.3, w: 5.4, h: 4.2, fontFace: BODY, fontSize: 12, color: C.ink, margin: 0, valign: "top" });
   }
 
   const out = await pptx.write({ outputType: "nodebuffer" });

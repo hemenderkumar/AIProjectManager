@@ -155,3 +155,21 @@ Reply with ONLY JSON: {"verdict":"","headline":"one sentence a CEO can act on","
   const rec = normalizeRecommendation(data);
   return rec ? { data: rec } : { data: null, error: "The AI didn't return a usable recommendation — try again." };
 }
+
+// ---- plan: savings, partnerships, projection, SWOT ---------------------------------------
+export async function planIdea(brief: IdeaBrief, evidence: string): Promise<{ raw: unknown | null; error?: string }> {
+  const system = `You are a pragmatic strategy and finance analyst. Using ONLY the evidence supplied, produce:
+1. "savings": 3-6 concrete ways to REDUCE the estimated cost by leveraging AI and automation (e.g. AI-assisted coding/testing, automated support, AI design tooling,
+   synthetic test data) or by smarter sourcing. Each applies to one cost category and gives a realistic first-year dollar saving (never more than half that category's cost),
+   how it works, and its risk or trade-off. Be honest: if AI won't help much in a category, don't invent a saving.
+2. "partnerships": 3-5 partnership types that could cut cost, speed delivery or open distribution (technology platform, channel/reseller, university/research, supplier, anchor customer).
+   "partner" = the type, optionally with an example ONLY if you are certain it is real and relevant. Add a short "caution".
+3. "projection": 3-year revenue forecast in USD for years 1, 2, 3 (revenue array of three numbers), "variableCostPercent" (0-70, share of revenue spent on cost that scales with sales:
+   hosting, payment fees, support), and "assumptions" (3-6 short, explicit assumptions such as price, customer counts, conversion, churn). Make it conservative and tied to the evidence
+   (market size, pricing of competitors). It is illustrative, not a forecast guarantee.
+4. "swot": {"strengths":[], "weaknesses":[], "opportunities":[], "threats":[]} each 3-4 short, specific points drawn from the evidence.
+Reply with ONLY JSON: {"savings":[{"lever":"","how":"","appliesTo":"MATERIAL|LABOR|IMPLEMENTATION|ONGOING_SUPPORT","estimatedSaving":0,"risk":""}],
+"partnerships":[{"partner":"","role":"","benefit":"","caution":""}],"projection":{"revenue":[0,0,0],"variableCostPercent":0,"assumptions":[""]},"swot":{"strengths":[],"weaknesses":[],"opportunities":[],"threats":[]}}`;
+  const { data, error } = await askClaudeJSON<unknown>(system, `${briefText(brief)}\n\nEVIDENCE\n${evidence}`, 3000, 0.25);
+  return data ? { raw: data } : { raw: null, error };
+}
